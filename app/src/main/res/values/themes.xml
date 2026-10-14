@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.AshuChat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0F0C20</item>
+        <item name="android:navigationBarColor">#0F0C20</item>
+        <item name="android:windowBackground">#0F0C20</item>
+    </style>
+</resources>

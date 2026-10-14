@@ -1,0 +1,361 @@
+package com.ashuchat.app.ui.components
+
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.ashuchat.app.data.model.ChatMessage
+import com.ashuchat.app.data.model.MessageStatus
+import com.ashuchat.app.data.model.MessageType
+import com.ashuchat.app.ui.theme.IncomingBubbleColor
+import com.ashuchat.app.ui.theme.RoseAccent
+import com.ashuchat.app.ui.theme.RoseDark
+import com.ashuchat.app.ui.theme.RosePrimary
+import com.ashuchat.app.ui.theme.SurfaceBorder
+import com.ashuchat.app.ui.theme.TextMuted
+import com.ashuchat.app.ui.theme.TextPrimary
+import com.ashuchat.app.ui.theme.TextSecondary
+import com.ashuchat.app.utils.FileUtils
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun ChatBubble(
+    message: ChatMessage,
+    onImageClick: (filePath: String, fileName: String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isMe = message.isFromMe
+    val alignment = if (isMe) Alignment.End else Alignment.Start
+
+    val bubbleShape = if (isMe) {
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
+    } else {
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
+    }
+
+    val bubbleBrush = if (isMe) {
+        Brush.horizontalGradient(listOf(RosePrimary, RoseDark))
+    } else {
+        Brush.horizontalGradient(listOf(IncomingBubbleColor, IncomingBubbleColor))
+    }
+
+    Column(
+        horizontalAlignment = alignment,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .clip(bubbleShape)
+                .background(bubbleBrush)
+                .then(
+                    if (!isMe) Modifier.border(1.dp, SurfaceBorder, bubbleShape) else Modifier
+                )
+                .padding(if (message.type == MessageType.LOVE_PING) 12.dp else 10.dp)
+        ) {
+            Column {
+                when (message.type) {
+                    MessageType.TEXT -> {
+                        Text(
+                            text = message.text,
+                            fontSize = 15.sp,
+                            color = TextPrimary,
+                            lineHeight = 20.sp
+                        )
+                    }
+
+                    MessageType.IMAGE -> {
+                        ImageBubbleContent(
+                            message = message,
+                            onImageClick = onImageClick
+                        )
+                    }
+
+                    MessageType.FILE -> {
+                        FileBubbleContent(message = message)
+                    }
+
+                    MessageType.LOVE_PING -> {
+                        LovePingBubbleContent(message = message, isMe = isMe)
+                    }
+
+                    MessageType.AUDIO -> {
+                        FileBubbleContent(message = message)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Timestamp and Status
+                Row(
+                    modifier = Modifier.align(Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatTime(message.timestamp),
+                        fontSize = 10.sp,
+                        color = if (isMe) Color.White.copy(alpha = 0.75f) else TextMuted
+                    )
+
+                    if (isMe) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        StatusIndicator(status = message.status)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImageBubbleContent(
+    message: ChatMessage,
+    onImageClick: (String, String?) -> Unit
+) {
+    val path = message.attachmentPath
+    val isTransferring = message.transferProgress < 1.0f
+
+    Column {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black.copy(alpha = 0.3f))
+                .clickable(enabled = path != null && !isTransferring) {
+                    path?.let { onImageClick(it, message.attachmentName) }
+                }
+        ) {
+            if (path != null) {
+                AsyncImage(
+                    model = File(path),
+                    contentDescription = message.attachmentName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+
+            if (isTransferring) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    CircularProgressIndicator(
+                        progress = { message.transferProgress },
+                        color = RoseAccent,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
+            }
+        }
+
+        if (message.text.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = message.text,
+                fontSize = 14.sp,
+                color = TextPrimary
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileBubbleContent(message: ChatMessage) {
+    val isTransferring = message.transferProgress < 1.0f
+
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.Black.copy(alpha = 0.2f))
+                .padding(8.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.15f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.InsertDriveFile,
+                    contentDescription = "File",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = message.attachmentName ?: "Attachment",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    maxLines = 1
+                )
+                Text(
+                    text = FileUtils.formatFileSize(message.attachmentSize),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+
+        if (isTransferring) {
+            Spacer(modifier = Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { message.transferProgress },
+                color = RoseAccent,
+                trackColor = Color.White.copy(alpha = 0.2f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+            )
+        }
+
+        if (message.text.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = message.text,
+                fontSize = 14.sp,
+                color = TextPrimary
+            )
+        }
+    }
+}
+
+@Composable
+private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "heartPulse")
+    val scaleAnim by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "heartScale"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Favorite,
+            contentDescription = "Heartbeat",
+            tint = RoseAccent,
+            modifier = Modifier
+                .size(32.dp)
+                .scale(scaleAnim)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = if (isMe) "You sent a Heartbeat ❤️" else "${message.senderName} sent a Heartbeat ❤️",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun StatusIndicator(status: MessageStatus) {
+    when (status) {
+        MessageStatus.SENDING -> {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = "Sending",
+                tint = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.size(12.dp)
+            )
+        }
+        MessageStatus.SENT -> {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Sent",
+                tint = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.size(13.dp)
+            )
+        }
+        MessageStatus.DELIVERED,
+        MessageStatus.READ -> {
+            Icon(
+                imageVector = Icons.Default.DoneAll,
+                contentDescription = "Delivered",
+                tint = if (status == MessageStatus.READ) RoseAccent else Color.White,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+        MessageStatus.FAILED -> {
+            Icon(
+                imageVector = Icons.Default.ErrorOutline,
+                contentDescription = "Failed",
+                tint = Color(0xFFFF5252),
+                modifier = Modifier.size(13.dp)
+            )
+        }
+    }
+}
+
+private fun formatTime(millis: Long): String {
+    val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
+    return sdf.format(Date(millis))
+}
