@@ -508,14 +508,18 @@ class SignalingClient(
                     if (roomObj.has("offer")) {
                         val offer = roomObj.getAsJsonObject("offer")
                         val sender = offer.get("senderId")?.asString
-                        if (sender != currentClientId && offer.has("sdp")) {
+                        val timestamp = if (offer.has("timestamp")) offer.get("timestamp").asLong else 0L
+                        val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 120_000L
+                        if (sender != currentClientId && offer.has("sdp") && isFresh) {
                             listener.onOfferReceived(offer.get("sdp").asString)
                         }
                     }
                     if (roomObj.has("answer")) {
                         val answer = roomObj.getAsJsonObject("answer")
                         val sender = answer.get("senderId")?.asString
-                        if (sender != currentClientId && answer.has("sdp")) {
+                        val timestamp = if (answer.has("timestamp")) answer.get("timestamp").asLong else 0L
+                        val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 120_000L
+                        if (sender != currentClientId && answer.has("sdp") && isFresh) {
                             listener.onAnswerReceived(answer.get("sdp").asString)
                         }
                     }
@@ -532,14 +536,18 @@ class SignalingClient(
                 path == "/offer" && dataElem.isJsonObject -> {
                     val offer = dataElem.asJsonObject
                     val sender = offer.get("senderId")?.asString
-                    if (sender != currentClientId && offer.has("sdp")) {
+                    val timestamp = if (offer.has("timestamp")) offer.get("timestamp").asLong else 0L
+                    val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 120_000L
+                    if (sender != currentClientId && offer.has("sdp") && isFresh) {
                         listener.onOfferReceived(offer.get("sdp").asString)
                     }
                 }
                 path == "/answer" && dataElem.isJsonObject -> {
                     val answer = dataElem.asJsonObject
                     val sender = answer.get("senderId")?.asString
-                    if (sender != currentClientId && answer.has("sdp")) {
+                    val timestamp = if (answer.has("timestamp")) answer.get("timestamp").asLong else 0L
+                    val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 120_000L
+                    if (sender != currentClientId && answer.has("sdp") && isFresh) {
                         listener.onAnswerReceived(answer.get("sdp").asString)
                     }
                 }

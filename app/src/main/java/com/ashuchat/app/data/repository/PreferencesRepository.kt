@@ -16,9 +16,9 @@ class PreferencesRepository(context: Context) {
         private const val KEY_SIGNALING_URL = "signaling_url"
         private const val KEY_CLIENT_ID = "client_id"
 
-        // Default Serverless Public Relay URL (100% free, zero setup, global public cloud broker)
-        const val DEFAULT_SIGNALING_URL = "https://ntfy.sh"
-        const val PUBLIC_RELAY_URL = "https://ntfy.sh"
+        // Default Serverless Firebase Realtime Database URL (Singapore asia-southeast1)
+        const val DEFAULT_SIGNALING_URL = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
+        const val PUBLIC_RELAY_URL = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
     }
 
     var myName: String
@@ -38,6 +38,7 @@ class PreferencesRepository(context: Context) {
             val saved = prefs.getString(KEY_SIGNALING_URL, null)
             if (saved == null || 
                 saved.isBlank() || 
+                saved.contains("ntfy.sh") ||
                 saved.contains("ashuchat-relay.onrender.com") || 
                 saved.contains("ashuchat-couples-default-rtdb")) {
                 prefs.edit().putString(KEY_SIGNALING_URL, DEFAULT_SIGNALING_URL).apply()
