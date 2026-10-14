@@ -119,7 +119,7 @@ class SignalingClient(
                             }
                         }
 
-                        url.contains("firebaseio.com") -> {
+                        url.contains("firebaseio.com") || url.contains("firebasedatabase.app") -> {
                             val clean = url.trimEnd('/')
                             val req = Request.Builder().url("$clean/.json?shallow=true").build()
                             val resp = okHttpClient.newCall(req).execute()
@@ -163,7 +163,7 @@ class SignalingClient(
         disconnect()
 
         activeMode = when {
-            currentServerUrl.contains("firebaseio.com") -> SignalingMode.FIREBASE
+            currentServerUrl.contains("firebaseio.com") || currentServerUrl.contains("firebasedatabase.app") -> SignalingMode.FIREBASE
             currentServerUrl.startsWith("ws://") || currentServerUrl.startsWith("wss://") -> SignalingMode.WEBSOCKET
             else -> SignalingMode.NTFY_SERVERLESS
         }
@@ -417,50 +417,56 @@ class SignalingClient(
         Log.d(TAG, "Connecting to Firebase RTDB at: $roomUrl")
 
         streamJob = scope.launch {
-            try {
-                announceFirebasePeerPresence(normalizedBaseUrl, roomId, clientId)
+            while (isActive) {
+                try {
+                    announceFirebasePeerPresence(normalizedBaseUrl, roomId, clientId)
 
-                val request = Request.Builder()
-                    .url(roomUrl)
-                    .header("Accept", "text/event-stream")
-                    .build()
+                    val request = Request.Builder()
+                        .url(roomUrl)
+                        .header("Accept", "text/event-stream")
+                        .build()
 
-                val call = client.newCall(request)
-                val response = call.execute()
+                    val call = client.newCall(request)
+                    val response = call.execute()
 
-                if (!response.isSuccessful) {
-                    listener.onError("Firebase connection failed: HTTP ${response.code}")
-                    return@launch
-                }
-
-                listener.onSignalingConnected()
-
-                val reader = BufferedReader(response.body?.charStream())
-                var line: String? = null
-                var currentEvent: String? = null
-                val dataBuffer = StringBuilder()
-
-                while (isActive && reader.readLine().also { line = it } != null) {
-                    val l = line ?: break
-                    if (l.startsWith("event:")) {
-                        currentEvent = l.substring(6).trim()
-                    } else if (l.startsWith("data:")) {
-                        dataBuffer.append(l.substring(5).trim())
-                    } else if (l.isEmpty()) {
-                        if (currentEvent != null && dataBuffer.isNotEmpty()) {
-                            val dataStr = dataBuffer.toString()
-                            if (currentEvent == "put" || currentEvent == "patch") {
-                                handleFirebaseSseData(dataStr)
-                            }
-                        }
-                        currentEvent = null
-                        dataBuffer.setLength(0)
+                    if (!response.isSuccessful) {
+                        listener.onError("Firebase connection failed: HTTP ${response.code}")
+                        response.close()
+                        delay(3000)
+                        continue
                     }
-                }
-            } catch (e: Exception) {
-                if (isActive) {
-                    Log.e(TAG, "Firebase SSE error: ${e.localizedMessage}")
-                    listener.onSignalingDisconnected()
+
+                    listener.onSignalingConnected()
+
+                    val reader = BufferedReader(response.body?.charStream())
+                    var line: String? = null
+                    var currentEvent: String? = null
+                    val dataBuffer = StringBuilder()
+
+                    while (isActive && reader.readLine().also { line = it } != null) {
+                        val l = line ?: break
+                        if (l.startsWith("event:")) {
+                            currentEvent = l.substring(6).trim()
+                        } else if (l.startsWith("data:")) {
+                            dataBuffer.append(l.substring(5).trim())
+                        } else if (l.isEmpty()) {
+                            if (currentEvent != null && dataBuffer.isNotEmpty()) {
+                                val dataStr = dataBuffer.toString()
+                                if (currentEvent == "put" || currentEvent == "patch") {
+                                    handleFirebaseSseData(dataStr)
+                                }
+                            }
+                            currentEvent = null
+                            dataBuffer.setLength(0)
+                        }
+                    }
+                    response.close()
+                } catch (e: Exception) {
+                    if (isActive) {
+                        Log.w(TAG, "Firebase SSE error: ${e.localizedMessage}. Reconnecting in 2s...")
+                        listener.onSignalingDisconnected()
+                        delay(2000)
+                    }
                 }
             }
         }
