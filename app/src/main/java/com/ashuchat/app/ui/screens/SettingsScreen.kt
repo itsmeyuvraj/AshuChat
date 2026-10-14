@@ -19,12 +19,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.data.repository.PreferencesRepository
+import com.ashuchat.app.webrtc.SignalingClient
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.ui.theme.OnlineGreen
@@ -71,6 +76,8 @@ fun SettingsScreen(
     var myName by remember { mutableStateOf(prefs.myName) }
     var partnerName by remember { mutableStateOf(prefs.partnerName) }
     var signalingUrl by remember { mutableStateOf(prefs.signalingUrl) }
+    var isTestingConnection by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
 
@@ -156,16 +163,16 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 2: Serverless Cloud Signaling
+            // Section 2: Signaling Relay Server
             Text(
-                text = "Serverless Cloud Signaling",
+                text = "Signaling Relay Server",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = VioletAccent
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "100% Serverless. Used only for the initial peer handshake. No servers to host or manage! Once connected, chats & files stream directly phone-to-phone via WebRTC DataChannel.",
+                text = "Used exclusively for the initial 2-second peer handshake. Once connected, your chats, photos, and files stream directly peer-to-peer via WebRTC DataChannel.",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -184,8 +191,9 @@ fun SettingsScreen(
                     onValueChange = {
                         signalingUrl = it
                         prefs.signalingUrl = it
+                        testResult = null
                     },
-                    label = { Text("Serverless Cloud URL") },
+                    label = { Text("Relay URL (Serverless / WebSocket)") },
                     placeholder = { Text(PreferencesRepository.DEFAULT_SIGNALING_URL) },
                     singleLine = true,
                     colors = settingsOutlinedColors(),
@@ -203,13 +211,14 @@ fun SettingsScreen(
                         onClick = {
                             signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
                             prefs.signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
+                            testResult = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Firebase Cloud",
+                            text = "Serverless Cloud",
                             fontSize = 11.sp,
                             color = TextPrimary
                         )
@@ -217,17 +226,88 @@ fun SettingsScreen(
 
                     Button(
                         onClick = {
-                            signalingUrl = PreferencesRepository.PUBLIC_RELAY_URL
-                            prefs.signalingUrl = PreferencesRepository.PUBLIC_RELAY_URL
+                            signalingUrl = PreferencesRepository.LOCAL_RELAY_URL
+                            prefs.signalingUrl = PreferencesRepository.LOCAL_RELAY_URL
+                            testResult = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Public Relay",
+                            text = "Local Wi-Fi",
                             fontSize = 11.sp,
                             color = TextPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Test Connection Button
+                Button(
+                    onClick = {
+                        isTestingConnection = true
+                        testResult = null
+                        SignalingClient.testConnection(signalingUrl) { success, message ->
+                            isTestingConnection = false
+                            testResult = Pair(success, message)
+                        }
+                    },
+                    enabled = !isTestingConnection,
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isTestingConnection) {
+                        CircularProgressIndicator(
+                            color = VioletAccent,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Testing Relay...",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.NetworkCheck,
+                            contentDescription = null,
+                            tint = VioletAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Test Relay Reachability",
+                            fontSize = 12.sp,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                testResult?.let { (success, message) ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (success) OnlineGreen.copy(alpha = 0.15f) else OfflineRed.copy(alpha = 0.15f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (success) Icons.Default.CheckCircle else Icons.Default.Error,
+                            contentDescription = null,
+                            tint = if (success) OnlineGreen else OfflineRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = message,
+                            fontSize = 11.sp,
+                            color = if (success) OnlineGreen else OfflineRed
                         )
                     }
                 }

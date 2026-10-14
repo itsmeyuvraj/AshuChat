@@ -51,7 +51,10 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-# Determine the Java command to use to start the JVM.
+if [ -z "$JAVA_HOME" ] && [ "$(uname)" = "Darwin" ] && [ -d "/Users/yuvraj/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home" ]; then
+    export JAVA_HOME="/Users/yuvraj/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home"
+fi
+
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
         JAVACMD=$JAVA_HOME/jre/sh/java
@@ -89,4 +92,4 @@ if [ ! -r "$WRAPPER_JAR" ]; then
     echo "Note: Open this project in Android Studio to automatically initialize the Gradle wrapper."
 fi
 
-exec "$JAVACMD" -jar "$WRAPPER_JAR" "$@"
+exec "$JAVACMD" "-Dorg.gradle.appname=$APP_BASE_NAME" -classpath "$WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"

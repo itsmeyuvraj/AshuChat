@@ -24,12 +24,19 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+enum class SignalingMode {
+    NTFY_SERVERLESS,
+    WEBSOCKET,
+    FIREBASE
+}
+
 /**
- * Serverless Signaling Client
+ * Universal Signaling Client
  *
- * Supports two serverless modes with ZERO user server hosting required:
- * 1. Firebase Realtime Database (Serverless Cloud via REST SSE stream)
- * 2. Public Cloud WebSocket Broker (e.g. wss://...)
+ * Supports 3 signaling modes:
+ * 1. Public Serverless Relay (ntfy.sh - 100% free, zero configuration, zero servers to host)
+ * 2. Dedicated WebSocket Relay (ws:// or wss://, e.g. local Wi-Fi or hosted broker)
+ * 3. Firebase Realtime Database (REST SSE for custom user Firebase projects)
  */
 class SignalingClient(
     private val listener: Listener
@@ -47,6 +54,7 @@ class SignalingClient(
 
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+    private val textMediaType = "text/plain; charset=utf-8".toMediaType()
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -55,19 +63,95 @@ class SignalingClient(
         .build()
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    private var sseJob: Job? = null
+    private var streamJob: Job? = null
     private var webSocket: WebSocket? = null
 
     private var currentRoomId: String? = null
     private var currentClientId: String? = null
     private var currentServerUrl: String = ""
-    private var isFirebaseMode = false
+    private var activeMode: SignalingMode = SignalingMode.NTFY_SERVERLESS
 
-    // Keep track of received candidate IDs to prevent duplicate processing
     private val processedCandidateKeys = hashSetOf<String>()
 
     companion object {
         private const val TAG = "SignalingClient"
+
+        /**
+         * Test whether a signaling server or relay URL is reachable.
+         */
+        fun testConnection(serverUrl: String, onResult: (Boolean, String) -> Unit) {
+            val url = serverUrl.trim()
+            val okHttpClient = OkHttpClient.Builder()
+                .connectTimeout(6, TimeUnit.SECONDS)
+                .readTimeout(6, TimeUnit.SECONDS)
+                .build()
+
+            val testScope = CoroutineScope(Dispatchers.IO)
+            testScope.launch {
+                try {
+                    when {
+                        url.startsWith("ws://") || url.startsWith("wss://") -> {
+                            val request = Request.Builder().url(url).build()
+                            var replied = false
+                            val ws = okHttpClient.newWebSocket(request, object : WebSocketListener() {
+                                override fun onOpen(webSocket: WebSocket, response: Response) {
+                                    if (!replied) {
+                                        replied = true
+                                        onResult(true, "WebSocket connected successfully (HTTP 101)")
+                                        webSocket.close(1000, "Test complete")
+                                    }
+                                }
+
+                                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                                    if (!replied) {
+                                        replied = true
+                                        val code = response?.code
+                                        val msg = if (code != null) "HTTP $code" else t.localizedMessage ?: "Connection refused"
+                                        onResult(false, "WebSocket failed: $msg")
+                                    }
+                                }
+                            })
+                            delay(5000)
+                            if (!replied) {
+                                replied = true
+                                ws.cancel()
+                                onResult(false, "WebSocket connection timed out (5s)")
+                            }
+                        }
+
+                        url.contains("firebaseio.com") -> {
+                            val clean = url.trimEnd('/')
+                            val req = Request.Builder().url("$clean/.json?shallow=true").build()
+                            val resp = okHttpClient.newCall(req).execute()
+                            if (resp.isSuccessful) {
+                                onResult(true, "Firebase Realtime DB reachable (HTTP ${resp.code})")
+                            } else {
+                                onResult(false, "Firebase returned HTTP ${resp.code}: ${resp.message}")
+                            }
+                            resp.close()
+                        }
+
+                        else -> {
+                            val clean = url.trimEnd('/')
+                            val testTopic = "ashuchat_ping_${System.currentTimeMillis() % 1000}"
+                            val req = Request.Builder()
+                                .url("$clean/$testTopic/json?poll=1")
+                                .header("User-Agent", "AshuChat-Android/1.0")
+                                .build()
+                            val resp = okHttpClient.newCall(req).execute()
+                            if (resp.isSuccessful) {
+                                onResult(true, "Serverless Cloud Relay Active (HTTP ${resp.code} OK)")
+                            } else {
+                                onResult(false, "Relay returned HTTP ${resp.code}: ${resp.message}")
+                            }
+                            resp.close()
+                        }
+                    }
+                } catch (e: Exception) {
+                    onResult(false, "Cannot connect: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            }
+        }
     }
 
     fun connect(serverUrl: String, roomId: String, clientId: String) {
@@ -78,210 +162,171 @@ class SignalingClient(
 
         disconnect()
 
-        isFirebaseMode = currentServerUrl.contains("firebaseio.com") ||
-                currentServerUrl.startsWith("http://") ||
-                currentServerUrl.startsWith("https://")
+        activeMode = when {
+            currentServerUrl.contains("firebaseio.com") -> SignalingMode.FIREBASE
+            currentServerUrl.startsWith("ws://") || currentServerUrl.startsWith("wss://") -> SignalingMode.WEBSOCKET
+            else -> SignalingMode.NTFY_SERVERLESS
+        }
 
-        if (isFirebaseMode) {
-            connectFirebaseServerless(currentServerUrl, roomId, clientId)
-        } else {
-            connectWebSocket(currentServerUrl, roomId, clientId)
+        Log.d(TAG, "Connecting using mode: $activeMode to $currentServerUrl for room: $roomId")
+
+        when (activeMode) {
+            SignalingMode.NTFY_SERVERLESS -> connectNtfyServerless(currentServerUrl, roomId, clientId)
+            SignalingMode.WEBSOCKET -> connectWebSocket(currentServerUrl, roomId, clientId)
+            SignalingMode.FIREBASE -> connectFirebaseServerless(currentServerUrl, roomId, clientId)
         }
     }
 
     // =========================================================================
-    // Mode 1: Firebase Realtime Database Serverless (REST SSE Streaming)
+    // Mode 1: Public Serverless HTTP SSE Relay (Default: ntfy.sh)
     // =========================================================================
 
-    private fun connectFirebaseServerless(baseUrl: String, roomId: String, clientId: String) {
-        val normalizedBaseUrl = baseUrl.trimEnd('/')
-        val roomUrl = "$normalizedBaseUrl/rooms/$roomId.json"
+    private fun sanitizeNtfyTopic(roomId: String): String {
+        val clean = roomId.trim().lowercase().replace(Regex("[^a-z0-9_-]"), "_")
+        return "ashuchat_$clean"
+    }
 
-        Log.d(TAG, "Connecting to Serverless Firebase Realtime DB at: $roomUrl")
+    private fun connectNtfyServerless(baseUrl: String, roomId: String, clientId: String) {
+        val cleanBase = baseUrl.trimEnd('/')
+        val topic = sanitizeNtfyTopic(roomId)
+        val sseUrl = "$cleanBase/$topic/sse"
+        val publishUrl = "$cleanBase/$topic"
 
-        sseJob = scope.launch {
-            try {
-                // 1. Announce peer presence
-                announcePeerPresence(normalizedBaseUrl, roomId, clientId)
+        Log.d(TAG, "Connecting to Serverless NTFY Relay: $sseUrl")
 
-                // 2. Open SSE stream with Accept: text/event-stream
-                val request = Request.Builder()
-                    .url(roomUrl)
-                    .header("Accept", "text/event-stream")
-                    .build()
+        streamJob = scope.launch {
+            while (isActive) {
+                try {
+                    val request = Request.Builder()
+                        .url(sseUrl)
+                        .header("Accept", "text/event-stream")
+                        .header("User-Agent", "AshuChat-Android/1.0")
+                        .build()
 
-                val call = client.newCall(request)
-                val response = call.execute()
+                    val call = client.newCall(request)
+                    val response = call.execute()
 
-                if (!response.isSuccessful) {
-                    listener.onError("Serverless Firebase connection failed: ${response.code}")
-                    return@launch
-                }
+                    if (!response.isSuccessful) {
+                        listener.onError("Relay stream error: HTTP ${response.code}")
+                        response.close()
+                        delay(3000)
+                        continue
+                    }
 
-                listener.onSignalingConnected()
+                    listener.onSignalingConnected()
 
-                val reader = BufferedReader(response.body?.charStream())
-                var line: String? = null
+                    // Broadcast peer presence in room
+                    sendNtfyMessage(
+                        publishUrl,
+                        SignalingPayload(
+                            type = "join",
+                            roomId = roomId,
+                            clientId = clientId
+                        )
+                    )
 
-                var currentEvent: String? = null
-                val dataBuffer = StringBuilder()
+                    val reader = BufferedReader(response.body?.charStream())
+                    var line: String? = null
+                    var currentEvent: String? = null
+                    val dataBuffer = StringBuilder()
 
-                while (isActive && reader.readLine().also { line = it } != null) {
-                    val l = line ?: break
-                    if (l.startsWith("event:")) {
-                        currentEvent = l.substring(6).trim()
-                    } else if (l.startsWith("data:")) {
-                        dataBuffer.append(l.substring(5).trim())
-                    } else if (l.isEmpty()) {
-                        // End of SSE message block
-                        if (currentEvent != null && dataBuffer.isNotEmpty()) {
-                            val dataStr = dataBuffer.toString()
-                            if (currentEvent == "put" || currentEvent == "patch") {
-                                handleFirebaseSseData(dataStr)
+                    while (isActive && reader.readLine().also { line = it } != null) {
+                        val l = line ?: break
+                        if (l.startsWith("event:")) {
+                            currentEvent = l.substring(6).trim()
+                        } else if (l.startsWith("data:")) {
+                            dataBuffer.append(l.substring(5).trim())
+                        } else if (l.isEmpty()) {
+                            if (currentEvent == "message" && dataBuffer.isNotEmpty()) {
+                                handleNtfyEvent(dataBuffer.toString(), publishUrl)
                             }
+                            currentEvent = null
+                            dataBuffer.setLength(0)
                         }
-                        currentEvent = null
-                        dataBuffer.setLength(0)
+                    }
+                    response.close()
+                } catch (e: Exception) {
+                    if (isActive) {
+                        Log.w(TAG, "Relay SSE stream interrupted: ${e.localizedMessage}. Reconnecting in 2s...")
+                        listener.onSignalingDisconnected()
+                        delay(2000)
                     }
                 }
-            } catch (e: Exception) {
-                if (isActive) {
-                    Log.e(TAG, "Serverless Firebase SSE error: ${e.localizedMessage}")
-                    listener.onSignalingDisconnected()
-                }
             }
         }
     }
 
-    private fun announcePeerPresence(baseUrl: String, roomId: String, clientId: String) {
-        val body = JsonObject().apply {
-            addProperty("online", true)
-            addProperty("joinedAt", System.currentTimeMillis())
-        }.toString().toRequestBody(jsonMediaType)
-
-        val request = Request.Builder()
-            .url("$baseUrl/rooms/$roomId/peers/$clientId.json")
-            .put(body)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "Failed to announce peer presence: ${e.localizedMessage}")
-            }
-            override fun onResponse(call: Call, response: Response) {
-                response.close()
-            }
-        })
-    }
-
-    private fun handleFirebaseSseData(jsonStr: String) {
+    private fun handleNtfyEvent(jsonStr: String, publishUrl: String) {
         try {
             val root = gson.fromJson(jsonStr, JsonObject::class.java) ?: return
-            val path = root.get("path")?.asString ?: "/"
-            val dataElem = root.get("data")
+            val innerMsg = root.get("message")?.asString ?: return
+            val payload = gson.fromJson(innerMsg, SignalingPayload::class.java) ?: return
 
-            if (dataElem == null || dataElem.isJsonNull) return
+            val sender = payload.clientId
+            if (sender == null || sender == currentClientId) {
+                return // Ignore our own messages
+            }
 
-            when {
-                // Full room snapshot
-                path == "/" && dataElem.isJsonObject -> {
-                    val roomObj = dataElem.asJsonObject
-                    // Check other peers
-                    if (roomObj.has("peers")) {
-                        val peers = roomObj.getAsJsonObject("peers")
-                        for (entry in peers.entrySet()) {
-                            if (entry.key != currentClientId) {
-                                listener.onPeerJoined(entry.key)
-                            }
+            Log.d(TAG, "NTFY received payload: ${payload.type} from $sender")
+
+            when (payload.type) {
+                "join" -> {
+                    // Send join_ack so the joining peer knows we are already here
+                    sendNtfyMessage(
+                        publishUrl,
+                        SignalingPayload(
+                            type = "join_ack",
+                            roomId = currentRoomId,
+                            clientId = currentClientId
+                        )
+                    )
+                    listener.onPeerJoined(sender)
+                }
+                "join_ack" -> {
+                    listener.onPeerJoined(sender)
+                }
+                "offer" -> {
+                    payload.sdp?.let { listener.onOfferReceived(it) }
+                }
+                "answer" -> {
+                    payload.sdp?.let { listener.onAnswerReceived(it) }
+                }
+                "ice_candidate" -> {
+                    if (payload.sdp != null && payload.sdpMid != null && payload.sdpMLineIndex != null) {
+                        val key = "${payload.sdpMid}_${payload.sdpMLineIndex}_${payload.sdp.hashCode()}"
+                        if (!processedCandidateKeys.contains(key)) {
+                            processedCandidateKeys.add(key)
+                            listener.onIceCandidateReceived(
+                                IceCandidate(payload.sdpMid, payload.sdpMLineIndex, payload.sdp)
+                            )
                         }
                     }
-                    // Check Offer
-                    if (roomObj.has("offer")) {
-                        val offer = roomObj.getAsJsonObject("offer")
-                        val sender = offer.get("senderId")?.asString
-                        if (sender != currentClientId && offer.has("sdp")) {
-                            listener.onOfferReceived(offer.get("sdp").asString)
-                        }
-                    }
-                    // Check Answer
-                    if (roomObj.has("answer")) {
-                        val answer = roomObj.getAsJsonObject("answer")
-                        val sender = answer.get("senderId")?.asString
-                        if (sender != currentClientId && answer.has("sdp")) {
-                            listener.onAnswerReceived(answer.get("sdp").asString)
-                        }
-                    }
-                    // Check Candidates
-                    if (roomObj.has("candidates")) {
-                        parseFirebaseCandidates(roomObj.getAsJsonObject("candidates"))
-                    }
                 }
-
-                // Peer joined
-                path.startsWith("/peers/") -> {
-                    val peerId = path.removePrefix("/peers/")
-                    if (peerId != currentClientId) {
-                        listener.onPeerJoined(peerId)
-                    }
-                }
-
-                // Offer arrived
-                path == "/offer" && dataElem.isJsonObject -> {
-                    val offer = dataElem.asJsonObject
-                    val sender = offer.get("senderId")?.asString
-                    if (sender != currentClientId && offer.has("sdp")) {
-                        listener.onOfferReceived(offer.get("sdp").asString)
-                    }
-                }
-
-                // Answer arrived
-                path == "/answer" && dataElem.isJsonObject -> {
-                    val answer = dataElem.asJsonObject
-                    val sender = answer.get("senderId")?.asString
-                    if (sender != currentClientId && answer.has("sdp")) {
-                        listener.onAnswerReceived(answer.get("sdp").asString)
-                    }
-                }
-
-                // Candidate arrived
-                path.startsWith("/candidates") -> {
-                    if (dataElem.isJsonObject) {
-                        parseFirebaseCandidateObject(dataElem.asJsonObject, path)
-                    }
+                "peer_left" -> {
+                    listener.onPeerLeft(sender)
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling Firebase SSE data: ${e.localizedMessage}", e)
+            Log.e(TAG, "Error handling NTFY event: ${e.localizedMessage}", e)
         }
     }
 
-    private fun parseFirebaseCandidates(candidatesObj: JsonObject) {
-        for (entry in candidatesObj.entrySet()) {
-            val key = entry.key
-            val candElem = entry.value
-            if (candElem.isJsonObject) {
-                parseFirebaseCandidateObject(candElem.asJsonObject, key)
-            }
-        }
-    }
-
-    private fun parseFirebaseCandidateObject(candObj: JsonObject, key: String) {
-        val sender = candObj.get("senderId")?.asString
-        if (sender != currentClientId && !processedCandidateKeys.contains(key)) {
-            processedCandidateKeys.add(key)
-            val sdp = candObj.get("sdp")?.asString
-            val sdpMid = candObj.get("sdpMid")?.asString
-            val sdpMLineIndex = candObj.get("sdpMLineIndex")?.asInt
-
-            if (sdp != null && sdpMid != null && sdpMLineIndex != null) {
-                val candidate = IceCandidate(sdpMid, sdpMLineIndex, sdp)
-                listener.onIceCandidateReceived(candidate)
-            }
+    private fun sendNtfyMessage(publishUrl: String, payload: SignalingPayload) {
+        try {
+            val json = gson.toJson(payload)
+            val body = json.toRequestBody(textMediaType)
+            val req = Request.Builder()
+                .url(publishUrl)
+                .post(body)
+                .build()
+            client.newCall(req).enqueue(NoOpCallback)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish NTFY message: ${e.localizedMessage}")
         }
     }
 
     // =========================================================================
-    // Mode 2: Public Cloud WebSocket Broker Mode
+    // Mode 2: Dedicated WebSocket Relay (ws:// or wss://)
     // =========================================================================
 
     private fun connectWebSocket(serverUrl: String, roomId: String, clientId: String) {
@@ -352,95 +397,6 @@ class SignalingClient(
         }
     }
 
-    // =========================================================================
-    // Public Sending API (Handles both Firebase & WebSocket automatically)
-    // =========================================================================
-
-    fun sendOffer(sdp: String) {
-        if (isFirebaseMode) {
-            val baseUrl = currentServerUrl.trimEnd('/')
-            val roomId = currentRoomId ?: return
-            val body = JsonObject().apply {
-                addProperty("sdp", sdp)
-                addProperty("senderId", currentClientId)
-                addProperty("timestamp", System.currentTimeMillis())
-            }.toString().toRequestBody(jsonMediaType)
-
-            val req = Request.Builder()
-                .url("$baseUrl/rooms/$roomId/offer.json")
-                .put(body)
-                .build()
-            client.newCall(req).enqueue(NoOpCallback)
-        } else {
-            sendMessageWs(
-                SignalingPayload(
-                    type = "offer",
-                    roomId = currentRoomId,
-                    clientId = currentClientId,
-                    sdp = sdp
-                )
-            )
-        }
-    }
-
-    fun sendAnswer(sdp: String) {
-        if (isFirebaseMode) {
-            val baseUrl = currentServerUrl.trimEnd('/')
-            val roomId = currentRoomId ?: return
-            val body = JsonObject().apply {
-                addProperty("sdp", sdp)
-                addProperty("senderId", currentClientId)
-                addProperty("timestamp", System.currentTimeMillis())
-            }.toString().toRequestBody(jsonMediaType)
-
-            val req = Request.Builder()
-                .url("$baseUrl/rooms/$roomId/answer.json")
-                .put(body)
-                .build()
-            client.newCall(req).enqueue(NoOpCallback)
-        } else {
-            sendMessageWs(
-                SignalingPayload(
-                    type = "answer",
-                    roomId = currentRoomId,
-                    clientId = currentClientId,
-                    sdp = sdp
-                )
-            )
-        }
-    }
-
-    fun sendIceCandidate(candidate: IceCandidate) {
-        if (isFirebaseMode) {
-            val baseUrl = currentServerUrl.trimEnd('/')
-            val roomId = currentRoomId ?: return
-            val body = JsonObject().apply {
-                addProperty("sdp", candidate.sdp)
-                addProperty("sdpMid", candidate.sdpMid)
-                addProperty("sdpMLineIndex", candidate.sdpMLineIndex)
-                addProperty("senderId", currentClientId)
-                addProperty("timestamp", System.currentTimeMillis())
-            }.toString().toRequestBody(jsonMediaType)
-
-            val req = Request.Builder()
-                .url("$baseUrl/rooms/$roomId/candidates.json")
-                .post(body)
-                .build()
-            client.newCall(req).enqueue(NoOpCallback)
-        } else {
-            sendMessageWs(
-                SignalingPayload(
-                    type = "ice_candidate",
-                    roomId = currentRoomId,
-                    clientId = currentClientId,
-                    sdp = candidate.sdp,
-                    sdpMid = candidate.sdpMid,
-                    sdpMLineIndex = candidate.sdpMLineIndex
-                )
-            )
-        }
-    }
-
     private fun sendMessageWs(payload: SignalingPayload) {
         try {
             val json = gson.toJson(payload)
@@ -450,13 +406,331 @@ class SignalingClient(
         }
     }
 
+    // =========================================================================
+    // Mode 3: Firebase Realtime Database (Serverless SSE Streaming)
+    // =========================================================================
+
+    private fun connectFirebaseServerless(baseUrl: String, roomId: String, clientId: String) {
+        val normalizedBaseUrl = baseUrl.trimEnd('/')
+        val roomUrl = "$normalizedBaseUrl/rooms/$roomId.json"
+
+        Log.d(TAG, "Connecting to Firebase RTDB at: $roomUrl")
+
+        streamJob = scope.launch {
+            try {
+                announceFirebasePeerPresence(normalizedBaseUrl, roomId, clientId)
+
+                val request = Request.Builder()
+                    .url(roomUrl)
+                    .header("Accept", "text/event-stream")
+                    .build()
+
+                val call = client.newCall(request)
+                val response = call.execute()
+
+                if (!response.isSuccessful) {
+                    listener.onError("Firebase connection failed: HTTP ${response.code}")
+                    return@launch
+                }
+
+                listener.onSignalingConnected()
+
+                val reader = BufferedReader(response.body?.charStream())
+                var line: String? = null
+                var currentEvent: String? = null
+                val dataBuffer = StringBuilder()
+
+                while (isActive && reader.readLine().also { line = it } != null) {
+                    val l = line ?: break
+                    if (l.startsWith("event:")) {
+                        currentEvent = l.substring(6).trim()
+                    } else if (l.startsWith("data:")) {
+                        dataBuffer.append(l.substring(5).trim())
+                    } else if (l.isEmpty()) {
+                        if (currentEvent != null && dataBuffer.isNotEmpty()) {
+                            val dataStr = dataBuffer.toString()
+                            if (currentEvent == "put" || currentEvent == "patch") {
+                                handleFirebaseSseData(dataStr)
+                            }
+                        }
+                        currentEvent = null
+                        dataBuffer.setLength(0)
+                    }
+                }
+            } catch (e: Exception) {
+                if (isActive) {
+                    Log.e(TAG, "Firebase SSE error: ${e.localizedMessage}")
+                    listener.onSignalingDisconnected()
+                }
+            }
+        }
+    }
+
+    private fun announceFirebasePeerPresence(baseUrl: String, roomId: String, clientId: String) {
+        val body = JsonObject().apply {
+            addProperty("online", true)
+            addProperty("joinedAt", System.currentTimeMillis())
+        }.toString().toRequestBody(jsonMediaType)
+
+        val request = Request.Builder()
+            .url("$baseUrl/rooms/$roomId/peers/$clientId.json")
+            .put(body)
+            .build()
+
+        client.newCall(request).enqueue(NoOpCallback)
+    }
+
+    private fun handleFirebaseSseData(jsonStr: String) {
+        try {
+            val root = gson.fromJson(jsonStr, JsonObject::class.java) ?: return
+            val path = root.get("path")?.asString ?: "/"
+            val dataElem = root.get("data")
+
+            if (dataElem == null || dataElem.isJsonNull) return
+
+            when {
+                path == "/" && dataElem.isJsonObject -> {
+                    val roomObj = dataElem.asJsonObject
+                    if (roomObj.has("peers")) {
+                        val peers = roomObj.getAsJsonObject("peers")
+                        for (entry in peers.entrySet()) {
+                            if (entry.key != currentClientId) {
+                                listener.onPeerJoined(entry.key)
+                            }
+                        }
+                    }
+                    if (roomObj.has("offer")) {
+                        val offer = roomObj.getAsJsonObject("offer")
+                        val sender = offer.get("senderId")?.asString
+                        if (sender != currentClientId && offer.has("sdp")) {
+                            listener.onOfferReceived(offer.get("sdp").asString)
+                        }
+                    }
+                    if (roomObj.has("answer")) {
+                        val answer = roomObj.getAsJsonObject("answer")
+                        val sender = answer.get("senderId")?.asString
+                        if (sender != currentClientId && answer.has("sdp")) {
+                            listener.onAnswerReceived(answer.get("sdp").asString)
+                        }
+                    }
+                    if (roomObj.has("candidates")) {
+                        parseFirebaseCandidates(roomObj.getAsJsonObject("candidates"))
+                    }
+                }
+                path.startsWith("/peers/") -> {
+                    val peerId = path.removePrefix("/peers/")
+                    if (peerId != currentClientId) {
+                        listener.onPeerJoined(peerId)
+                    }
+                }
+                path == "/offer" && dataElem.isJsonObject -> {
+                    val offer = dataElem.asJsonObject
+                    val sender = offer.get("senderId")?.asString
+                    if (sender != currentClientId && offer.has("sdp")) {
+                        listener.onOfferReceived(offer.get("sdp").asString)
+                    }
+                }
+                path == "/answer" && dataElem.isJsonObject -> {
+                    val answer = dataElem.asJsonObject
+                    val sender = answer.get("senderId")?.asString
+                    if (sender != currentClientId && answer.has("sdp")) {
+                        listener.onAnswerReceived(answer.get("sdp").asString)
+                    }
+                }
+                path.startsWith("/candidates") -> {
+                    if (dataElem.isJsonObject) {
+                        parseFirebaseCandidateObject(dataElem.asJsonObject, path)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling Firebase SSE data: ${e.localizedMessage}", e)
+        }
+    }
+
+    private fun parseFirebaseCandidates(candidatesObj: JsonObject) {
+        for (entry in candidatesObj.entrySet()) {
+            val key = entry.key
+            val candElem = entry.value
+            if (candElem.isJsonObject) {
+                parseFirebaseCandidateObject(candElem.asJsonObject, key)
+            }
+        }
+    }
+
+    private fun parseFirebaseCandidateObject(candObj: JsonObject, key: String) {
+        val sender = candObj.get("senderId")?.asString
+        if (sender != currentClientId && !processedCandidateKeys.contains(key)) {
+            processedCandidateKeys.add(key)
+            val sdp = candObj.get("sdp")?.asString
+            val sdpMid = candObj.get("sdpMid")?.asString
+            val sdpMLineIndex = candObj.get("sdpMLineIndex")?.asInt
+
+            if (sdp != null && sdpMid != null && sdpMLineIndex != null) {
+                val candidate = IceCandidate(sdpMid, sdpMLineIndex, sdp)
+                listener.onIceCandidateReceived(candidate)
+            }
+        }
+    }
+
+    // =========================================================================
+    // Public Sending API
+    // =========================================================================
+
+    fun sendOffer(sdp: String) {
+        when (activeMode) {
+            SignalingMode.NTFY_SERVERLESS -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(currentRoomId ?: return)
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "offer",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = sdp
+                    )
+                )
+            }
+            SignalingMode.WEBSOCKET -> {
+                sendMessageWs(
+                    SignalingPayload(
+                        type = "offer",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = sdp
+                    )
+                )
+            }
+            SignalingMode.FIREBASE -> {
+                val baseUrl = currentServerUrl.trimEnd('/')
+                val roomId = currentRoomId ?: return
+                val body = JsonObject().apply {
+                    addProperty("sdp", sdp)
+                    addProperty("senderId", currentClientId)
+                    addProperty("timestamp", System.currentTimeMillis())
+                }.toString().toRequestBody(jsonMediaType)
+
+                val req = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/offer.json")
+                    .put(body)
+                    .build()
+                client.newCall(req).enqueue(NoOpCallback)
+            }
+        }
+    }
+
+    fun sendAnswer(sdp: String) {
+        when (activeMode) {
+            SignalingMode.NTFY_SERVERLESS -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(currentRoomId ?: return)
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "answer",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = sdp
+                    )
+                )
+            }
+            SignalingMode.WEBSOCKET -> {
+                sendMessageWs(
+                    SignalingPayload(
+                        type = "answer",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = sdp
+                    )
+                )
+            }
+            SignalingMode.FIREBASE -> {
+                val baseUrl = currentServerUrl.trimEnd('/')
+                val roomId = currentRoomId ?: return
+                val body = JsonObject().apply {
+                    addProperty("sdp", sdp)
+                    addProperty("senderId", currentClientId)
+                    addProperty("timestamp", System.currentTimeMillis())
+                }.toString().toRequestBody(jsonMediaType)
+
+                val req = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/answer.json")
+                    .put(body)
+                    .build()
+                client.newCall(req).enqueue(NoOpCallback)
+            }
+        }
+    }
+
+    fun sendIceCandidate(candidate: IceCandidate) {
+        when (activeMode) {
+            SignalingMode.NTFY_SERVERLESS -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(currentRoomId ?: return)
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "ice_candidate",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = candidate.sdp,
+                        sdpMid = candidate.sdpMid,
+                        sdpMLineIndex = candidate.sdpMLineIndex
+                    )
+                )
+            }
+            SignalingMode.WEBSOCKET -> {
+                sendMessageWs(
+                    SignalingPayload(
+                        type = "ice_candidate",
+                        roomId = currentRoomId,
+                        clientId = currentClientId,
+                        sdp = candidate.sdp,
+                        sdpMid = candidate.sdpMid,
+                        sdpMLineIndex = candidate.sdpMLineIndex
+                    )
+                )
+            }
+            SignalingMode.FIREBASE -> {
+                val baseUrl = currentServerUrl.trimEnd('/')
+                val roomId = currentRoomId ?: return
+                val body = JsonObject().apply {
+                    addProperty("sdp", candidate.sdp)
+                    addProperty("sdpMid", candidate.sdpMid)
+                    addProperty("sdpMLineIndex", candidate.sdpMLineIndex)
+                    addProperty("senderId", currentClientId)
+                    addProperty("timestamp", System.currentTimeMillis())
+                }.toString().toRequestBody(jsonMediaType)
+
+                val req = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/candidates.json")
+                    .post(body)
+                    .build()
+                client.newCall(req).enqueue(NoOpCallback)
+            }
+        }
+    }
+
     fun disconnect() {
         try {
-            sseJob?.cancel()
-            sseJob = null
+            streamJob?.cancel()
+            streamJob = null
 
-            if (isFirebaseMode && currentRoomId != null && currentClientId != null) {
-                // Delete peer presence on exit
+            if (activeMode == SignalingMode.NTFY_SERVERLESS && currentRoomId != null && currentClientId != null) {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(currentRoomId!!)
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "peer_left",
+                        roomId = currentRoomId,
+                        clientId = currentClientId
+                    )
+                )
+            }
+
+            if (activeMode == SignalingMode.FIREBASE && currentRoomId != null && currentClientId != null) {
                 val baseUrl = currentServerUrl.trimEnd('/')
                 val roomId = currentRoomId
                 val clientId = currentClientId

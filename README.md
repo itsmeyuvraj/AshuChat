@@ -87,14 +87,19 @@ AshuChat/
 │           │   └── repository/            # Chat & Preferences Repositories
 │           ├── webrtc/
 │           │   ├── WebRtcManager.kt       # PeerConnection, STUN & DataChannel
-│           │   ├── SignalingClient.kt     # Serverless Firebase SSE & Cloud client
+│           │   ├── SignalingClient.kt     # Serverless & WebSocket Signaling client
 │           │   └── FileTransferManager.kt # Binary chunking & stream backpressure
 │           ├── ui/
 │           │   ├── theme/                 # Romantic color palette & typography
 │           │   ├── components/            # ChatBubble, Badges, QR Views
-│           │   ├── screens/               # PairingScreen, ChatScreen, Scanner
+│           │   ├── screens/               # PairingScreen, ChatScreen, Settings
 │           │   └── viewmodel/             # ChatViewModel
 │           └── utils/                     # FileUtils, QrUtils, NotificationHelper
+├── relay-server/                          # Optional self-hosted signaling server
+│   ├── server.py                          # Zero-dependency Python relay (Local Wi-Fi)
+│   ├── server.js                          # Node.js WebSocket broker (Render / Railway)
+│   ├── package.json                       # npm start script
+│   └── Dockerfile                         # Container deployment
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```

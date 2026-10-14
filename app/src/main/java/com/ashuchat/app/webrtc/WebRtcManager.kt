@@ -65,6 +65,8 @@ class WebRtcManager(
 
     private var isInitiator = false
     private val pendingIceCandidates = mutableListOf<IceCandidate>()
+    private var currentClientId: String? = null
+    private var connectedPeerId: String? = null
 
     init {
         initPeerConnectionFactory()
@@ -85,11 +87,16 @@ class WebRtcManager(
      * Start connection: Connect to signaling server with roomId and clientId.
      */
     fun start(serverUrl: String, roomId: String, clientId: String) {
+        currentClientId = clientId
         _connectionState.value = P2PConnectionState.CONNECTING_SIGNALING
         signalingClient.connect(serverUrl, roomId, clientId)
     }
 
     private fun setupPeerConnection() {
+        if (peerConnection != null) {
+            cleanupPeerConnection()
+        }
+
         val iceServers = listOf(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
@@ -126,9 +133,9 @@ class WebRtcManager(
                     }
                 }
 
-                override fun onDataChannel(remoteChannel: DataChannel?) {
-                    Log.d(TAG, "Remote DataChannel received: ${remoteChannel?.label()}")
-                    remoteChannel?.let { setupDataChannel(it) }
+                override fun onDataChannel(dataChannel: DataChannel?) {
+                    Log.d(TAG, "Remote DataChannel received: ${dataChannel?.label()}")
+                    dataChannel?.let { setupDataChannel(it) }
                 }
             }
         )
@@ -230,54 +237,79 @@ class WebRtcManager(
     }
 
     override fun onPeerJoined(clientId: String) {
-        Log.d(TAG, "Peer joined: $clientId. Initiating WebRTC offer as caller...")
-        isInitiator = true
-        _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
+        Log.d(TAG, "onPeerJoined: $clientId (myClientId: $currentClientId)")
 
-        setupPeerConnection()
-
-        // Create DataChannel on initiator side
-        val dcInit = DataChannel.Init().apply {
-            ordered = true
+        // Ignore duplicate events if we're already negotiating or connected with this peer
+        if (connectedPeerId == clientId && 
+            (_connectionState.value == P2PConnectionState.CONNECTED_P2P || 
+             _connectionState.value == P2PConnectionState.NEGOTIATING_WEBRTC)) {
+            Log.d(TAG, "Already active with peer $clientId. Skipping duplicate join.")
+            return
         }
-        val channel = peerConnection?.createDataChannel(DATA_CHANNEL_LABEL, dcInit)
-        channel?.let { setupDataChannel(it) }
+        connectedPeerId = clientId
 
-        // Create WebRTC Offer
-        val constraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "false"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
-        }
+        val myId = currentClientId ?: ""
+        // Deterministic role selection: the peer with higher string value initiates the offer
+        val shouldInitiate = myId > clientId
+        Log.d(TAG, "Role decision: shouldInitiate=$shouldInitiate (myId=$myId, peerId=$clientId)")
 
-        peerConnection?.createOffer(object : SdpObserver {
-            override fun onCreateSuccess(desc: SessionDescription?) {
-                desc?.let { sdp ->
-                    peerConnection?.setLocalDescription(object : SdpObserver {
-                        override fun onCreateSuccess(d: SessionDescription?) {}
-                        override fun onSetSuccess() {
-                            Log.d(TAG, "Local description set successfully. Sending offer.")
-                            signalingClient.sendOffer(sdp.description)
-                        }
-                        override fun onCreateFailure(err: String?) {}
-                        override fun onSetFailure(err: String?) {
-                            Log.e(TAG, "Failed to set local description: $err")
-                        }
-                    }, sdp)
+        if (shouldInitiate) {
+            isInitiator = true
+            _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
+
+            setupPeerConnection()
+
+            // Create DataChannel on initiator side
+            val dcInit = DataChannel.Init().apply {
+                ordered = true
+            }
+            val channel = peerConnection?.createDataChannel(DATA_CHANNEL_LABEL, dcInit)
+            channel?.let { setupDataChannel(it) }
+
+            // Create WebRTC Offer
+            val constraints = MediaConstraints().apply {
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "false"))
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+            }
+
+            peerConnection?.createOffer(object : SdpObserver {
+                override fun onCreateSuccess(desc: SessionDescription?) {
+                    desc?.let { sdp ->
+                        peerConnection?.setLocalDescription(object : SdpObserver {
+                            override fun onCreateSuccess(d: SessionDescription?) {}
+                            override fun onSetSuccess() {
+                                Log.d(TAG, "Local description set successfully. Sending offer.")
+                                signalingClient.sendOffer(sdp.description)
+                            }
+                            override fun onCreateFailure(err: String?) {}
+                            override fun onSetFailure(err: String?) {
+                                Log.e(TAG, "Failed to set local description: $err")
+                            }
+                        }, sdp)
+                    }
                 }
-            }
 
-            override fun onSetSuccess() {}
-            override fun onCreateFailure(error: String?) {
-                Log.e(TAG, "Failed to create offer: $error")
-            }
-            override fun onSetFailure(error: String?) {}
-        }, constraints)
+                override fun onSetSuccess() {}
+                override fun onCreateFailure(error: String?) {
+                    Log.e(TAG, "Failed to create offer: $error")
+                }
+                override fun onSetFailure(error: String?) {}
+            }, constraints)
+        } else {
+            isInitiator = false
+            _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
+            setupPeerConnection()
+            Log.d(TAG, "Acting as callee. Waiting for offer from initiator peer $clientId...")
+        }
     }
 
     override fun onPeerLeft(clientId: String) {
         Log.d(TAG, "Peer left: $clientId")
-        _connectionState.value = P2PConnectionState.WAITING_FOR_PEER
-        cleanupPeerConnection()
+        if (connectedPeerId == clientId) {
+            connectedPeerId = null
+            _connectionState.value = P2PConnectionState.WAITING_FOR_PEER
+            cleanupPeerConnection()
+        }
     }
 
     override fun onOfferReceived(sdp: String) {
@@ -285,7 +317,9 @@ class WebRtcManager(
         isInitiator = false
         _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
 
-        setupPeerConnection()
+        if (peerConnection == null) {
+            setupPeerConnection()
+        }
 
         val remoteDesc = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SdpObserver {
