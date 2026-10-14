@@ -95,11 +95,6 @@ AshuChat/
 │           │   ├── screens/               # PairingScreen, ChatScreen, Settings
 │           │   └── viewmodel/             # ChatViewModel
 │           └── utils/                     # FileUtils, QrUtils, NotificationHelper
-├── relay-server/                          # Optional self-hosted signaling server
-│   ├── server.py                          # Zero-dependency Python relay (Local Wi-Fi)
-│   ├── server.js                          # Node.js WebSocket broker (Render / Railway)
-│   ├── package.json                       # npm start script
-│   └── Dockerfile                         # Container deployment
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```

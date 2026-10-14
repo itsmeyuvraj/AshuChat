@@ -203,43 +203,28 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Button(
+                    onClick = {
+                        signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
+                        prefs.signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
+                        testResult = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = {
-                            signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
-                            prefs.signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
-                            testResult = null
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Serverless Cloud",
-                            fontSize = 11.sp,
-                            color = TextPrimary
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            signalingUrl = PreferencesRepository.LOCAL_RELAY_URL
-                            prefs.signalingUrl = PreferencesRepository.LOCAL_RELAY_URL
-                            testResult = null
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Local Wi-Fi",
-                            fontSize = 11.sp,
-                            color = TextPrimary
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.RestartAlt,
+                        contentDescription = null,
+                        tint = VioletAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Reset to Default Cloud Relay",
+                        fontSize = 12.sp,
+                        color = TextPrimary
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))

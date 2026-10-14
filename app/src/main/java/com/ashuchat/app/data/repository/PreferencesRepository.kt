@@ -16,10 +16,9 @@ class PreferencesRepository(context: Context) {
         private const val KEY_SIGNALING_URL = "signaling_url"
         private const val KEY_CLIENT_ID = "client_id"
 
-        // Default Serverless Public Relay URL (100% free, zero setup, global public serverless broker)
+        // Default Serverless Public Relay URL (100% free, zero setup, global public cloud broker)
         const val DEFAULT_SIGNALING_URL = "https://ntfy.sh"
         const val PUBLIC_RELAY_URL = "https://ntfy.sh"
-        const val LOCAL_RELAY_URL = "ws://10.0.2.2:8080"
     }
 
     var myName: String
