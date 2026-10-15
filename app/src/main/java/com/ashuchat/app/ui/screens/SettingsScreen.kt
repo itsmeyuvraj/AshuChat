@@ -485,26 +485,7 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
                 HorizontalDivider(color = SurfaceBorder, thickness = 0.5.dp)
-                Spacer(modifier = Modifier.height(12.dp))
 
-                // Developer Dedication
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = null,
-                        tint = Color(0xFFE11D48),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Developed by Yuvraj Poudyal for Ashu",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

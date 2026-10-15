@@ -17,12 +17,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ashuchat.app.ui.screens.AboutScreen
 import com.ashuchat.app.ui.screens.ChatScreen
+import com.ashuchat.app.ui.screens.ChatSettingsScreen
 import com.ashuchat.app.ui.screens.PairingScreen
+import com.ashuchat.app.ui.screens.ProfileScreen
 import com.ashuchat.app.ui.screens.QrCodeScreen
 import com.ashuchat.app.ui.screens.QrScannerScreen
+import com.ashuchat.app.ui.screens.RelayScreen
 import com.ashuchat.app.ui.screens.RoomsScreen
-import com.ashuchat.app.ui.screens.SettingsScreen
 import com.ashuchat.app.ui.theme.AshuChatTheme
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
@@ -77,8 +80,17 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 onNavigateToPairing = {
                     navController.navigate("pairing")
                 },
-                onNavigateToSettings = {
-                    navController.navigate("settings")
+                onNavigateToProfile = {
+                    navController.navigate("settings/profile")
+                },
+                onNavigateToRelay = {
+                    navController.navigate("settings/relay")
+                },
+                onNavigateToChatSettings = {
+                    navController.navigate("settings/chat")
+                },
+                onNavigateToAbout = {
+                    navController.navigate("settings/about")
                 }
             )
         }
@@ -97,8 +109,17 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 onNavigateToScanner = {
                     navController.navigate("qr_scanner")
                 },
-                onNavigateToSettings = {
-                    navController.navigate("settings")
+                onNavigateToProfile = {
+                    navController.navigate("settings/profile")
+                },
+                onNavigateToRelay = {
+                    navController.navigate("settings/relay")
+                },
+                onNavigateToChatSettings = {
+                    navController.navigate("settings/chat")
+                },
+                onNavigateToAbout = {
+                    navController.navigate("settings/about")
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -118,8 +139,17 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                         }
                     }
                 },
-                onNavigateToSettings = {
-                    navController.navigate("settings")
+                onNavigateToProfile = {
+                    navController.navigate("settings/profile")
+                },
+                onNavigateToRelay = {
+                    navController.navigate("settings/relay")
+                },
+                onNavigateToChatSettings = {
+                    navController.navigate("settings/chat")
+                },
+                onNavigateToAbout = {
+                    navController.navigate("settings/about")
                 },
                 onNavigateToShowQr = { roomId ->
                     navController.navigate("qr_code/$roomId")
@@ -178,8 +208,44 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
             )
         }
 
+        composable("settings/profile") {
+            ProfileScreen(
+                viewModel = chatViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("settings/relay") {
+            RelayScreen(
+                viewModel = chatViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("settings/chat") {
+            ChatSettingsScreen(
+                viewModel = chatViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("settings/about") {
+            AboutScreen(
+                viewModel = chatViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable("settings") {
-            SettingsScreen(
+            ProfileScreen(
                 viewModel = chatViewModel,
                 onNavigateBack = {
                     navController.popBackStack()

@@ -100,12 +100,17 @@ import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.random.Random
 
+import com.ashuchat.app.ui.components.SettingsMenuButton
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToRelay: () -> Unit,
+    onNavigateToChatSettings: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onNavigateToShowQr: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -265,13 +270,12 @@ fun ChatScreen(
                             )
                         }
                     }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = TextSecondary
-                        )
-                    }
+                    SettingsMenuButton(
+                        onNavigateToProfile = onNavigateToProfile,
+                        onNavigateToRelay = onNavigateToRelay,
+                        onNavigateToChat = onNavigateToChatSettings,
+                        onNavigateToAbout = onNavigateToAbout
+                    )
                 }
             )
         },

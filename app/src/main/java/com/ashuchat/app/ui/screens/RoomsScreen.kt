@@ -82,13 +82,18 @@ import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import com.ashuchat.app.utils.TimeUtils
 import com.ashuchat.app.webrtc.P2PConnectionState
 
+import com.ashuchat.app.ui.components.SettingsMenuButton
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomsScreen(
     viewModel: ChatViewModel,
     onRoomClick: (roomId: String) -> Unit,
     onNavigateToPairing: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onNavigateToRelay: () -> Unit,
+    onNavigateToChatSettings: () -> Unit,
+    onNavigateToAbout: () -> Unit
 ) {
     val rooms by viewModel.rooms.collectAsState()
     val activeRoomId by viewModel.activeRoomId.collectAsState()
@@ -152,13 +157,12 @@ fun RoomsScreen(
                             tint = BrandLight
                         )
                     }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = TextSecondary
-                        )
-                    }
+                    SettingsMenuButton(
+                        onNavigateToProfile = onNavigateToProfile,
+                        onNavigateToRelay = onNavigateToRelay,
+                        onNavigateToChat = onNavigateToChatSettings,
+                        onNavigateToAbout = onNavigateToAbout
+                    )
                 }
             )
         },

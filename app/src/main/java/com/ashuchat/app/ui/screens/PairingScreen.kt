@@ -57,6 +57,7 @@ import com.ashuchat.app.ui.theme.TextMuted
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
+import com.ashuchat.app.ui.components.SettingsMenuButton
 import kotlin.random.Random
 
 @Composable
@@ -65,7 +66,10 @@ fun PairingScreen(
     onNavigateToChat: () -> Unit,
     onNavigateToShowQr: (String) -> Unit,
     onNavigateToScanner: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToRelay: () -> Unit,
+    onNavigateToChatSettings: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onNavigateBack: (() -> Unit)? = null
 ) {
     val prefs = viewModel.prefs
@@ -125,19 +129,16 @@ fun PairingScreen(
                 }
             }
 
-            IconButton(
-                onClick = onNavigateToSettings,
-                modifier = Modifier
+            SettingsMenuButton(
+                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToRelay = onNavigateToRelay,
+                onNavigateToChat = onNavigateToChatSettings,
+                onNavigateToAbout = onNavigateToAbout,
+                iconModifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(SurfaceElevated)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = TextSecondary
-                )
-            }
+            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))
