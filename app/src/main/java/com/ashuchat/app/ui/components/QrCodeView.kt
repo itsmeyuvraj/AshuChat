@@ -16,7 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
-import com.ashuchat.app.ui.theme.RosePrimary
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.utils.QrUtils
 
 @Composable
@@ -39,7 +40,7 @@ fun QrCodeView(
             .size(sizeDp.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White)
-            .border(3.dp, RosePrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+            .border(2.dp, SurfaceBorder, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
         if (bitmap != null) {
@@ -50,7 +51,7 @@ fun QrCodeView(
             )
         } else {
             CircularProgressIndicator(
-                color = RosePrimary,
+                color = BrandLight,
                 modifier = Modifier.size(32.dp)
             )
         }

@@ -32,12 +32,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ashuchat.app.ui.theme.RoseAccent
-import com.ashuchat.app.ui.theme.RosePrimary
+import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.SurfaceCard
 import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextPrimary
-import com.ashuchat.app.ui.theme.VioletAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +74,7 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.Image,
                     label = "Photos",
-                    color = RosePrimary,
+                    color = BrandLight,
                     onClick = {
                         onDismiss()
                         onPickImage()
@@ -85,7 +83,7 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.CameraAlt,
                     label = "Camera",
-                    color = VioletAccent,
+                    color = BrandLight,
                     onClick = {
                         onDismiss()
                         onTakePhoto()
@@ -94,7 +92,7 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.Description,
                     label = "File",
-                    color = Color(0xFF00B0FF),
+                    color = BrandLight,
                     onClick = {
                         onDismiss()
                         onPickFile()
@@ -103,7 +101,7 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.NotificationsActive,
                     label = "Ping",
-                    color = RoseAccent,
+                    color = BrandLight,
                     onClick = {
                         onDismiss()
                         onSendLovePing()

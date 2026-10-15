@@ -55,9 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
-import com.ashuchat.app.ui.theme.RoseDark
-import com.ashuchat.app.ui.theme.RosePrimary
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -184,7 +184,7 @@ fun QrScannerScreen(
                     modifier = Modifier
                         .size(260.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .border(3.dp, RosePrimary, RoundedCornerShape(24.dp))
+                        .border(2.dp, BrandLight.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                 ) {
                     // Moving scan laser
                     Box(
@@ -194,7 +194,7 @@ fun QrScannerScreen(
                             .height(2.dp)
                             .background(
                                 Brush.horizontalGradient(
-                                    listOf(Color.Transparent, RosePrimary, Color.Transparent)
+                                    listOf(Color.Transparent, BrandLight, Color.Transparent)
                                 )
                             )
                     )
@@ -248,7 +248,7 @@ fun QrScannerScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = RosePrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                 ) {
                     Text("Grant Camera Permission")
                 }

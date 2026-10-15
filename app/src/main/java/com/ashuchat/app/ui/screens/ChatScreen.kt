@@ -239,24 +239,6 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    // Quick Nudge / Ping Button
-                    IconButton(
-                        onClick = { viewModel.sendLovePing() },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(BrandPrimary.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.NotificationsActive,
-                            contentDescription = "Send Ping",
-                            tint = BrandLight,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,

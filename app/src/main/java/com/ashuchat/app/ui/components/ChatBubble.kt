@@ -49,6 +49,7 @@ import coil.compose.AsyncImage
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
+import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.IncomingBubbleColor
 import com.ashuchat.app.ui.theme.RoseAccent
 import com.ashuchat.app.ui.theme.RoseDark
@@ -305,7 +306,7 @@ private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
         Icon(
             imageVector = Icons.Default.NotificationsActive,
             contentDescription = "Ping",
-            tint = RoseAccent,
+            tint = BrandLight,
             modifier = Modifier
                 .size(24.dp)
                 .scale(scaleAnim)
