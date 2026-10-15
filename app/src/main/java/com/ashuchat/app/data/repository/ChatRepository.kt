@@ -19,6 +19,10 @@ class ChatRepository(private val messageDao: MessageDao) {
         return messageDao.getMessageById(id)?.toChatMessage()
     }
 
+    suspend fun getPendingOutgoingMessages(): List<ChatMessage> {
+        return messageDao.getPendingOutgoingMessages().map { it.toChatMessage() }
+    }
+
     suspend fun insertMessage(message: ChatMessage) {
         messageDao.insertMessage(MessageEntity.fromChatMessage(message))
     }

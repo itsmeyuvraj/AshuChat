@@ -67,6 +67,7 @@ import java.util.Locale
 fun ChatBubble(
     message: ChatMessage,
     onImageClick: (filePath: String, fileName: String?) -> Unit,
+    onRetryClick: ((ChatMessage) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isMe = message.isFromMe
@@ -146,7 +147,10 @@ fun ChatBubble(
 
                     if (isMe) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        StatusIndicator(status = message.status)
+                        StatusIndicator(
+                            status = message.status,
+                            onRetryClick = { onRetryClick?.invoke(message) }
+                        )
                     }
                 }
             }
@@ -317,13 +321,26 @@ private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
 }
 
 @Composable
-private fun StatusIndicator(status: MessageStatus) {
+private fun StatusIndicator(
+    status: MessageStatus,
+    onRetryClick: (() -> Unit)? = null
+) {
     when (status) {
         MessageStatus.SENDING -> {
+            val infiniteTransition = rememberInfiniteTransition(label = "sendingPulse")
+            val alpha by infiniteTransition.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 1.0f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(650),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "sendingAlpha"
+            )
             Icon(
                 imageVector = Icons.Default.Schedule,
-                contentDescription = "Sending",
-                tint = Color.White.copy(alpha = 0.6f),
+                contentDescription = "Sending / Queued",
+                tint = Color.White.copy(alpha = alpha),
                 modifier = Modifier.size(12.dp)
             )
         }
@@ -331,7 +348,7 @@ private fun StatusIndicator(status: MessageStatus) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Sent",
-                tint = Color.White.copy(alpha = 0.8f),
+                tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.size(13.dp)
             )
         }
@@ -345,12 +362,27 @@ private fun StatusIndicator(status: MessageStatus) {
             )
         }
         MessageStatus.FAILED -> {
-            Icon(
-                imageVector = Icons.Default.ErrorOutline,
-                contentDescription = "Failed",
-                tint = Color(0xFFFF5252),
-                modifier = Modifier.size(13.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable(enabled = onRetryClick != null) { onRetryClick?.invoke() }
+                    .padding(horizontal = 2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = "Failed. Tap to retry",
+                    tint = Color(0xFFFF5252),
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "Retry",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFF8A80)
+                )
+            }
         }
     }
 }

@@ -209,6 +209,18 @@ class WebRtcManager(
         }
     }
 
+    fun isP2pConnected(): Boolean {
+        return dataChannel?.state() == DataChannel.State.OPEN
+    }
+
+    fun sendOfflinePacket(packet: DataChannelPacket, onComplete: ((Boolean) -> Unit)? = null) {
+        signalingClient.sendOfflineMessage(packet, onComplete)
+    }
+
+    fun sendOfflineAck(messageId: String, status: String) {
+        signalingClient.sendOfflineAck(messageId, status)
+    }
+
     /**
      * Send file attachment over DataChannel
      */
@@ -378,6 +390,29 @@ class WebRtcManager(
             pc.addIceCandidate(candidate)
         } else {
             pendingIceCandidates.add(candidate)
+        }
+    }
+
+    override fun onOfflinePacketReceived(packet: DataChannelPacket) {
+        Log.d(TAG, "Offline packet received from cloud relay: ${packet.type}")
+        if (packet.type == "file_header") {
+            fileTransferManager.handleFileHeader(packet)
+        }
+        scope.launch {
+            _incomingPackets.emit(packet)
+        }
+    }
+
+    override fun onOfflineAckReceived(messageId: String, status: String) {
+        Log.d(TAG, "Offline ack received from cloud relay: $messageId -> $status")
+        scope.launch {
+            _incomingPackets.emit(
+                DataChannelPacket(
+                    type = "ack",
+                    messageId = messageId,
+                    status = status
+                )
+            )
         }
     }
 

@@ -65,6 +65,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     init {
         observeIncomingPackets()
         observeFileTransfers()
+        observeConnectionChanges()
     }
 
     fun startConnection() {
@@ -75,6 +76,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 roomId = roomId,
                 clientId = prefs.clientId
             )
+            flushPendingMessages()
+        }
+    }
+
+    private fun observeConnectionChanges() {
+        viewModelScope.launch {
+            webRtcManager.connectionState.collect { state ->
+                if (state == P2PConnectionState.CONNECTED_P2P) {
+                    flushPendingMessages()
+                }
+            }
         }
     }
 
@@ -84,31 +96,37 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 when (packet.type) {
                     "text" -> {
                         val messageId = packet.messageId ?: UUID.randomUUID().toString()
-                        val incomingMessage = ChatMessage(
-                            id = messageId,
-                            senderName = packet.senderName ?: prefs.partnerName,
-                            isFromMe = false,
-                            text = packet.text ?: "",
-                            type = MessageType.TEXT,
-                            timestamp = packet.timestamp,
-                            status = MessageStatus.DELIVERED
-                        )
-                        chatRepository.insertMessage(incomingMessage)
-
-                        // Send delivery ack back to peer
-                        webRtcManager.sendPacket(
-                            DataChannelPacket(
-                                type = "ack",
-                                messageId = messageId,
-                                status = "DELIVERED"
+                        val existing = chatRepository.getMessage(messageId)
+                        if (existing == null) {
+                            val incomingMessage = ChatMessage(
+                                id = messageId,
+                                senderName = packet.senderName ?: prefs.partnerName,
+                                isFromMe = false,
+                                text = packet.text ?: "",
+                                type = MessageType.TEXT,
+                                timestamp = packet.timestamp,
+                                status = MessageStatus.DELIVERED
                             )
-                        )
+                            chatRepository.insertMessage(incomingMessage)
 
-                        NotificationHelper.showMessageNotification(
-                            getApplication(),
-                            prefs.partnerName,
-                            packet.text ?: "New message"
+                            NotificationHelper.showMessageNotification(
+                                getApplication(),
+                                prefs.partnerName,
+                                packet.text ?: "New message"
+                            )
+                        }
+
+                        // Send delivery ack back to peer (via P2P if open, or cloud relay)
+                        val ackPacket = DataChannelPacket(
+                            type = "ack",
+                            messageId = messageId,
+                            status = "DELIVERED"
                         )
+                        if (webRtcManager.isP2pConnected()) {
+                            webRtcManager.sendPacket(ackPacket)
+                        } else {
+                            webRtcManager.sendOfflineAck(messageId, "DELIVERED")
+                        }
                     }
 
                     "ack" -> {
@@ -131,20 +149,35 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                     "love_ping" -> {
                         val messageId = packet.messageId ?: UUID.randomUUID().toString()
-                        val loveMessage = ChatMessage(
-                            id = messageId,
-                            senderName = packet.senderName ?: prefs.partnerName,
-                            isFromMe = false,
-                            text = "",
-                            type = MessageType.LOVE_PING,
-                            timestamp = packet.timestamp,
-                            status = MessageStatus.DELIVERED
-                        )
-                        chatRepository.insertMessage(loveMessage)
+                        val existing = chatRepository.getMessage(messageId)
+                        if (existing == null) {
+                            val loveMessage = ChatMessage(
+                                id = messageId,
+                                senderName = packet.senderName ?: prefs.partnerName,
+                                isFromMe = false,
+                                text = "",
+                                type = MessageType.LOVE_PING,
+                                timestamp = packet.timestamp,
+                                status = MessageStatus.DELIVERED
+                            )
+                            chatRepository.insertMessage(loveMessage)
 
-                        // Trigger romantic heartbeat vibration & visual effect
-                        NotificationHelper.vibrateLovePing(getApplication())
-                        triggerLoveAnimation()
+                            // Trigger romantic heartbeat vibration & visual effect
+                            NotificationHelper.vibrateLovePing(getApplication())
+                            triggerLoveAnimation()
+                        }
+
+                        // Send delivery ack back to peer
+                        val ackPacket = DataChannelPacket(
+                            type = "ack",
+                            messageId = messageId,
+                            status = "DELIVERED"
+                        )
+                        if (webRtcManager.isP2pConnected()) {
+                            webRtcManager.sendPacket(ackPacket)
+                        } else {
+                            webRtcManager.sendOfflineAck(messageId, "DELIVERED")
+                        }
                     }
 
                     "file_header" -> {
@@ -233,9 +266,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 timestamp = chatMessage.timestamp
             )
 
-            val sent = webRtcManager.sendPacket(packet)
-            val newStatus = if (sent) MessageStatus.SENT else MessageStatus.FAILED
-            chatRepository.updateMessageStatus(messageId, newStatus)
+            // Direct P2P send if open
+            if (webRtcManager.isP2pConnected()) {
+                val sent = webRtcManager.sendPacket(packet)
+                if (sent) {
+                    chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                    return@launch
+                }
+            }
+
+            // Partner offline or P2P not yet open: deliver via Serverless Cloud Mailbox
+            webRtcManager.sendOfflinePacket(packet) { success ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
+                    chatRepository.updateMessageStatus(messageId, newStatus)
+                }
+            }
         }
     }
 
@@ -296,12 +342,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 timestamp = loveMessage.timestamp
             )
 
-            val sent = webRtcManager.sendPacket(packet)
-            val newStatus = if (sent) MessageStatus.SENT else MessageStatus.FAILED
-            chatRepository.updateMessageStatus(messageId, newStatus)
-
             NotificationHelper.vibrateLovePing(getApplication())
             triggerLoveAnimation()
+
+            if (webRtcManager.isP2pConnected()) {
+                val sent = webRtcManager.sendPacket(packet)
+                if (sent) {
+                    chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                    return@launch
+                }
+            }
+
+            webRtcManager.sendOfflinePacket(packet) { success ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
+                    chatRepository.updateMessageStatus(messageId, newStatus)
+                }
+            }
         }
     }
 
@@ -325,6 +382,64 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun clearChat() {
         viewModelScope.launch(Dispatchers.IO) {
             chatRepository.clearAllMessages()
+        }
+    }
+
+    fun flushPendingMessages() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val pendingList = chatRepository.getPendingOutgoingMessages()
+            for (msg in pendingList) {
+                val packet = DataChannelPacket(
+                    type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
+                    messageId = msg.id,
+                    senderName = prefs.myName,
+                    text = msg.text,
+                    timestamp = msg.timestamp
+                )
+
+                if (webRtcManager.isP2pConnected()) {
+                    val sent = webRtcManager.sendPacket(packet)
+                    if (sent) {
+                        chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                    }
+                } else {
+                    webRtcManager.sendOfflinePacket(packet) { success ->
+                        if (success) {
+                            viewModelScope.launch(Dispatchers.IO) {
+                                chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun retryMessage(messageId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = chatRepository.getMessage(messageId) ?: return@launch
+            chatRepository.updateMessageStatus(messageId, MessageStatus.SENDING)
+
+            val packet = DataChannelPacket(
+                type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
+                messageId = msg.id,
+                senderName = prefs.myName,
+                text = msg.text,
+                timestamp = msg.timestamp
+            )
+
+            if (webRtcManager.isP2pConnected()) {
+                val sent = webRtcManager.sendPacket(packet)
+                val newStatus = if (sent) MessageStatus.SENT else MessageStatus.FAILED
+                chatRepository.updateMessageStatus(messageId, newStatus)
+            } else {
+                webRtcManager.sendOfflinePacket(packet) { success ->
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                        chatRepository.updateMessageStatus(messageId, newStatus)
+                    }
+                }
+            }
         }
     }
 

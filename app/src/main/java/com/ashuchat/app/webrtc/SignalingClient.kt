@@ -1,6 +1,7 @@
 package com.ashuchat.app.webrtc
 
 import android.util.Log
+import com.ashuchat.app.data.model.DataChannelPacket
 import com.ashuchat.app.data.model.SignalingPayload
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -49,6 +50,8 @@ class SignalingClient(
         fun onOfferReceived(sdp: String)
         fun onAnswerReceived(sdp: String)
         fun onIceCandidateReceived(candidate: IceCandidate)
+        fun onOfflinePacketReceived(packet: DataChannelPacket)
+        fun onOfflineAckReceived(messageId: String, status: String)
         fun onError(message: String)
     }
 
@@ -305,6 +308,35 @@ class SignalingClient(
                 "peer_left" -> {
                     listener.onPeerLeft(sender)
                 }
+                "mailbox_message" -> {
+                    val json = payload.message
+                    if (json != null) {
+                        try {
+                            val packet = gson.fromJson(json, DataChannelPacket::class.java)
+                            if (packet != null) {
+                                listener.onOfflinePacketReceived(packet)
+                                sendOfflineAck(packet.messageId ?: "", "DELIVERED")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed parsing NTFY mailbox message: ${e.localizedMessage}")
+                        }
+                    }
+                }
+                "mailbox_ack" -> {
+                    val json = payload.message
+                    if (json != null) {
+                        try {
+                            val obj = gson.fromJson(json, JsonObject::class.java)
+                            val id = obj.get("messageId")?.asString
+                            val status = obj.get("status")?.asString ?: "DELIVERED"
+                            if (id != null) {
+                                listener.onOfflineAckReceived(id, status)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed parsing NTFY mailbox ack: ${e.localizedMessage}")
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling NTFY event: ${e.localizedMessage}", e)
@@ -391,6 +423,35 @@ class SignalingClient(
                     }
                 }
                 "error" -> listener.onError(payload.message ?: "Signaling error")
+                "mailbox_message" -> {
+                    val json = payload.message
+                    if (json != null) {
+                        try {
+                            val packet = gson.fromJson(json, DataChannelPacket::class.java)
+                            if (packet != null) {
+                                listener.onOfflinePacketReceived(packet)
+                                sendOfflineAck(packet.messageId ?: "", "DELIVERED")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed parsing WS mailbox message: ${e.localizedMessage}")
+                        }
+                    }
+                }
+                "mailbox_ack" -> {
+                    val json = payload.message
+                    if (json != null) {
+                        try {
+                            val obj = gson.fromJson(json, JsonObject::class.java)
+                            val id = obj.get("messageId")?.asString
+                            val status = obj.get("status")?.asString ?: "DELIVERED"
+                            if (id != null) {
+                                listener.onOfflineAckReceived(id, status)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed parsing WS mailbox ack: ${e.localizedMessage}")
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing WebSocket message: ${e.localizedMessage}")
@@ -526,6 +587,22 @@ class SignalingClient(
                     if (roomObj.has("candidates")) {
                         parseFirebaseCandidates(roomObj.getAsJsonObject("candidates"))
                     }
+                    if (roomObj.has("mailbox") && roomObj.get("mailbox").isJsonObject) {
+                        val mailbox = roomObj.getAsJsonObject("mailbox")
+                        for (entry in mailbox.entrySet()) {
+                            if (entry.value.isJsonObject) {
+                                processFirebaseMailboxItem(entry.key, entry.value.asJsonObject, currentServerUrl, currentRoomId)
+                            }
+                        }
+                    }
+                    if (roomObj.has("mailbox_acks") && roomObj.get("mailbox_acks").isJsonObject) {
+                        val acks = roomObj.getAsJsonObject("mailbox_acks")
+                        for (entry in acks.entrySet()) {
+                            if (entry.value.isJsonObject) {
+                                processFirebaseMailboxAck(entry.key, entry.value.asJsonObject, currentServerUrl, currentRoomId)
+                            }
+                        }
+                    }
                 }
                 path.startsWith("/peers/") -> {
                     val peerId = path.removePrefix("/peers/")
@@ -554,6 +631,34 @@ class SignalingClient(
                 path.startsWith("/candidates") -> {
                     if (dataElem.isJsonObject) {
                         parseFirebaseCandidateObject(dataElem.asJsonObject, path)
+                    }
+                }
+                path.startsWith("/mailbox/") -> {
+                    val msgId = path.removePrefix("/mailbox/").substringBefore("/")
+                    if (dataElem.isJsonObject) {
+                        processFirebaseMailboxItem(msgId, dataElem.asJsonObject, currentServerUrl, currentRoomId)
+                    }
+                }
+                path == "/mailbox" && dataElem.isJsonObject -> {
+                    val mailbox = dataElem.asJsonObject
+                    for (entry in mailbox.entrySet()) {
+                        if (entry.value.isJsonObject) {
+                            processFirebaseMailboxItem(entry.key, entry.value.asJsonObject, currentServerUrl, currentRoomId)
+                        }
+                    }
+                }
+                path.startsWith("/mailbox_acks/") -> {
+                    val msgId = path.removePrefix("/mailbox_acks/").substringBefore("/")
+                    if (dataElem.isJsonObject) {
+                        processFirebaseMailboxAck(msgId, dataElem.asJsonObject, currentServerUrl, currentRoomId)
+                    }
+                }
+                path == "/mailbox_acks" && dataElem.isJsonObject -> {
+                    val acks = dataElem.asJsonObject
+                    for (entry in acks.entrySet()) {
+                        if (entry.value.isJsonObject) {
+                            processFirebaseMailboxAck(entry.key, entry.value.asJsonObject, currentServerUrl, currentRoomId)
+                        }
                     }
                 }
             }
@@ -759,6 +864,185 @@ class SignalingClient(
             webSocket = null
         } catch (e: Exception) {
             Log.e(TAG, "Error disconnecting: ${e.localizedMessage}")
+        }
+    }
+
+    private fun processFirebaseMailboxItem(
+        messageId: String,
+        msgObj: JsonObject,
+        baseUrl: String,
+        roomId: String?
+    ) {
+        val sender = msgObj.get("senderId")?.asString
+        if (sender == null || sender == currentClientId) {
+            return
+        }
+        val cleanBase = baseUrl.trimEnd('/')
+        try {
+            val packet = gson.fromJson(msgObj, DataChannelPacket::class.java)
+            if (packet != null) {
+                listener.onOfflinePacketReceived(packet)
+
+                // Delete processed item from cloud mailbox (ephemeral - zero permanent cloud storage)
+                if (roomId != null) {
+                    val delReq = Request.Builder()
+                        .url("$cleanBase/rooms/$roomId/mailbox/$messageId.json")
+                        .delete()
+                        .build()
+                    client.newCall(delReq).enqueue(NoOpCallback)
+
+                    sendOfflineAck(messageId, "DELIVERED")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing Firebase mailbox item: ${e.localizedMessage}", e)
+        }
+    }
+
+    private fun processFirebaseMailboxAck(
+        messageId: String,
+        ackObj: JsonObject,
+        baseUrl: String,
+        roomId: String?
+    ) {
+        val sender = ackObj.get("senderId")?.asString
+        if (sender == null || sender == currentClientId) {
+            return
+        }
+        val cleanBase = baseUrl.trimEnd('/')
+        val status = ackObj.get("status")?.asString ?: "DELIVERED"
+        listener.onOfflineAckReceived(messageId, status)
+
+        if (roomId != null) {
+            val delReq = Request.Builder()
+                .url("$cleanBase/rooms/$roomId/mailbox_acks/$messageId.json")
+                .delete()
+                .build()
+            client.newCall(delReq).enqueue(NoOpCallback)
+        }
+    }
+
+    fun sendOfflineMessage(packet: DataChannelPacket, onResult: ((Boolean) -> Unit)? = null) {
+        val roomId = currentRoomId ?: run {
+            onResult?.invoke(false)
+            return
+        }
+        val messageId = packet.messageId ?: run {
+            onResult?.invoke(false)
+            return
+        }
+
+        when (activeMode) {
+            SignalingMode.FIREBASE -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val root = gson.toJsonTree(packet).asJsonObject
+                root.addProperty("senderId", currentClientId)
+                val body = root.toString().toRequestBody(jsonMediaType)
+
+                val req = Request.Builder()
+                    .url("$cleanBase/rooms/$roomId/mailbox/$messageId.json")
+                    .put(body)
+                    .build()
+
+                client.newCall(req).enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        Log.e(TAG, "Failed sending offline message to Firebase: ${e.localizedMessage}")
+                        onResult?.invoke(false)
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        val success = response.isSuccessful
+                        response.close()
+                        onResult?.invoke(success)
+                    }
+                })
+            }
+
+            SignalingMode.NTFY_SERVERLESS -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(roomId)
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "mailbox_message",
+                        roomId = roomId,
+                        clientId = currentClientId,
+                        message = gson.toJson(packet)
+                    )
+                )
+                onResult?.invoke(true)
+            }
+
+            SignalingMode.WEBSOCKET -> {
+                sendMessageWs(
+                    SignalingPayload(
+                        type = "mailbox_message",
+                        roomId = roomId,
+                        clientId = currentClientId,
+                        message = gson.toJson(packet)
+                    )
+                )
+                onResult?.invoke(true)
+            }
+        }
+    }
+
+    fun sendOfflineAck(messageId: String, status: String) {
+        val roomId = currentRoomId ?: return
+        if (messageId.isBlank()) return
+
+        when (activeMode) {
+            SignalingMode.FIREBASE -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val body = JsonObject().apply {
+                    addProperty("messageId", messageId)
+                    addProperty("senderId", currentClientId)
+                    addProperty("status", status)
+                    addProperty("timestamp", System.currentTimeMillis())
+                }.toString().toRequestBody(jsonMediaType)
+
+                val req = Request.Builder()
+                    .url("$cleanBase/rooms/$roomId/mailbox_acks/$messageId.json")
+                    .put(body)
+                    .build()
+
+                client.newCall(req).enqueue(NoOpCallback)
+            }
+
+            SignalingMode.NTFY_SERVERLESS -> {
+                val cleanBase = currentServerUrl.trimEnd('/')
+                val topic = sanitizeNtfyTopic(roomId)
+                val ackJson = JsonObject().apply {
+                    addProperty("messageId", messageId)
+                    addProperty("status", status)
+                }.toString()
+
+                sendNtfyMessage(
+                    "$cleanBase/$topic",
+                    SignalingPayload(
+                        type = "mailbox_ack",
+                        roomId = roomId,
+                        clientId = currentClientId,
+                        message = ackJson
+                    )
+                )
+            }
+
+            SignalingMode.WEBSOCKET -> {
+                val ackJson = JsonObject().apply {
+                    addProperty("messageId", messageId)
+                    addProperty("status", status)
+                }.toString()
+
+                sendMessageWs(
+                    SignalingPayload(
+                        type = "mailbox_ack",
+                        roomId = roomId,
+                        clientId = currentClientId,
+                        message = ackJson
+                    )
+                )
+            }
         }
     }
 

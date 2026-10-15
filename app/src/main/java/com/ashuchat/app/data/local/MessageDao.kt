@@ -31,6 +31,9 @@ interface MessageDao {
     @Query("UPDATE messages SET attachmentPath = :path WHERE id = :id")
     suspend fun updateAttachmentPath(id: String, path: String)
 
+    @Query("SELECT * FROM messages WHERE isFromMe = 1 AND (status = 'SENDING' OR status = 'FAILED') ORDER BY timestamp ASC")
+    suspend fun getPendingOutgoingMessages(): List<MessageEntity>
+
     @Query("DELETE FROM messages WHERE id = :id")
     suspend fun deleteMessage(id: String)
 

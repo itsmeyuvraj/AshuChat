@@ -335,64 +335,98 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (messages.isEmpty()) {
-                // Empty romantic placeholder
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = connectionState == P2PConnectionState.WAITING_FOR_PEER,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(RosePrimary.copy(alpha = 0.15f))
+                            .fillMaxWidth()
+                            .background(Color(0xFF221738))
+                            .padding(vertical = 6.dp, horizontal = 16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = null,
-                            tint = RosePrimary,
-                            modifier = Modifier.size(36.dp)
+                        Text(
+                            text = "☁️ ${viewModel.prefs.partnerName} is offline • Messages deliver instantly to cloud mailbox",
+                            fontSize = 11.sp,
+                            color = Color(0xFFDDD2F5)
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "AshuChat Room Ready",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Send your first message or a Love Ping to Ashu ❤️",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
+
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 8.dp)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
-                    items(messages, key = { it.id }) { message ->
-                        ChatBubble(
-                            message = message,
-                            onImageClick = { filePath, fileName ->
-                                activeViewerMedia = Pair(filePath, fileName)
+                    if (messages.isEmpty()) {
+                        // Empty romantic placeholder
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(RosePrimary.copy(alpha = 0.15f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = RosePrimary,
+                                    modifier = Modifier.size(36.dp)
+                                )
                             }
-                        )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "AshuChat Room Ready",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Send your first message or a Love Ping to Ashu ❤️",
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            items(messages, key = { it.id }) { message ->
+                                ChatBubble(
+                                    message = message,
+                                    onImageClick = { filePath, fileName ->
+                                        activeViewerMedia = Pair(filePath, fileName)
+                                    },
+                                    onRetryClick = {
+                                        viewModel.retryMessage(it.id)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
 
             // Floating Love Animation Overlay
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = showLoveEffect,
                 enter = fadeIn(),
                 exit = fadeOut()
