@@ -217,15 +217,6 @@ fun QrCodeScreen(
                 color = TextMuted,
                 textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Developed by Yuvraj Poudyal for Ashu",
-                fontSize = 11.sp,
-                color = TextMuted.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
