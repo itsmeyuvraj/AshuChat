@@ -8,12 +8,15 @@ android {
     namespace = "com.ashuchat.app"
     compileSdk = 34
 
+    val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 1
+    val vName = (project.findProperty("appVersionName") as? String) ?: "1.0.0"
+
     defaultConfig {
         applicationId = "com.ashuchat.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = vCode
+        versionName = vName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -21,9 +24,22 @@ android {
         }
     }
 
+    signingConfigs {
+        create("shared") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("shared")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
