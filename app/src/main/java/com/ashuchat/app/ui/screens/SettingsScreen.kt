@@ -54,10 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.data.repository.PreferencesRepository
 import com.ashuchat.app.webrtc.SignalingClient
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.ui.theme.OnlineGreen
-import com.ashuchat.app.ui.theme.RosePrimary
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.ui.theme.SurfaceCard
 import com.ashuchat.app.ui.theme.SurfaceElevated
@@ -115,12 +116,12 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Section 1: Profiles
+            // Section 1: Identity & Profile
             Text(
-                text = "Profiles",
+                text = "Identity & Profile",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = RosePrimary
+                color = BrandLight
             )
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -138,10 +139,10 @@ fun SettingsScreen(
                         myName = it
                         prefs.myName = it
                     },
-                    label = { Text("Your Name / Nickname") },
+                    label = { Text("Your Display Name") },
                     supportingText = {
                         Text(
-                            text = "Your partner sees this name in their chat and notifications",
+                            text = "Your peer sees this name in direct sessions and notifications",
                             fontSize = 11.sp,
                             color = TextSecondary
                         )
@@ -154,7 +155,7 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Partner's Name Info Card (Synced automatically from partner)
+                // Peer Name Info Card (Synced automatically from peer)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -169,13 +170,13 @@ fun SettingsScreen(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(RosePrimary.copy(alpha = 0.2f))
+                            .background(BrandPrimary.copy(alpha = 0.2f))
                     ) {
                         Text(
                             text = partnerName.take(1).uppercase(),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = RosePrimary
+                            color = BrandLight
                         )
                     }
 
@@ -183,13 +184,13 @@ fun SettingsScreen(
 
                     Column {
                         Text(
-                            text = "Partner: $partnerName",
+                            text = "Connected Peer: $partnerName",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimary
                         )
                         Text(
-                            text = "Automatically synced from your partner's device",
+                            text = "Directly synced from peer device",
                             fontSize = 11.sp,
                             color = TextMuted
                         )
@@ -422,7 +423,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(36.dp))
 
             Text(
-                text = "AshuChat v1.0.0\nCrafted with love for couples ❤️",
+                text = "AshuChat v1.0.0\nPrivate Peer-to-Peer Encrypted Messenger",
                 fontSize = 12.sp,
                 color = TextMuted,
                 textAlign = TextAlign.Center,
@@ -466,11 +467,11 @@ fun SettingsScreen(
 
 @Composable
 private fun settingsOutlinedColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = RosePrimary,
+    focusedBorderColor = BrandPrimary,
     unfocusedBorderColor = SurfaceBorder,
-    focusedLabelColor = RosePrimary,
+    focusedLabelColor = BrandPrimary,
     unfocusedLabelColor = TextMuted,
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    cursorColor = RosePrimary
+    cursorColor = BrandPrimary
 )

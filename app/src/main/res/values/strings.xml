@@ -1,10 +1,10 @@
 <resources>
     <string name="app_name">AshuChat</string>
-    <string name="tagline">Direct &amp; Private Peer-to-Peer Chat ❤️</string>
+    <string name="tagline">Direct &amp; Private Peer-to-Peer Chat</string>
     <string name="connected">P2P Connected</string>
     <string name="connecting">Connecting...</string>
-    <string name="disconnected">Waiting for Partner</string>
+    <string name="disconnected">Waiting for Peer</string>
     <string name="type_a_message">Type a message...</string>
-    <string name="partner_name_default">Ashu</string>
-    <string name="my_name_default">Yuvraj</string>
+    <string name="partner_name_default">Peer</string>
+    <string name="my_name_default">You</string>
 </resources>

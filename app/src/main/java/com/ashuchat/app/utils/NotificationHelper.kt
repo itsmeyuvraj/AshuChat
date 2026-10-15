@@ -24,7 +24,7 @@ object NotificationHelper {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Couples private P2P chat messages"
+                description = "Private P2P chat messages"
                 enableVibration(true)
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -60,8 +60,8 @@ object NotificationHelper {
 
     fun vibrateLovePing(context: Context) {
         try {
-            // Heartbeat vibration pattern: thump-thump ... thump-thump
-            val pattern = longArrayOf(0, 150, 100, 250, 200, 150, 100, 250)
+            // Modern double-pulse haptic alert
+            val pattern = longArrayOf(0, 120, 80, 120)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
                 val vibrator = vibratorManager.defaultVibrator

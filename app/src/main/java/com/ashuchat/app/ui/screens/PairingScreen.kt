@@ -19,9 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,17 +47,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.data.repository.PreferencesRepository
 import com.ashuchat.app.ui.components.QrCodeView
+import com.ashuchat.app.ui.theme.BrandAccent
+import com.ashuchat.app.ui.theme.BrandDark
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
-import com.ashuchat.app.ui.theme.RoseAccent
-import com.ashuchat.app.ui.theme.RoseDark
-import com.ashuchat.app.ui.theme.RosePrimary
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.ui.theme.SurfaceCard
 import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextMuted
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
-import com.ashuchat.app.ui.theme.VioletAccent
 import kotlin.random.Random
 
 @Composable
@@ -95,13 +96,14 @@ fun PairingScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(RosePrimary.copy(alpha = 0.2f))
+                        .background(BrandPrimary.copy(alpha = 0.15f))
+                        .border(1.dp, BrandPrimary.copy(alpha = 0.35f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Favorite,
+                        imageVector = Icons.Default.Security,
                         contentDescription = "Logo",
-                        tint = RosePrimary,
-                        modifier = Modifier.size(24.dp)
+                        tint = BrandLight,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
@@ -113,9 +115,10 @@ fun PairingScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = "Private Couples P2P",
+                        text = "Encrypted Peer-to-Peer",
                         fontSize = 11.sp,
-                        color = RoseAccent
+                        fontWeight = FontWeight.Medium,
+                        color = BrandAccent
                     )
                 }
             }
@@ -146,16 +149,16 @@ fun PairingScreen(
                 .padding(18.dp)
         ) {
             Text(
-                text = "Your Profile",
+                text = "Profile Identity",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = RoseLightColor
+                color = BrandLight
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Your partner will see this name on their screen",
+                text = "Your display name for direct peer sessions",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -189,14 +192,14 @@ fun PairingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Pair Your Devices",
+                text = "Session Pairing",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Scan this QR code from your partner's phone or enter the matching Room Code",
+                text = "Scan this QR code from your peer device or enter matching Room ID",
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center
@@ -238,7 +241,7 @@ fun PairingScreen(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "New Code",
-                        tint = VioletAccent
+                        tint = BrandAccent
                     )
                 }
             }
@@ -257,7 +260,7 @@ fun PairingScreen(
                     text = "Room: $roomId",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = RosePrimary
+                    color = BrandLight
                 )
             }
 
@@ -271,17 +274,17 @@ fun PairingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .border(1.dp, VioletAccent.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .border(1.dp, BrandAccent.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
             ) {
                 Icon(
                     imageVector = Icons.Default.QrCodeScanner,
                     contentDescription = "Scan QR",
-                    tint = VioletAccent,
+                    tint = BrandAccent,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Scan Girlfriend's QR Code",
+                    text = "Scan Peer QR Code",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary
@@ -308,19 +311,19 @@ fun PairingScreen(
                 .fillMaxWidth()
                 .height(56.dp)
                 .background(
-                    Brush.horizontalGradient(listOf(RosePrimary, RoseDark)),
+                    Brush.horizontalGradient(listOf(BrandPrimary, BrandDark)),
                     RoundedCornerShape(16.dp)
                 )
         ) {
             Icon(
-                imageVector = Icons.Default.Favorite,
+                imageVector = Icons.AutoMirrored.Filled.Chat,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Connect & Open Chat",
+                text = "Start Secure Session",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -330,7 +333,7 @@ fun PairingScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "⚡ 100% Serverless Cloud Handshake • 🔒 Direct P2P End-to-End Encrypted",
+            text = "🔒 Direct WebRTC P2P • Zero Central Data Storage • End-to-End Encrypted",
             fontSize = 11.sp,
             color = TextMuted,
             textAlign = TextAlign.Center
@@ -338,20 +341,20 @@ fun PairingScreen(
     }
 }
 
-private val RoseLightColor = Color(0xFFFF80AB)
+private val RoseLightColor = BrandLight
 
 @Composable
 private fun outlinedColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = RosePrimary,
+    focusedBorderColor = BrandPrimary,
     unfocusedBorderColor = SurfaceBorder,
-    focusedLabelColor = RosePrimary,
+    focusedLabelColor = BrandPrimary,
     unfocusedLabelColor = TextMuted,
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    cursorColor = RosePrimary
+    cursorColor = BrandPrimary
 )
 
 private fun generateRandomRoomId(): String {
     val num = Random.nextInt(100, 999)
-    return "ASHU-$num"
+    return "P2P-$num"
 }

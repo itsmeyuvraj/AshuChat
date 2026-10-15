@@ -39,7 +39,7 @@ fun ConnectionBadge(
     val (dotColor, label) = when (state) {
         P2PConnectionState.CONNECTED_P2P -> Pair(OnlineGreen, "Direct P2P Active")
         P2PConnectionState.CONNECTING_SIGNALING -> Pair(ConnectingYellow, "Connecting Relay...")
-        P2PConnectionState.WAITING_FOR_PEER -> Pair(ConnectingYellow, "Partner Offline • Cloud Relay Ready")
+        P2PConnectionState.WAITING_FOR_PEER -> Pair(ConnectingYellow, "Peer Offline • Mailbox Ready")
         P2PConnectionState.NEGOTIATING_WEBRTC -> Pair(ConnectingYellow, "Handshaking P2P...")
         P2PConnectionState.FAILED -> Pair(OfflineRed, "Connection Failed")
         P2PConnectionState.DISCONNECTED -> Pair(OfflineRed, "Offline")
@@ -62,7 +62,7 @@ fun ConnectionBadge(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1B1530).copy(alpha = 0.85f))
+            .background(Color(0xFF151B26).copy(alpha = 0.9f))
             .border(1.dp, dotColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {

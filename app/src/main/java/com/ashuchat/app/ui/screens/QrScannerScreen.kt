@@ -210,14 +210,14 @@ fun QrScannerScreen(
                     .padding(top = 56.dp, start = 24.dp, end = 24.dp)
             ) {
                 Text(
-                    text = "Scan Girlfriend's QR Code",
+                    text = "Scan Peer QR Code",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Point camera at the QR code on her screen to instantly pair",
+                    text = "Point camera at the QR code on the peer screen to pair",
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center

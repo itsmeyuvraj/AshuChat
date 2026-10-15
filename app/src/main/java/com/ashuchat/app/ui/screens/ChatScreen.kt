@@ -15,6 +15,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,7 +43,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -76,6 +79,10 @@ import com.ashuchat.app.ui.components.AttachmentPickerSheet
 import com.ashuchat.app.ui.components.ChatBubble
 import com.ashuchat.app.ui.components.ConnectionBadge
 import com.ashuchat.app.ui.components.MediaViewerDialog
+import com.ashuchat.app.ui.theme.BrandAccent
+import com.ashuchat.app.ui.theme.BrandDark
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.theme.RoseAccent
 import com.ashuchat.app.ui.theme.RoseDark
@@ -213,7 +220,7 @@ fun ChatScreen(
 
                         Column {
                             Text(
-                                text = "$partnerName ❤️",
+                                text = partnerName,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
@@ -223,7 +230,7 @@ fun ChatScreen(
                                     text = "typing...",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = RoseAccent
+                                    color = BrandAccent
                                 )
                             } else {
                                 ConnectionBadge(state = connectionState)
@@ -232,18 +239,18 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    // Quick Love Ping Button
+                    // Quick Nudge / Ping Button
                     IconButton(
                         onClick = { viewModel.sendLovePing() },
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(RosePrimary.copy(alpha = 0.15f))
+                            .background(BrandPrimary.copy(alpha = 0.15f))
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "Love Ping",
-                            tint = RosePrimary,
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = "Send Ping",
+                            tint = BrandLight,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -365,13 +372,14 @@ fun ChatScreen(
                         horizontalArrangement = Arrangement.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFF221738))
+                            .background(Color(0xFF151B26))
+                            .border(1.dp, SurfaceBorder, RoundedCornerShape(0.dp))
                             .padding(vertical = 6.dp, horizontal = 16.dp)
                     ) {
                         Text(
-                            text = "☁️ $partnerName is offline • Messages deliver instantly to cloud mailbox",
+                            text = "🔒 $partnerName is offline • Messages queued in secure cloud mailbox",
                             fontSize = 11.sp,
-                            color = Color(0xFFDDD2F5)
+                            color = BrandLight
                         )
                     }
                 }
@@ -382,7 +390,7 @@ fun ChatScreen(
                         .fillMaxWidth()
                 ) {
                     if (messages.isEmpty()) {
-                        // Empty romantic placeholder
+                        // Empty professional placeholder
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -395,25 +403,26 @@ fun ChatScreen(
                                 modifier = Modifier
                                     .size(72.dp)
                                     .clip(CircleShape)
-                                    .background(RosePrimary.copy(alpha = 0.15f))
+                                    .background(BrandPrimary.copy(alpha = 0.15f))
+                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), CircleShape)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Favorite,
+                                    imageVector = Icons.Default.Security,
                                     contentDescription = null,
-                                    tint = RosePrimary,
+                                    tint = BrandLight,
                                     modifier = Modifier.size(36.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "AshuChat Room Ready",
+                                text = "Encrypted Session Ready",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Send your first message or a Love Ping to $partnerName ❤️",
+                                text = "Send a secure message, file, or ping to $partnerName",
                                 fontSize = 13.sp,
                                 color = TextSecondary,
                                 modifier = Modifier.padding(horizontal = 24.dp)
@@ -442,13 +451,13 @@ fun ChatScreen(
                 }
             }
 
-            // Floating Love Animation Overlay
+            // Ping / Nudge Alert Banner Overlay
             androidx.compose.animation.AnimatedVisibility(
                 visible = showLoveEffect,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
             ) {
-                FloatingHeartsOverlay()
+                PingAlertBanner(partnerName = partnerName)
             }
         }
     }
@@ -490,49 +499,34 @@ fun ChatScreen(
 }
 
 @Composable
-private fun FloatingHeartsOverlay() {
-    val heartCount = 16
-    Box(modifier = Modifier.fillMaxSize()) {
-        for (i in 0 until heartCount) {
-            FloatingSingleHeart(index = i)
+private fun PingAlertBanner(partnerName: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(SurfaceCard)
+                .border(1.dp, BrandAccent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.NotificationsActive,
+                contentDescription = null,
+                tint = BrandAccent,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Ping received from $partnerName",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
         }
     }
-}
-
-@Composable
-private fun FloatingSingleHeart(index: Int) {
-    val randomX = remember { Random.nextFloat() * 320f }
-    val randomDelay = remember { Random.nextInt(0, 400) }
-    val randomSize = remember { Random.nextInt(24, 48) }
-
-    val transition = rememberInfiniteTransition(label = "floatingHeart")
-    val offsetY by transition.animateFloat(
-        initialValue = 800f,
-        targetValue = -100f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2000 + (index * 80), delayMillis = randomDelay, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "heartY"
-    )
-
-    val alpha by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2000 + (index * 80), delayMillis = randomDelay, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "heartAlpha"
-    )
-
-    Icon(
-        imageVector = Icons.Default.Favorite,
-        contentDescription = null,
-        tint = RosePrimary,
-        modifier = Modifier
-            .offset { IntOffset(randomX.dp.roundToPx(), offsetY.toInt()) }
-            .size(randomSize.dp)
-            .alpha(alpha)
-    )
 }

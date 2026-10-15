@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,7 +62,7 @@ fun AttachmentPickerSheet(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Share with Partner ❤️",
+                text = "Share Content",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -101,8 +101,8 @@ fun AttachmentPickerSheet(
                     }
                 )
                 PickerOptionItem(
-                    icon = Icons.Default.Favorite,
-                    label = "Love Ping",
+                    icon = Icons.Default.NotificationsActive,
+                    label = "Ping",
                     color = RoseAccent,
                     onClick = {
                         onDismiss()

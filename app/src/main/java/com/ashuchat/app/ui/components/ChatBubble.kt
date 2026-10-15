@@ -25,7 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
@@ -286,15 +286,15 @@ private fun FileBubbleContent(message: ChatMessage) {
 
 @Composable
 private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
-    val infiniteTransition = rememberInfiniteTransition(label = "heartPulse")
+    val infiniteTransition = rememberInfiniteTransition(label = "pingPulse")
     val scaleAnim by infiniteTransition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.25f,
+        initialValue = 0.95f,
+        targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500),
+            animation = tween(600),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "heartScale"
+        label = "pingScale"
     )
 
     Row(
@@ -303,16 +303,16 @@ private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.Favorite,
-            contentDescription = "Heartbeat",
+            imageVector = Icons.Default.NotificationsActive,
+            contentDescription = "Ping",
             tint = RoseAccent,
             modifier = Modifier
-                .size(32.dp)
+                .size(24.dp)
                 .scale(scaleAnim)
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-            text = if (isMe) "You sent a Heartbeat ❤️" else "${message.senderName} sent a Heartbeat ❤️",
+            text = if (isMe) "You sent a Ping ⚡" else "${message.senderName} sent a Ping ⚡",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.White

@@ -2,26 +2,41 @@ package com.ashuchat.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val MidnightBg = Color(0xFF0D0A1A)
-val SurfaceElevated = Color(0xFF19132D)
-val SurfaceCard = Color(0xFF231B3E)
-val SurfaceBorder = Color(0xFF382B5C)
+// Modern Professional Dark Palette (Slate / Obsidian / Deep Navy)
+val DarkBg = Color(0xFF0C1017)
+val SurfaceElevated = Color(0xFF151B26)
+val SurfaceCard = Color(0xFF1C2433)
+val SurfaceBorder = Color(0xFF2B3648)
 
-val RosePrimary = Color(0xFFFF2A6D)
-val RoseDark = Color(0xFFC2185B)
-val RoseLight = Color(0xFFFF7597)
-val RoseAccent = Color(0xFFFF4081)
+// Professional Brand Primary: Electric Blue & Royal Slate
+val BrandPrimary = Color(0xFF2563EB)
+val BrandDark = Color(0xFF1D4ED8)
+val BrandLight = Color(0xFF60A5FA)
+val BrandAccent = Color(0xFF38BDF8)
 
-val VioletAccent = Color(0xFF7C4DFF)
-val VioletLight = Color(0xFFB388FF)
+// Secondary & Highlight Accents
+val AccentIndigo = Color(0xFF6366F1)
+val AccentTeal = Color(0xFF0D9488)
 
-val TextPrimary = Color(0xFFFBFBFE)
-val TextSecondary = Color(0xFFAFA7C9)
-val TextMuted = Color(0xFF736B8D)
+// Typography & Contrast Tokens
+val TextPrimary = Color(0xFFF1F5F9)
+val TextSecondary = Color(0xFF94A3B8)
+val TextMuted = Color(0xFF64748B)
 
-val OutgoingBubbleColor = Color(0xFFE91E63)
-val IncomingBubbleColor = Color(0xFF221A3B)
+// Chat Bubble Design Tokens
+val OutgoingBubbleColor = Color(0xFF2563EB)
+val IncomingBubbleColor = Color(0xFF1C2433)
 
-val OnlineGreen = Color(0xFF00E676)
-val ConnectingYellow = Color(0xFFFFD600)
-val OfflineRed = Color(0xFFFF5252)
+// Connection Status Colors
+val OnlineGreen = Color(0xFF10B981)
+val ConnectingYellow = Color(0xFFF59E0B)
+val OfflineRed = Color(0xFFEF4444)
+
+// Backward-compatibility aliases mapped to professional tokens
+val MidnightBg = DarkBg
+val RosePrimary = BrandPrimary
+val RoseDark = BrandDark
+val RoseLight = BrandLight
+val RoseAccent = BrandAccent
+val VioletAccent = AccentIndigo
+val VioletLight = Color(0xFFA5B4FC)

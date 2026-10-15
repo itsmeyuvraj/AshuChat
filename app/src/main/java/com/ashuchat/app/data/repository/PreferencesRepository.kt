@@ -26,7 +26,7 @@ class PreferencesRepository(context: Context) {
         set(value) = prefs.edit().putString(KEY_MY_NAME, value.trim()).apply()
 
     var partnerName: String
-        get() = prefs.getString(KEY_PARTNER_NAME, "Partner") ?: "Partner"
+        get() = prefs.getString(KEY_PARTNER_NAME, "Peer") ?: "Peer"
         set(value) = prefs.edit().putString(KEY_PARTNER_NAME, value.trim()).apply()
 
     var roomId: String
