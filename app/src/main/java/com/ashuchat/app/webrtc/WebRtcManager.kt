@@ -7,12 +7,15 @@ import com.ashuchat.app.data.model.DataChannelPacket
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
@@ -41,6 +44,8 @@ class WebRtcManager(
     companion object {
         private const val TAG = "WebRtcManager"
         private const val DATA_CHANNEL_LABEL = "ashuchat_p2p_channel"
+        private const val HEARTBEAT_INTERVAL_MS = 18_000L
+        private const val HEARTBEAT_TIMEOUT_MS = 45_000L
     }
 
     private val gson = Gson()
@@ -67,7 +72,12 @@ class WebRtcManager(
     private val pendingIceCandidates = mutableListOf<IceCandidate>()
     private var currentClientId: String? = null
     private var currentClientName: String = ""
+    private var currentServerUrl: String = ""
+    private var currentRoomId: String? = null
     private var connectedPeerId: String? = null
+
+    private var heartbeatJob: Job? = null
+    private var lastPongTimestamp: Long = 0L
 
     private val _peerNameFlow = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val peerNameFlow: SharedFlow<String> = _peerNameFlow.asSharedFlow()
@@ -91,6 +101,8 @@ class WebRtcManager(
      * Start connection: Connect to signaling server with roomId and clientId.
      */
     fun start(serverUrl: String, roomId: String, clientId: String, clientName: String = "") {
+        currentServerUrl = serverUrl.trim()
+        currentRoomId = roomId.trim().uppercase()
         currentClientId = clientId
         currentClientName = clientName
         _connectionState.value = P2PConnectionState.CONNECTING_SIGNALING
@@ -103,15 +115,39 @@ class WebRtcManager(
         }
 
         val iceServers = listOf(
+            // Primary Google STUN
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer()
+            // Cloudflare STUN
+            PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer(),
+            // Metered.ca OpenRelay Public STUN & TURN Servers (UDP/TCP/TLS 443)
+            PeerConnection.IceServer.builder("stun:openrelay.metered.ca:80").createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turns:openrelay.metered.ca:443?transport=tcp")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer()
         )
 
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+            iceTransportsType = PeerConnection.IceTransportsType.ALL
+            bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
+            rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
+            tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
         }
 
         peerConnection = peerConnectionFactory?.createPeerConnection(
@@ -127,12 +163,27 @@ class WebRtcManager(
                 override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
                     Log.d(TAG, "ICE Connection State changed: $state")
                     when (state) {
-                        PeerConnection.IceConnectionState.DISCONNECTED,
+                        PeerConnection.IceConnectionState.DISCONNECTED -> {
+                            Log.w(TAG, "ICE disconnected. Verifying link in 5s...")
+                            scope.launch {
+                                delay(5000L)
+                                if (peerConnection?.iceConnectionState() == PeerConnection.IceConnectionState.DISCONNECTED) {
+                                    restartP2pConnection()
+                                }
+                            }
+                        }
                         PeerConnection.IceConnectionState.CLOSED -> {
+                            stopHeartbeat()
                             _connectionState.value = P2PConnectionState.WAITING_FOR_PEER
                         }
                         PeerConnection.IceConnectionState.FAILED -> {
+                            Log.w(TAG, "ICE Connection FAILED. Restarting P2P link...")
+                            stopHeartbeat()
                             _connectionState.value = P2PConnectionState.FAILED
+                            scope.launch {
+                                delay(1500L)
+                                restartP2pConnection()
+                            }
                         }
                         else -> {}
                     }
@@ -154,6 +205,7 @@ class WebRtcManager(
                 when (channel.state()) {
                     DataChannel.State.OPEN -> {
                         _connectionState.value = P2PConnectionState.CONNECTED_P2P
+                        startHeartbeat()
                         if (currentClientName.isNotBlank()) {
                             sendPacket(
                                 DataChannelPacket(
@@ -165,6 +217,7 @@ class WebRtcManager(
                     }
                     DataChannel.State.CLOSING,
                     DataChannel.State.CLOSED -> {
+                        stopHeartbeat()
                         _connectionState.value = P2PConnectionState.WAITING_FOR_PEER
                     }
                     else -> {}
@@ -188,6 +241,17 @@ class WebRtcManager(
     private fun handleDataChannelText(text: String) {
         try {
             val packet = gson.fromJson(text, DataChannelPacket::class.java) ?: return
+
+            // P1: Handle NAT keep-alive heartbeats internally (never clutter chat UI)
+            if (packet.type == "ping") {
+                sendPacket(DataChannelPacket(type = "pong", timestamp = System.currentTimeMillis()))
+                return
+            }
+            if (packet.type == "pong") {
+                lastPongTimestamp = System.currentTimeMillis()
+                return
+            }
+
             Log.d(TAG, "Received DataChannel packet: ${packet.type}")
 
             if (packet.type == "file_header") {
@@ -207,6 +271,50 @@ class WebRtcManager(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing DataChannel text packet: ${e.localizedMessage}", e)
+        }
+    }
+
+    /**
+     * P1: NAT Keep-Alive Heartbeat timer.
+     * Pings peer every 18 seconds to keep carrier NAT translation tables open.
+     * Detects zombie connections and recovers after 45s of silence.
+     */
+    private fun startHeartbeat() {
+        stopHeartbeat()
+        lastPongTimestamp = System.currentTimeMillis()
+        heartbeatJob = scope.launch {
+            while (isActive && isP2pConnected()) {
+                delay(HEARTBEAT_INTERVAL_MS)
+                if (!isP2pConnected()) break
+
+                val now = System.currentTimeMillis()
+                if (lastPongTimestamp > 0 && now - lastPongTimestamp > HEARTBEAT_TIMEOUT_MS) {
+                    Log.w(TAG, "Keep-alive heartbeat timeout (>45s). Recovering connection...")
+                    restartP2pConnection()
+                    break
+                }
+
+                sendPacket(DataChannelPacket(type = "ping", timestamp = now))
+            }
+        }
+    }
+
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+    }
+
+    fun restartP2pConnection() {
+        Log.d(TAG, "Restarting P2P connection to recover link...")
+        stopHeartbeat()
+        cleanupPeerConnection()
+        _connectionState.value = P2PConnectionState.CONNECTING_SIGNALING
+        val server = currentServerUrl
+        val room = currentRoomId ?: return
+        val id = currentClientId ?: return
+        val name = currentClientName
+        if (server.isNotBlank()) {
+            start(server, room, id, name)
         }
     }
 
@@ -478,6 +586,7 @@ class WebRtcManager(
     }
 
     private fun cleanupPeerConnection() {
+        stopHeartbeat()
         try {
             dataChannel?.close()
             dataChannel = null
