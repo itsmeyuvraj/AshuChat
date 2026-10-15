@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -45,8 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ashuchat.app.data.repository.PreferencesRepository
-import com.ashuchat.app.ui.theme.BrandAccent
 import com.ashuchat.app.ui.theme.BrandDark
 import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.BrandPrimary
@@ -57,21 +56,22 @@ import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextMuted
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
+import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import kotlin.random.Random
 
 @Composable
 fun PairingScreen(
-    prefs: PreferencesRepository,
+    viewModel: ChatViewModel,
     onNavigateToChat: () -> Unit,
     onNavigateToShowQr: (String) -> Unit,
     onNavigateToScanner: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null
 ) {
+    val prefs = viewModel.prefs
     var myName by remember { mutableStateOf(prefs.myName) }
     var roomId by remember {
-        mutableStateOf(
-            if (prefs.roomId.isNotBlank()) prefs.roomId else generateRandomRoomId()
-        )
+        mutableStateOf(generateRandomRoomId())
     }
 
     Column(
@@ -90,18 +90,39 @@ fun PairingScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "AshuChat",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Private direct chat",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onNavigateBack != null) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceElevated)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+
+                Column {
+                    Text(
+                        text = "New Chat Room",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Join or create a direct room",
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                }
             }
 
             IconButton(
@@ -138,7 +159,7 @@ fun PairingScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "The name your partner or friend sees",
+                text = "The name your peer or partner sees in this chat",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -161,7 +182,7 @@ fun PairingScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Section 2: Connect Card
+        // Section 2: Room Code Card
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -171,14 +192,14 @@ fun PairingScreen(
                 .padding(20.dp)
         ) {
             Text(
-                text = "Chat Code",
+                text = "Room Code",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Share your code or scan theirs to connect",
+                text = "Share this code or enter partner's code to connect",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -194,9 +215,8 @@ fun PairingScreen(
                     value = roomId,
                     onValueChange = {
                         roomId = it.uppercase()
-                        prefs.roomId = it.uppercase()
                     },
-                    placeholder = { Text("e.g. P2P-123", color = TextMuted) },
+                    placeholder = { Text("e.g. CHAT-123", color = TextMuted) },
                     singleLine = true,
                     colors = outlinedColors(),
                     shape = RoundedCornerShape(12.dp),
@@ -209,7 +229,6 @@ fun PairingScreen(
                     onClick = {
                         val newId = generateRandomRoomId()
                         roomId = newId
-                        prefs.roomId = newId
                     },
                     modifier = Modifier
                         .size(52.dp)
@@ -234,9 +253,13 @@ fun PairingScreen(
             ) {
                 OutlinedButton(
                     onClick = {
-                        prefs.roomId = roomId.trim()
-                        onNavigateToShowQr(roomId.trim())
+                        val clean = roomId.trim().uppercase()
+                        if (clean.isNotBlank()) {
+                            viewModel.createOrJoinRoom(clean)
+                            onNavigateToShowQr(clean)
+                        }
                     },
+                    enabled = roomId.isNotBlank(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = TextPrimary
@@ -296,8 +319,11 @@ fun PairingScreen(
         // Open Chat Action Button
         Button(
             onClick = {
-                prefs.myName = myName.trim().ifEmpty { "You" }
-                prefs.roomId = roomId.trim()
+                val cleanName = myName.trim().ifEmpty { "You" }
+                val cleanRoom = roomId.trim().uppercase()
+                prefs.myName = cleanName
+                viewModel.createOrJoinRoom(cleanRoom)
+                viewModel.openRoom(cleanRoom)
                 onNavigateToChat()
             },
             enabled = roomId.isNotBlank(),
@@ -322,7 +348,7 @@ fun PairingScreen(
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Open Chat",
+                text = "Join & Start Chat",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

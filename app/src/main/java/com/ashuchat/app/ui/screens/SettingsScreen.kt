@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -40,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,13 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ashuchat.app.data.repository.PreferencesRepository
-import com.ashuchat.app.webrtc.SignalingClient
+import com.ashuchat.app.ui.components.UpdateDialog
+import com.ashuchat.app.ui.theme.BrandDark
 import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
@@ -65,15 +69,16 @@ import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextMuted
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
-import com.ashuchat.app.ui.theme.VioletAccent
+import com.ashuchat.app.ui.viewmodel.ChatViewModel
+import com.ashuchat.app.webrtc.SignalingClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    prefs: PreferencesRepository,
-    onClearChatHistory: () -> Unit,
+    viewModel: ChatViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val prefs = viewModel.prefs
     var myName by remember { mutableStateOf(prefs.myName) }
     val partnerName = prefs.partnerName
     var signalingUrl by remember { mutableStateOf(prefs.signalingUrl) }
@@ -81,6 +86,12 @@ fun SettingsScreen(
     var testResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+
+    val updateInfo by viewModel.updateInfo.collectAsState()
+    val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsState()
+    val downloadProgress by viewModel.downloadProgress.collectAsState()
+    val isDownloadingUpdate by viewModel.isDownloadingUpdate.collectAsState()
+    val updateCheckMessage by viewModel.updateCheckMessage.collectAsState()
 
     Scaffold(
         containerColor = MidnightBg,
@@ -137,62 +148,136 @@ fun SettingsScreen(
                     value = myName,
                     onValueChange = {
                         myName = it
-                        prefs.myName = it
+                        viewModel.updateMyName(it)
                     },
-                    label = { Text("Your Name") },
-                    supportingText = {
-                        Text(
-                            text = "Shown to the person you are chatting with",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
-                    },
+                    label = { Text("Your Display Name") },
                     singleLine = true,
                     colors = settingsOutlinedColors(),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Peer Name Info Card
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MidnightBg)
-                        .border(1.dp, SurfaceBorder, RoundedCornerShape(12.dp))
-                        .padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(BrandPrimary.copy(alpha = 0.2f))
-                    ) {
-                        Text(
-                            text = partnerName.take(1).uppercase(),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandLight
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
                     Column {
                         Text(
-                            text = "Chatting with: $partnerName",
+                            text = "Connected Peer Name",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = partnerName,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimary
                         )
+                    }
+                    Text(
+                        text = "Auto-synced",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Section 2: App Updates & Version (NEW)
+            Text(
+                text = "Updates & Version",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = BrandLight
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Set by them on their phone",
-                            fontSize = 11.sp,
-                            color = TextMuted
+                            text = "AshuChat v${viewModel.updateManager.currentVersionName}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Build ${viewModel.updateManager.currentVersionCode} • Auto-Updates Enabled",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    OutlinedButton(
+                        onClick = { viewModel.checkForUpdates(silent = false) },
+                        enabled = !isCheckingUpdate && !isDownloadingUpdate,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                            brush = Brush.horizontalGradient(listOf(SurfaceBorder, SurfaceBorder))
+                        )
+                    ) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = BrandLight,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = BrandLight,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Check",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                if (updateCheckMessage != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceCard)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = OnlineGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = updateCheckMessage ?: "",
+                            fontSize = 12.sp,
+                            color = TextPrimary
                         )
                     }
                 }
@@ -200,18 +285,12 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 2: Connection Server
+            // Section 3: Signaling Server Configuration
             Text(
-                text = "Connection Server",
+                text = "Signaling & Relay Server",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = BrandLight
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Used to connect your phones when opening the chat. Messages and files send directly phone-to-phone.",
-                fontSize = 12.sp,
-                color = TextSecondary
             )
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -230,8 +309,7 @@ fun SettingsScreen(
                         prefs.signalingUrl = it
                         testResult = null
                     },
-                    label = { Text("Server URL") },
-                    placeholder = { Text(PreferencesRepository.DEFAULT_SIGNALING_URL) },
+                    label = { Text("Signaling Server URL") },
                     singleLine = true,
                     colors = settingsOutlinedColors(),
                     shape = RoundedCornerShape(12.dp),
@@ -240,84 +318,74 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Button(
-                    onClick = {
-                        signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
-                        prefs.signalingUrl = PreferencesRepository.DEFAULT_SIGNALING_URL
-                        testResult = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.RestartAlt,
-                        contentDescription = null,
-                        tint = VioletAccent,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Reset to Default Cloud Relay",
-                        fontSize = 12.sp,
-                        color = TextPrimary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Test Connection Button
-                Button(
-                    onClick = {
-                        isTestingConnection = true
-                        testResult = null
-                        SignalingClient.testConnection(signalingUrl) { success, message ->
-                            isTestingConnection = false
-                            testResult = Pair(success, message)
+                    Button(
+                        onClick = {
+                            isTestingConnection = true
+                            testResult = null
+                            SignalingClient.testConnection(signalingUrl) { success, msg ->
+                                isTestingConnection = false
+                                testResult = Pair(success, msg)
+                            }
+                        },
+                        enabled = !isTestingConnection,
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isTestingConnection) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Testing...", fontSize = 13.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.NetworkCheck,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Test Server", fontSize = 13.sp)
                         }
-                    },
-                    enabled = !isTestingConnection,
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isTestingConnection) {
-                        CircularProgressIndicator(
-                            color = VioletAccent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(14.dp)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            signalingUrl = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
+                            prefs.signalingUrl = signalingUrl
+                            testResult = null
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                            brush = Brush.horizontalGradient(listOf(SurfaceBorder, SurfaceBorder))
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Testing Relay...",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                    } else {
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.NetworkCheck,
-                            contentDescription = null,
-                            tint = VioletAccent,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Test Relay Reachability",
-                            fontSize = 12.sp,
-                            color = TextPrimary
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = "Reset",
+                            tint = BrandLight,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                testResult?.let { (success, message) ->
-                    Spacer(modifier = Modifier.height(10.dp))
+                // Test Connection Result feedback
+                testResult?.let { (success, msg) ->
+                    Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (success) OnlineGreen.copy(alpha = 0.15f) else OfflineRed.copy(alpha = 0.15f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .padding(10.dp)
                     ) {
                         Icon(
                             imageVector = if (success) Icons.Default.CheckCircle else Icons.Default.Error,
@@ -327,8 +395,8 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = message,
-                            fontSize = 11.sp,
+                            text = msg,
+                            fontSize = 12.sp,
                             color = if (success) OnlineGreen else OfflineRed
                         )
                     }
@@ -337,17 +405,16 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 3: Security & Privacy
+            // Section 4: Security & Encryption
             Text(
                 text = "Privacy & Encryption",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = OnlineGreen
+                color = BrandLight
             )
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
@@ -355,39 +422,33 @@ fun SettingsScreen(
                     .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
                     .padding(16.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(OnlineGreen.copy(alpha = 0.15f))
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Lock,
-                        contentDescription = "Encrypted",
-                        tint = OnlineGreen,
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = null,
+                        tint = BrandLight,
+                        modifier = Modifier.size(20.dp)
                     )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Direct P2P Encrypted",
-                        fontSize = 14.sp,
+                        text = "End-to-End Encrypted",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
-                    Text(
-                        text = "WebRTC DataChannel DTLS-SRTP 256-bit encryption. Zero cloud storage of your chats.",
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
                 }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "WebRTC DataChannel DTLS-SRTP 256-bit encryption. Zero permanent cloud storage of your chats.",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 4: Data Management
+            // Section 5: Data Management
             Text(
                 text = "Chat Data",
                 fontSize = 14.sp,
@@ -423,7 +484,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(36.dp))
 
             Text(
-                text = "AshuChat v1.0.0\nDeveloped by Yuvraj Poudyal for Ashu",
+                text = "AshuChat v${viewModel.updateManager.currentVersionName}\nDeveloped by Yuvraj Poudyal for Ashu",
                 fontSize = 12.sp,
                 color = TextMuted,
                 textAlign = TextAlign.Center,
@@ -449,7 +510,7 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         showClearConfirmDialog = false
-                        onClearChatHistory()
+                        viewModel.clearChat()
                     }
                 ) {
                     Text("Clear", color = OfflineRed)
@@ -461,6 +522,21 @@ fun SettingsScreen(
                 }
             },
             containerColor = SurfaceElevated
+        )
+    }
+
+    // Update Dialog if update is available
+    if (updateInfo != null && updateInfo!!.isUpdateAvailable) {
+        UpdateDialog(
+            updateInfo = updateInfo!!,
+            downloadProgress = downloadProgress,
+            isDownloading = isDownloadingUpdate,
+            onConfirmUpdate = {
+                viewModel.startAppUpdate(updateInfo!!.downloadUrl)
+            },
+            onDismiss = {
+                viewModel.dismissUpdateDialog()
+            }
         )
     }
 }

@@ -5,17 +5,21 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ashuchat.app.data.local.AppDatabase
+import com.ashuchat.app.data.local.RoomEntity
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.DataChannelPacket
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
 import com.ashuchat.app.data.repository.ChatRepository
 import com.ashuchat.app.data.repository.PreferencesRepository
+import com.ashuchat.app.utils.AppUpdateInfo
 import com.ashuchat.app.utils.FileUtils
 import com.ashuchat.app.utils.NotificationHelper
+import com.ashuchat.app.utils.UpdateManager
 import com.ashuchat.app.webrtc.P2PConnectionState
 import com.ashuchat.app.webrtc.WebRtcManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,19 +27,47 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
-    val chatRepository = ChatRepository(db.messageDao())
+    val chatRepository = ChatRepository(db.messageDao(), db.roomDao())
     val prefs = PreferencesRepository(application)
+    val updateManager = UpdateManager(application)
 
     val webRtcManager = WebRtcManager(application, viewModelScope)
 
     val connectionState: StateFlow<P2PConnectionState> = webRtcManager.connectionState
+
+    // In-App Auto-Update State
+    private val _updateInfo = MutableStateFlow<AppUpdateInfo?>(null)
+    val updateInfo: StateFlow<AppUpdateInfo?> = _updateInfo.asStateFlow()
+
+    private val _isCheckingUpdate = MutableStateFlow(false)
+    val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
+
+    private val _downloadProgress = MutableStateFlow<Float?>(null)
+    val downloadProgress: StateFlow<Float?> = _downloadProgress.asStateFlow()
+
+    private val _isDownloadingUpdate = MutableStateFlow(false)
+    val isDownloadingUpdate: StateFlow<Boolean> = _isDownloadingUpdate.asStateFlow()
+
+    private val _updateCheckMessage = MutableStateFlow<String?>(null)
+    val updateCheckMessage: StateFlow<String?> = _updateCheckMessage.asStateFlow()
+
+    // WhatsApp-style Room List
+    val rooms: StateFlow<List<RoomEntity>> = chatRepository.getAllRooms()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Active Room Identifier
+    private val _activeRoomId = MutableStateFlow(prefs.roomId.trim().uppercase())
+    val activeRoomId: StateFlow<String> = _activeRoomId.asStateFlow()
 
     private val _isPartnerTyping = MutableStateFlow(false)
     val isPartnerTyping: StateFlow<Boolean> = _isPartnerTyping.asStateFlow()
@@ -48,20 +80,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _activeFileProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
 
-    // Merged messages with active transfer progress
-    val messages: StateFlow<List<ChatMessage>> = combine(
-        chatRepository.getAllMessages(),
-        _activeFileProgress
-    ) { msgList, progressMap ->
-        msgList.map { msg ->
-            val progress = progressMap[msg.id] ?: 1.0f
-            if (progress < 1.0f) {
-                msg.copy(transferProgress = progress)
+    // Messages for the currently active room with ongoing file progress
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val messages: StateFlow<List<ChatMessage>> = _activeRoomId
+        .flatMapLatest { roomId ->
+            if (roomId.isBlank()) {
+                flowOf(emptyList())
             } else {
-                msg
+                combine(
+                    chatRepository.getMessagesForRoom(roomId),
+                    _activeFileProgress
+                ) { msgList, progressMap ->
+                    msgList.map { msg ->
+                        val progress = progressMap[msg.id] ?: 1.0f
+                        if (progress < 1.0f) {
+                            msg.copy(transferProgress = progress)
+                        } else {
+                            msg
+                        }
+                    }
+                }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private var typingJob: Job? = null
 
@@ -70,18 +111,108 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         observeFileTransfers()
         observeConnectionChanges()
         observePeerNameSync()
+        seedInitialRoomIfAny()
+
+        // Silently check for app updates in background after startup
+        viewModelScope.launch {
+            delay(2500)
+            checkForUpdates(silent = true)
+        }
+    }
+
+    private fun seedInitialRoomIfAny() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val initialRoom = prefs.roomId.trim().uppercase()
+            if (initialRoom.isNotBlank()) {
+                val existing = chatRepository.getRoom(initialRoom)
+                if (existing == null) {
+                    chatRepository.insertOrUpdateRoom(
+                        RoomEntity(
+                            roomId = initialRoom,
+                            partnerName = prefs.partnerName.ifBlank { "Peer" },
+                            lastMessage = "Tap to chat",
+                            lastTimestamp = System.currentTimeMillis()
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun openRoom(roomId: String) {
+        val clean = roomId.trim().uppercase()
+        if (clean.isBlank()) return
+
+        _activeRoomId.value = clean
+        prefs.roomId = clean
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = chatRepository.getRoom(clean)
+            if (existing == null) {
+                chatRepository.insertOrUpdateRoom(
+                    RoomEntity(
+                        roomId = clean,
+                        partnerName = "Peer",
+                        lastMessage = "Room created",
+                        lastTimestamp = System.currentTimeMillis()
+                    )
+                )
+                _partnerName.value = "Peer"
+            } else {
+                _partnerName.value = existing.partnerName
+            }
+        }
+
+        // Restart WebRTC cleanly for the new room code
+        webRtcManager.stop()
+        webRtcManager.start(
+            serverUrl = prefs.signalingUrl,
+            roomId = clean,
+            clientId = prefs.clientId,
+            clientName = prefs.myName
+        )
+        flushPendingMessages()
+    }
+
+    fun createOrJoinRoom(roomId: String, partnerName: String = "Peer"): String {
+        val clean = roomId.trim().uppercase()
+        if (clean.isNotBlank()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val existing = chatRepository.getRoom(clean)
+                if (existing == null) {
+                    chatRepository.insertOrUpdateRoom(
+                        RoomEntity(
+                            roomId = clean,
+                            partnerName = partnerName,
+                            lastMessage = "Room created",
+                            lastTimestamp = System.currentTimeMillis()
+                        )
+                    )
+                }
+            }
+        }
+        return clean
+    }
+
+    fun leaveActiveRoom() {
+        webRtcManager.stop()
+        _activeRoomId.value = ""
+    }
+
+    fun deleteRoom(roomId: String) {
+        val clean = roomId.trim().uppercase()
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.deleteRoom(clean)
+            if (_activeRoomId.value == clean) {
+                leaveActiveRoom()
+            }
+        }
     }
 
     fun startConnection() {
-        val roomId = prefs.roomId
-        if (roomId.isNotBlank()) {
-            webRtcManager.start(
-                serverUrl = prefs.signalingUrl,
-                roomId = roomId,
-                clientId = prefs.clientId,
-                clientName = prefs.myName
-            )
-            flushPendingMessages()
+        val current = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        if (current.isNotBlank()) {
+            openRoom(current)
         }
     }
 
@@ -97,7 +228,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val clean = name.trim()
         if (clean.isNotBlank() && clean != _partnerName.value) {
             _partnerName.value = clean
-            prefs.partnerName = clean
+            val currentRoom = _activeRoomId.value
+            if (currentRoom.isNotBlank()) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    chatRepository.updateRoomPartnerName(currentRoom, clean)
+                }
+            }
         }
     }
 
@@ -129,6 +265,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeIncomingPackets() {
         viewModelScope.launch {
             webRtcManager.incomingPackets.collect { packet ->
+                val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+
                 packet.senderName?.let { name ->
                     if (name.isNotBlank()) {
                         updatePartnerName(name)
@@ -150,6 +288,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         if (existing == null) {
                             val incomingMessage = ChatMessage(
                                 id = messageId,
+                                roomId = currentRoom,
                                 senderName = packet.senderName ?: currentPartner,
                                 isFromMe = false,
                                 text = packet.text ?: "",
@@ -204,6 +343,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         if (existing == null) {
                             val loveMessage = ChatMessage(
                                 id = messageId,
+                                roomId = currentRoom,
                                 senderName = packet.senderName ?: currentPartner,
                                 isFromMe = false,
                                 text = "",
@@ -237,6 +377,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         val isImage = FileUtils.isImageMimeType(packet.mimeType)
                         val fileMsg = ChatMessage(
                             id = msgId,
+                            roomId = currentRoom,
                             senderName = packet.senderName ?: _partnerName.value,
                             isFromMe = false,
                             text = "",
@@ -295,9 +436,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
 
+        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
         val chatMessage = ChatMessage(
             id = messageId,
+            roomId = currentRoom,
             senderName = prefs.myName,
             isFromMe = true,
             text = trimmed,
@@ -343,9 +486,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val mimeType = FileUtils.getMimeType(context, uri)
         val isImage = FileUtils.isImageMimeType(mimeType)
 
+        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
         val chatMessage = ChatMessage(
             id = messageId,
+            roomId = currentRoom,
             senderName = prefs.myName,
             isFromMe = true,
             text = "",
@@ -372,9 +517,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendLovePing() {
+        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
         val loveMessage = ChatMessage(
             id = messageId,
+            roomId = currentRoom,
             senderName = prefs.myName,
             isFromMe = true,
             text = "",
@@ -431,14 +578,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearChat() {
-        viewModelScope.launch(Dispatchers.IO) {
-            chatRepository.clearAllMessages()
+        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        if (currentRoom.isNotBlank()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                chatRepository.clearRoomMessages(currentRoom)
+            }
         }
     }
 
     fun flushPendingMessages() {
+        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        if (currentRoom.isBlank()) return
+
         viewModelScope.launch(Dispatchers.IO) {
-            val pendingList = chatRepository.getPendingOutgoingMessages()
+            val pendingList = chatRepository.getPendingOutgoingMessagesForRoom(currentRoom)
             for (msg in pendingList) {
                 val packet = DataChannelPacket(
                     type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
@@ -492,6 +645,54 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isCheckingUpdate.value = true
+            _updateCheckMessage.value = null
+            try {
+                val info = updateManager.checkForUpdate()
+                if (info != null && info.isUpdateAvailable) {
+                    _updateInfo.value = info
+                } else if (!silent) {
+                    _updateCheckMessage.value = "AshuChat is up to date (v${updateManager.currentVersionName})"
+                }
+            } catch (e: Exception) {
+                if (!silent) {
+                    _updateCheckMessage.value = "Failed to check for updates: ${e.localizedMessage}"
+                }
+            } finally {
+                _isCheckingUpdate.value = false
+            }
+        }
+    }
+
+    fun startAppUpdate(downloadUrl: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isDownloadingUpdate.value = true
+            _downloadProgress.value = 0f
+            val apkFile = updateManager.downloadApk(downloadUrl) { progress ->
+                _downloadProgress.value = progress
+            }
+            _isDownloadingUpdate.value = false
+            _downloadProgress.value = null
+            if (apkFile != null) {
+                withContext(Dispatchers.Main) {
+                    updateManager.promptInstall(apkFile)
+                }
+            } else {
+                _updateCheckMessage.value = "Failed to download update APK"
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _updateInfo.value = null
+    }
+
+    fun clearUpdateMessage() {
+        _updateCheckMessage.value = null
     }
 
     override fun onCleared() {

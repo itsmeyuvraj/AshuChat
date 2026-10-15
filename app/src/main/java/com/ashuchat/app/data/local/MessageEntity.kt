@@ -10,6 +10,7 @@ import com.ashuchat.app.data.model.MessageType
 data class MessageEntity(
     @PrimaryKey
     val id: String,
+    val roomId: String = "",
     val senderName: String,
     val isFromMe: Boolean,
     val text: String,
@@ -36,6 +37,7 @@ data class MessageEntity(
 
         return ChatMessage(
             id = id,
+            roomId = roomId,
             senderName = senderName,
             isFromMe = isFromMe,
             text = text,
@@ -54,6 +56,7 @@ data class MessageEntity(
         fun fromChatMessage(msg: ChatMessage): MessageEntity {
             return MessageEntity(
                 id = msg.id,
+                roomId = msg.roomId,
                 senderName = msg.senderName,
                 isFromMe = msg.isFromMe,
                 text = msg.text,

@@ -2,6 +2,7 @@ package com.ashuchat.app.data.model
 
 data class ChatMessage(
     val id: String,
+    val roomId: String = "",
     val senderName: String,
     val isFromMe: Boolean,
     val text: String = "",

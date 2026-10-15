@@ -44,6 +44,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -104,11 +105,13 @@ import kotlin.random.Random
 fun ChatScreen(
     viewModel: ChatViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToShowQr: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val messages by viewModel.messages.collectAsState()
     val partnerName by viewModel.partnerName.collectAsState()
+    val activeRoomId by viewModel.activeRoomId.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val isPartnerTyping by viewModel.isPartnerTyping.collectAsState()
     val showLoveEffect by viewModel.showLoveHeartEffect.collectAsState()
@@ -172,6 +175,7 @@ fun ChatScreen(
                 showAttachmentSheet = false
             }
             else -> {
+                viewModel.leaveActiveRoom()
                 onNavigateBack()
             }
         }
@@ -185,7 +189,10 @@ fun ChatScreen(
                     containerColor = SurfaceElevated
                 ),
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        viewModel.leaveActiveRoom()
+                        onNavigateBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -219,12 +226,22 @@ fun ChatScreen(
                         Spacer(modifier = Modifier.width(10.dp))
 
                         Column {
-                            Text(
-                                text = partnerName,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = partnerName,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                if (activeRoomId.isNotBlank()) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "• $activeRoomId",
+                                        fontSize = 12.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                            }
                             if (isPartnerTyping) {
                                 Text(
                                     text = "typing...",
@@ -239,6 +256,15 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
+                        IconButton(onClick = { onNavigateToShowQr(activeRoomId) }) {
+                            Icon(
+                                imageVector = Icons.Default.QrCode,
+                                contentDescription = "Show QR",
+                                tint = TextSecondary
+                            )
+                        }
+                    }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,

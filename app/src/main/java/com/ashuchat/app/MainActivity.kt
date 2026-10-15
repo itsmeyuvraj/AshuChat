@@ -10,14 +10,18 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.ashuchat.app.ui.screens.ChatScreen
 import com.ashuchat.app.ui.screens.PairingScreen
 import com.ashuchat.app.ui.screens.QrCodeScreen
 import com.ashuchat.app.ui.screens.QrScannerScreen
+import com.ashuchat.app.ui.screens.RoomsScreen
 import com.ashuchat.app.ui.screens.SettingsScreen
 import com.ashuchat.app.ui.theme.AshuChatTheme
 import com.ashuchat.app.ui.theme.MidnightBg
@@ -58,27 +62,46 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
     val navController = rememberNavController()
     val prefs = chatViewModel.prefs
 
-    // Start on Chat if already paired, else start on Pairing
-    val startDestination = if (prefs.roomId.isNotBlank()) "chat" else "pairing"
-
+    // Main destination is WhatsApp-style Rooms list screen
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = "rooms"
     ) {
-        composable("pairing") {
-            PairingScreen(
-                prefs = prefs,
-                onNavigateToChat = {
+        composable("rooms") {
+            RoomsScreen(
+                viewModel = chatViewModel,
+                onRoomClick = { roomId ->
+                    chatViewModel.openRoom(roomId)
                     navController.navigate("chat")
                 },
-                onNavigateToShowQr = {
-                    navController.navigate("qr_code")
+                onNavigateToPairing = {
+                    navController.navigate("pairing")
+                },
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                }
+            )
+        }
+
+        composable("pairing") {
+            PairingScreen(
+                viewModel = chatViewModel,
+                onNavigateToChat = {
+                    navController.navigate("chat") {
+                        popUpTo("rooms") { inclusive = false }
+                    }
+                },
+                onNavigateToShowQr = { roomId ->
+                    navController.navigate("qr_code/$roomId")
                 },
                 onNavigateToScanner = {
                     navController.navigate("qr_scanner")
                 },
                 onNavigateToSettings = {
                     navController.navigate("settings")
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -90,26 +113,50 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                     if (navController.previousBackStackEntry != null) {
                         navController.popBackStack()
                     } else {
-                        navController.navigate("pairing") {
+                        navController.navigate("rooms") {
                             popUpTo("chat") { inclusive = true }
                         }
                     }
                 },
                 onNavigateToSettings = {
                     navController.navigate("settings")
+                },
+                onNavigateToShowQr = { roomId ->
+                    navController.navigate("qr_code/$roomId")
+                }
+            )
+        }
+
+        composable(
+            route = "qr_code/{roomId}",
+            arguments = listOf(navArgument("roomId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val roomId = backStackEntry.arguments?.getString("roomId") ?: prefs.roomId
+            QrCodeScreen(
+                roomId = roomId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToChat = {
+                    chatViewModel.openRoom(roomId)
+                    navController.navigate("chat") {
+                        popUpTo("rooms") { inclusive = false }
+                    }
                 }
             )
         }
 
         composable("qr_code") {
+            val currentRoom = chatViewModel.activeRoomId.collectAsState().value.ifBlank { prefs.roomId }
             QrCodeScreen(
-                roomId = prefs.roomId,
+                roomId = currentRoom,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
                 onNavigateToChat = {
+                    chatViewModel.openRoom(currentRoom)
                     navController.navigate("chat") {
-                        popUpTo("pairing") { inclusive = false }
+                        popUpTo("rooms") { inclusive = false }
                     }
                 }
             )
@@ -118,9 +165,11 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
         composable("qr_scanner") {
             QrScannerScreen(
                 onRoomScanned = { scannedRoomId ->
-                    prefs.roomId = scannedRoomId.trim().uppercase()
+                    val clean = scannedRoomId.trim().uppercase()
+                    chatViewModel.createOrJoinRoom(clean)
+                    chatViewModel.openRoom(clean)
                     navController.navigate("chat") {
-                        popUpTo("pairing") { inclusive = false }
+                        popUpTo("rooms") { inclusive = false }
                     }
                 },
                 onNavigateBack = {
@@ -131,10 +180,7 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
 
         composable("settings") {
             SettingsScreen(
-                prefs = prefs,
-                onClearChatHistory = {
-                    chatViewModel.clearChat()
-                },
+                viewModel = chatViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 }
