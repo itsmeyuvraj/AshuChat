@@ -1,6 +1,7 @@
 package com.ashuchat.app.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -150,6 +151,21 @@ fun ChatScreen(
             viewModel.setTyping(true)
             delay(2000)
             viewModel.setTyping(false)
+        }
+    }
+
+    // Intercept system back gesture and back button
+    BackHandler {
+        when {
+            activeViewerMedia != null -> {
+                activeViewerMedia = null
+            }
+            showAttachmentSheet -> {
+                showAttachmentSheet = false
+            }
+            else -> {
+                onNavigateBack()
+            }
         }
     }
 

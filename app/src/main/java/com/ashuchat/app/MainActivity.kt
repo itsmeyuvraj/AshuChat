@@ -68,9 +68,7 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
             PairingScreen(
                 prefs = prefs,
                 onNavigateToChat = {
-                    navController.navigate("chat") {
-                        popUpTo("pairing") { inclusive = true }
-                    }
+                    navController.navigate("chat")
                 },
                 onNavigateToScanner = {
                     navController.navigate("qr_scanner")
@@ -85,7 +83,13 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
             ChatScreen(
                 viewModel = chatViewModel,
                 onNavigateBack = {
-                    navController.navigate("pairing")
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate("pairing") {
+                            popUpTo("chat") { inclusive = true }
+                        }
+                    }
                 },
                 onNavigateToSettings = {
                     navController.navigate("settings")
@@ -98,7 +102,7 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 onRoomScanned = { scannedRoomId ->
                     prefs.roomId = scannedRoomId.trim().uppercase()
                     navController.navigate("chat") {
-                        popUpTo("pairing") { inclusive = true }
+                        popUpTo("pairing") { inclusive = false }
                     }
                 },
                 onNavigateBack = {
