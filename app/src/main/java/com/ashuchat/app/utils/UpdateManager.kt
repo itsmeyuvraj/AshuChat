@@ -88,8 +88,13 @@ class UpdateManager(private val context: Context) {
                     val downloadUrl = root.get("downloadUrl")?.asString ?: ""
                     val releaseNotes = root.get("releaseNotes")?.asString ?: "Bug fixes and improvements"
 
-                    val isNewer = (remoteVersionCode > 0 && remoteVersionCode > currentVersionCode) ||
-                            (remoteVersionName.isNotBlank() && isNewerVersion(remoteVersionName, currentVersionName))
+                    val isNewer = if (remoteVersionCode > 0 && currentVersionCode > 0) {
+                        remoteVersionCode > currentVersionCode
+                    } else if (remoteVersionName.isNotBlank() && currentVersionName.isNotBlank()) {
+                        isNewerVersion(remoteVersionName, currentVersionName)
+                    } else {
+                        false
+                    }
 
                     if (isNewer && downloadUrl.isNotBlank()) {
                         Log.d(TAG, "Update found via Firebase: $remoteVersionName ($remoteVersionCode)")

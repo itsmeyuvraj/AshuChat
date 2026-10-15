@@ -655,8 +655,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val info = updateManager.checkForUpdate()
                 if (info != null && info.isUpdateAvailable) {
                     _updateInfo.value = info
-                } else if (!silent) {
-                    _updateCheckMessage.value = "AshuChat is up to date (v${updateManager.currentVersionName})"
+                } else {
+                    _updateInfo.value = null
+                    _updateCheckMessage.value = null
                 }
             } catch (e: Exception) {
                 if (!silent) {
