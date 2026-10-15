@@ -423,7 +423,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(36.dp))
 
             Text(
-                text = "AshuChat v1.0.0\nPrivate Direct Messenger",
+                text = "AshuChat v1.0.0\nDeveloped by Yuvraj Poudyal for Ashu",
                 fontSize = 12.sp,
                 color = TextMuted,
                 textAlign = TextAlign.Center,
