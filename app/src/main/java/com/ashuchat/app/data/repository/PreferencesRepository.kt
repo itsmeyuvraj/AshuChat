@@ -22,12 +22,12 @@ class PreferencesRepository(context: Context) {
     }
 
     var myName: String
-        get() = prefs.getString(KEY_MY_NAME, "Yuvraj") ?: "Yuvraj"
-        set(value) = prefs.edit().putString(KEY_MY_NAME, value).apply()
+        get() = prefs.getString(KEY_MY_NAME, "You") ?: "You"
+        set(value) = prefs.edit().putString(KEY_MY_NAME, value.trim()).apply()
 
     var partnerName: String
-        get() = prefs.getString(KEY_PARTNER_NAME, "Ashu") ?: "Ashu"
-        set(value) = prefs.edit().putString(KEY_PARTNER_NAME, value).apply()
+        get() = prefs.getString(KEY_PARTNER_NAME, "Partner") ?: "Partner"
+        set(value) = prefs.edit().putString(KEY_PARTNER_NAME, value.trim()).apply()
 
     var roomId: String
         get() = prefs.getString(KEY_ROOM_ID, "") ?: ""

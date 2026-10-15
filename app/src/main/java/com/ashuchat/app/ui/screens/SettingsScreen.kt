@@ -74,7 +74,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     var myName by remember { mutableStateOf(prefs.myName) }
-    var partnerName by remember { mutableStateOf(prefs.partnerName) }
+    val partnerName = prefs.partnerName
     var signalingUrl by remember { mutableStateOf(prefs.signalingUrl) }
     var isTestingConnection by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
@@ -115,9 +115,9 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Section 1: Nicknames
+            // Section 1: Profiles
             Text(
-                text = "Partner Names",
+                text = "Profiles",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = RosePrimary
@@ -138,27 +138,63 @@ fun SettingsScreen(
                         myName = it
                         prefs.myName = it
                     },
-                    label = { Text("Your Name") },
-                    singleLine = true,
-                    colors = settingsOutlinedColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = partnerName,
-                    onValueChange = {
-                        partnerName = it
-                        prefs.partnerName = it
+                    label = { Text("Your Name / Nickname") },
+                    supportingText = {
+                        Text(
+                            text = "Your partner sees this name in their chat and notifications",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
                     },
-                    label = { Text("Partner's Name") },
                     singleLine = true,
                     colors = settingsOutlinedColors(),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Partner's Name Info Card (Synced automatically from partner)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MidnightBg)
+                        .border(1.dp, SurfaceBorder, RoundedCornerShape(12.dp))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(RosePrimary.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            text = partnerName.take(1).uppercase(),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RosePrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "Partner: $partnerName",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Automatically synced from your partner's device",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -66,7 +66,11 @@ class WebRtcManager(
     private var isInitiator = false
     private val pendingIceCandidates = mutableListOf<IceCandidate>()
     private var currentClientId: String? = null
+    private var currentClientName: String = ""
     private var connectedPeerId: String? = null
+
+    private val _peerNameFlow = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val peerNameFlow: SharedFlow<String> = _peerNameFlow.asSharedFlow()
 
     init {
         initPeerConnectionFactory()
@@ -86,10 +90,11 @@ class WebRtcManager(
     /**
      * Start connection: Connect to signaling server with roomId and clientId.
      */
-    fun start(serverUrl: String, roomId: String, clientId: String) {
+    fun start(serverUrl: String, roomId: String, clientId: String, clientName: String = "") {
         currentClientId = clientId
+        currentClientName = clientName
         _connectionState.value = P2PConnectionState.CONNECTING_SIGNALING
-        signalingClient.connect(serverUrl, roomId, clientId)
+        signalingClient.connect(serverUrl, roomId, clientId, clientName)
     }
 
     private fun setupPeerConnection() {
@@ -149,6 +154,14 @@ class WebRtcManager(
                 when (channel.state()) {
                     DataChannel.State.OPEN -> {
                         _connectionState.value = P2PConnectionState.CONNECTED_P2P
+                        if (currentClientName.isNotBlank()) {
+                            sendPacket(
+                                DataChannelPacket(
+                                    type = "name_sync",
+                                    senderName = currentClientName
+                                )
+                            )
+                        }
                     }
                     DataChannel.State.CLOSING,
                     DataChannel.State.CLOSED -> {
@@ -179,6 +192,14 @@ class WebRtcManager(
 
             if (packet.type == "file_header") {
                 fileTransferManager.handleFileHeader(packet)
+            }
+
+            packet.senderName?.let { name ->
+                if (name.isNotBlank()) {
+                    scope.launch {
+                        _peerNameFlow.emit(name)
+                    }
+                }
             }
 
             scope.launch {
@@ -413,6 +434,13 @@ class WebRtcManager(
                     status = status
                 )
             )
+        }
+    }
+
+    override fun onPeerNameReceived(name: String) {
+        Log.d(TAG, "Peer name received: $name")
+        scope.launch {
+            _peerNameFlow.emit(name)
         }
     }
 

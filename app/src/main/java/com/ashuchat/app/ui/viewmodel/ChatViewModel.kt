@@ -40,6 +40,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isPartnerTyping = MutableStateFlow(false)
     val isPartnerTyping: StateFlow<Boolean> = _isPartnerTyping.asStateFlow()
 
+    private val _partnerName = MutableStateFlow(prefs.partnerName)
+    val partnerName: StateFlow<String> = _partnerName.asStateFlow()
+
     private val _showLoveHeartEffect = MutableStateFlow(false)
     val showLoveHeartEffect: StateFlow<Boolean> = _showLoveHeartEffect.asStateFlow()
 
@@ -66,6 +69,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         observeIncomingPackets()
         observeFileTransfers()
         observeConnectionChanges()
+        observePeerNameSync()
     }
 
     fun startConnection() {
@@ -74,9 +78,41 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             webRtcManager.start(
                 serverUrl = prefs.signalingUrl,
                 roomId = roomId,
-                clientId = prefs.clientId
+                clientId = prefs.clientId,
+                clientName = prefs.myName
             )
             flushPendingMessages()
+        }
+    }
+
+    private fun observePeerNameSync() {
+        viewModelScope.launch {
+            webRtcManager.peerNameFlow.collect { name ->
+                updatePartnerName(name)
+            }
+        }
+    }
+
+    fun updatePartnerName(name: String) {
+        val clean = name.trim()
+        if (clean.isNotBlank() && clean != _partnerName.value) {
+            _partnerName.value = clean
+            prefs.partnerName = clean
+        }
+    }
+
+    fun updateMyName(name: String) {
+        val clean = name.trim()
+        if (clean.isNotBlank()) {
+            prefs.myName = clean
+            if (webRtcManager.isP2pConnected()) {
+                webRtcManager.sendPacket(
+                    DataChannelPacket(
+                        type = "name_sync",
+                        senderName = clean
+                    )
+                )
+            }
         }
     }
 
@@ -93,14 +129,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeIncomingPackets() {
         viewModelScope.launch {
             webRtcManager.incomingPackets.collect { packet ->
+                packet.senderName?.let { name ->
+                    if (name.isNotBlank()) {
+                        updatePartnerName(name)
+                    }
+                }
                 when (packet.type) {
+                    "name_sync" -> {
+                        packet.senderName?.let { name ->
+                            if (name.isNotBlank()) {
+                                updatePartnerName(name)
+                            }
+                        }
+                    }
+
                     "text" -> {
                         val messageId = packet.messageId ?: UUID.randomUUID().toString()
+                        val currentPartner = _partnerName.value
                         val existing = chatRepository.getMessage(messageId)
                         if (existing == null) {
                             val incomingMessage = ChatMessage(
                                 id = messageId,
-                                senderName = packet.senderName ?: prefs.partnerName,
+                                senderName = packet.senderName ?: currentPartner,
                                 isFromMe = false,
                                 text = packet.text ?: "",
                                 type = MessageType.TEXT,
@@ -111,7 +161,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                             NotificationHelper.showMessageNotification(
                                 getApplication(),
-                                prefs.partnerName,
+                                currentPartner,
                                 packet.text ?: "New message"
                             )
                         }
@@ -149,11 +199,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                     "love_ping" -> {
                         val messageId = packet.messageId ?: UUID.randomUUID().toString()
+                        val currentPartner = _partnerName.value
                         val existing = chatRepository.getMessage(messageId)
                         if (existing == null) {
                             val loveMessage = ChatMessage(
                                 id = messageId,
-                                senderName = packet.senderName ?: prefs.partnerName,
+                                senderName = packet.senderName ?: currentPartner,
                                 isFromMe = false,
                                 text = "",
                                 type = MessageType.LOVE_PING,
@@ -186,7 +237,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         val isImage = FileUtils.isImageMimeType(packet.mimeType)
                         val fileMsg = ChatMessage(
                             id = msgId,
-                            senderName = packet.senderName ?: prefs.partnerName,
+                            senderName = packet.senderName ?: _partnerName.value,
                             isFromMe = false,
                             text = "",
                             type = if (isImage) MessageType.IMAGE else MessageType.FILE,
@@ -232,7 +283,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (isIncoming) {
                     NotificationHelper.showMessageNotification(
                         getApplication(),
-                        prefs.partnerName,
+                        _partnerName.value,
                         "Received attachment"
                     )
                 }

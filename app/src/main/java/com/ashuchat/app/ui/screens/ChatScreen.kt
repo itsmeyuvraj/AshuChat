@@ -101,6 +101,7 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     val messages by viewModel.messages.collectAsState()
+    val partnerName by viewModel.partnerName.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val isPartnerTyping by viewModel.isPartnerTyping.collectAsState()
     val showLoveEffect by viewModel.showLoveHeartEffect.collectAsState()
@@ -201,7 +202,7 @@ fun ChatScreen(
                                 )
                         ) {
                             Text(
-                                text = viewModel.prefs.partnerName.take(1).uppercase(),
+                                text = partnerName.take(1).uppercase(),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -212,7 +213,7 @@ fun ChatScreen(
 
                         Column {
                             Text(
-                                text = "${viewModel.prefs.partnerName} ❤️",
+                                text = "$partnerName ❤️",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
@@ -298,7 +299,7 @@ fun ChatScreen(
                 ) {
                     if (inputText.isEmpty()) {
                         Text(
-                            text = "Message ${viewModel.prefs.partnerName}...",
+                            text = "Message $partnerName...",
                             fontSize = 14.sp,
                             color = TextMuted
                         )
@@ -368,7 +369,7 @@ fun ChatScreen(
                             .padding(vertical = 6.dp, horizontal = 16.dp)
                     ) {
                         Text(
-                            text = "☁️ ${viewModel.prefs.partnerName} is offline • Messages deliver instantly to cloud mailbox",
+                            text = "☁️ $partnerName is offline • Messages deliver instantly to cloud mailbox",
                             fontSize = 11.sp,
                             color = Color(0xFFDDD2F5)
                         )
@@ -412,7 +413,7 @@ fun ChatScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Send your first message or a Love Ping to Ashu ❤️",
+                                text = "Send your first message or a Love Ping to $partnerName ❤️",
                                 fontSize = 13.sp,
                                 color = TextSecondary,
                                 modifier = Modifier.padding(horizontal = 24.dp)

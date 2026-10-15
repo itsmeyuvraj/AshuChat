@@ -25,5 +25,8 @@ data class SignalingPayload(
     val sdpMLineIndex: Int? = null,
 
     @SerializedName("message")
-    val message: String? = null
+    val message: String? = null,
+
+    @SerializedName("clientName")
+    val clientName: String? = null
 )

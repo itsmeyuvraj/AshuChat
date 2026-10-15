@@ -240,7 +240,7 @@ fun QrScannerScreen(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "AshuChat needs camera access to scan your girlfriend's pairing QR code.",
+                    text = "AshuChat needs camera access to scan your partner's pairing QR code.",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center

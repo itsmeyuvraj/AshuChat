@@ -52,6 +52,7 @@ class SignalingClient(
         fun onIceCandidateReceived(candidate: IceCandidate)
         fun onOfflinePacketReceived(packet: DataChannelPacket)
         fun onOfflineAckReceived(messageId: String, status: String)
+        fun onPeerNameReceived(name: String)
         fun onError(message: String)
     }
 
@@ -71,6 +72,7 @@ class SignalingClient(
 
     private var currentRoomId: String? = null
     private var currentClientId: String? = null
+    private var currentClientName: String = ""
     private var currentServerUrl: String = ""
     private var activeMode: SignalingMode = SignalingMode.NTFY_SERVERLESS
 
@@ -157,9 +159,10 @@ class SignalingClient(
         }
     }
 
-    fun connect(serverUrl: String, roomId: String, clientId: String) {
+    fun connect(serverUrl: String, roomId: String, clientId: String, clientName: String = "") {
         currentRoomId = roomId
         currentClientId = clientId
+        currentClientName = clientName
         currentServerUrl = serverUrl.trim()
         processedCandidateKeys.clear()
 
@@ -224,7 +227,8 @@ class SignalingClient(
                         SignalingPayload(
                             type = "join",
                             roomId = roomId,
-                            clientId = clientId
+                            clientId = clientId,
+                            clientName = currentClientName
                         )
                     )
 
@@ -270,6 +274,12 @@ class SignalingClient(
                 return // Ignore our own messages
             }
 
+            payload.clientName?.let { peerName ->
+                if (peerName.isNotBlank()) {
+                    listener.onPeerNameReceived(peerName)
+                }
+            }
+
             Log.d(TAG, "NTFY received payload: ${payload.type} from $sender")
 
             when (payload.type) {
@@ -280,7 +290,8 @@ class SignalingClient(
                         SignalingPayload(
                             type = "join_ack",
                             roomId = currentRoomId,
-                            clientId = currentClientId
+                            clientId = currentClientId,
+                            clientName = currentClientName
                         )
                     )
                     listener.onPeerJoined(sender)
@@ -382,7 +393,8 @@ class SignalingClient(
                 val joinMessage = SignalingPayload(
                     type = "join",
                     roomId = roomId,
-                    clientId = clientId
+                    clientId = clientId,
+                    clientName = currentClientName
                 )
                 sendMessageWs(joinMessage)
             }
@@ -410,6 +422,11 @@ class SignalingClient(
     private fun handleWebSocketMessage(text: String) {
         try {
             val payload = gson.fromJson(text, SignalingPayload::class.java) ?: return
+            payload.clientName?.let { peerName ->
+                if (peerName.isNotBlank()) {
+                    listener.onPeerNameReceived(peerName)
+                }
+            }
             when (payload.type) {
                 "peer_joined" -> listener.onPeerJoined(payload.clientId ?: "partner")
                 "peer_left" -> listener.onPeerLeft(payload.clientId ?: "partner")
@@ -480,7 +497,7 @@ class SignalingClient(
         streamJob = scope.launch {
             while (isActive) {
                 try {
-                    announceFirebasePeerPresence(normalizedBaseUrl, roomId, clientId)
+                    announceFirebasePeerPresence(normalizedBaseUrl, roomId, clientId, currentClientName)
 
                     val request = Request.Builder()
                         .url(roomUrl)
@@ -533,10 +550,11 @@ class SignalingClient(
         }
     }
 
-    private fun announceFirebasePeerPresence(baseUrl: String, roomId: String, clientId: String) {
+    private fun announceFirebasePeerPresence(baseUrl: String, roomId: String, clientId: String, clientName: String) {
         val body = JsonObject().apply {
             addProperty("online", true)
             addProperty("joinedAt", System.currentTimeMillis())
+            addProperty("name", clientName)
         }.toString().toRequestBody(jsonMediaType)
 
         val request = Request.Builder()
@@ -563,6 +581,13 @@ class SignalingClient(
                         for (entry in peers.entrySet()) {
                             if (entry.key != currentClientId) {
                                 listener.onPeerJoined(entry.key)
+                                if (entry.value.isJsonObject) {
+                                    entry.value.asJsonObject.get("name")?.asString?.let { name ->
+                                        if (name.isNotBlank()) {
+                                            listener.onPeerNameReceived(name)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -605,9 +630,16 @@ class SignalingClient(
                     }
                 }
                 path.startsWith("/peers/") -> {
-                    val peerId = path.removePrefix("/peers/")
+                    val peerId = path.removePrefix("/peers/").substringBefore("/")
                     if (peerId != currentClientId) {
                         listener.onPeerJoined(peerId)
+                        if (dataElem.isJsonObject) {
+                            dataElem.asJsonObject.get("name")?.asString?.let { name ->
+                                if (name.isNotBlank()) {
+                                    listener.onPeerNameReceived(name)
+                                }
+                            }
+                        }
                     }
                 }
                 path == "/offer" && dataElem.isJsonObject -> {
@@ -876,6 +908,10 @@ class SignalingClient(
         val sender = msgObj.get("senderId")?.asString
         if (sender == null || sender == currentClientId) {
             return
+        }
+        val senderName = msgObj.get("senderName")?.asString
+        if (!senderName.isNullOrBlank()) {
+            listener.onPeerNameReceived(senderName)
         }
         val cleanBase = baseUrl.trimEnd('/')
         try {

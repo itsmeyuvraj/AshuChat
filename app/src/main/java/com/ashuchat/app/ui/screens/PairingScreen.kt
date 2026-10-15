@@ -67,7 +67,6 @@ fun PairingScreen(
     onNavigateToSettings: () -> Unit
 ) {
     var myName by remember { mutableStateOf(prefs.myName) }
-    var partnerName by remember { mutableStateOf(prefs.partnerName) }
     var roomId by remember {
         mutableStateOf(
             if (prefs.roomId.isNotBlank()) prefs.roomId else generateRandomRoomId()
@@ -137,7 +136,7 @@ fun PairingScreen(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Names setup card
+        // Name setup card
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -147,43 +146,34 @@ fun PairingScreen(
                 .padding(18.dp)
         ) {
             Text(
-                text = "Profiles",
+                text = "Your Profile",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = RoseLightColor
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Your partner will see this name on their screen",
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = myName,
-                    onValueChange = {
-                        myName = it
-                        prefs.myName = it
-                    },
-                    label = { Text("Your Name", fontSize = 12.sp) },
-                    singleLine = true,
-                    colors = outlinedColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                OutlinedTextField(
-                    value = partnerName,
-                    onValueChange = {
-                        partnerName = it
-                        prefs.partnerName = it
-                    },
-                    label = { Text("Partner's Name", fontSize = 12.sp) },
-                    singleLine = true,
-                    colors = outlinedColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            OutlinedTextField(
+                value = myName,
+                onValueChange = {
+                    myName = it
+                    prefs.myName = it
+                },
+                label = { Text("Your Name / Nickname", fontSize = 12.sp) },
+                singleLine = true,
+                colors = outlinedColors(),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -206,7 +196,7 @@ fun PairingScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Scan this QR code from your girlfriend's phone or enter the matching Room Code",
+                text = "Scan this QR code from your partner's phone or enter the matching Room Code",
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center
@@ -304,8 +294,7 @@ fun PairingScreen(
         // Enter Chat Action Button
         Button(
             onClick = {
-                prefs.myName = myName.trim().ifEmpty { "Yuvraj" }
-                prefs.partnerName = partnerName.trim().ifEmpty { "Ashu" }
+                prefs.myName = myName.trim().ifEmpty { "You" }
                 prefs.roomId = roomId.trim()
                 onNavigateToChat()
             },
