@@ -210,14 +210,14 @@ fun QrScannerScreen(
                     .padding(top = 56.dp, start = 24.dp, end = 24.dp)
             ) {
                 Text(
-                    text = "Scan Peer QR Code",
+                    text = "Scan QR Code",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Point camera at the QR code on the peer screen to pair",
+                    text = "Point camera at the QR code on the other phone",
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
@@ -233,14 +233,14 @@ fun QrScannerScreen(
                     .align(Alignment.Center)
             ) {
                 Text(
-                    text = "Camera Permission Required",
+                    text = "Camera Access Needed",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "AshuChat needs camera access to scan your partner's pairing QR code.",
+                    text = "AshuChat needs camera access to scan the QR code",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center
@@ -250,7 +250,7 @@ fun QrScannerScreen(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                 ) {
-                    Text("Grant Camera Permission")
+                    Text("Allow Camera Access")
                 }
             }
         }

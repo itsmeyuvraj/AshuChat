@@ -359,7 +359,7 @@ fun ChatScreen(
                             .padding(vertical = 6.dp, horizontal = 16.dp)
                     ) {
                         Text(
-                            text = "🔒 $partnerName is offline • Messages queued in secure cloud mailbox",
+                            text = "$partnerName is offline • Messages will deliver when they open the app",
                             fontSize = 11.sp,
                             color = BrandLight
                         )
@@ -397,14 +397,14 @@ fun ChatScreen(
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Encrypted Session Ready",
+                                text = "Ready to chat",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Send a secure message, file, or ping to $partnerName",
+                                text = "Send a message, photo, or file to $partnerName",
                                 fontSize = 13.sp,
                                 color = TextSecondary,
                                 modifier = Modifier.padding(horizontal = 24.dp)

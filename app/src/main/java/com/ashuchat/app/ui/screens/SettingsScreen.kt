@@ -116,9 +116,9 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Section 1: Identity & Profile
+            // Section 1: Profile
             Text(
-                text = "Identity & Profile",
+                text = "Profile",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = BrandLight
@@ -139,10 +139,10 @@ fun SettingsScreen(
                         myName = it
                         prefs.myName = it
                     },
-                    label = { Text("Your Display Name") },
+                    label = { Text("Your Name") },
                     supportingText = {
                         Text(
-                            text = "Your peer sees this name in direct sessions and notifications",
+                            text = "Shown to the person you are chatting with",
                             fontSize = 11.sp,
                             color = TextSecondary
                         )
@@ -155,7 +155,7 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Peer Name Info Card (Synced automatically from peer)
+                // Peer Name Info Card
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -184,13 +184,13 @@ fun SettingsScreen(
 
                     Column {
                         Text(
-                            text = "Connected Peer: $partnerName",
+                            text = "Chatting with: $partnerName",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimary
                         )
                         Text(
-                            text = "Directly synced from peer device",
+                            text = "Set by them on their phone",
                             fontSize = 11.sp,
                             color = TextMuted
                         )
@@ -200,16 +200,16 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section 2: Signaling Relay Server
+            // Section 2: Connection Server
             Text(
-                text = "Signaling Relay Server",
+                text = "Connection Server",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = VioletAccent
+                color = BrandLight
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Used exclusively for the initial 2-second peer handshake. Once connected, your chats, photos, and files stream directly peer-to-peer via WebRTC DataChannel.",
+                text = "Used to connect your phones when opening the chat. Messages and files send directly phone-to-phone.",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -230,7 +230,7 @@ fun SettingsScreen(
                         prefs.signalingUrl = it
                         testResult = null
                     },
-                    label = { Text("Relay URL (Serverless / WebSocket)") },
+                    label = { Text("Server URL") },
                     placeholder = { Text(PreferencesRepository.DEFAULT_SIGNALING_URL) },
                     singleLine = true,
                     colors = settingsOutlinedColors(),
@@ -423,7 +423,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(36.dp))
 
             Text(
-                text = "AshuChat v1.0.0\nPrivate Peer-to-Peer Encrypted Messenger",
+                text = "AshuChat v1.0.0\nPrivate Direct Messenger",
                 fontSize = 12.sp,
                 color = TextMuted,
                 textAlign = TextAlign.Center,

@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ashuchat.app.ui.screens.ChatScreen
 import com.ashuchat.app.ui.screens.PairingScreen
+import com.ashuchat.app.ui.screens.QrCodeScreen
 import com.ashuchat.app.ui.screens.QrScannerScreen
 import com.ashuchat.app.ui.screens.SettingsScreen
 import com.ashuchat.app.ui.theme.AshuChatTheme
@@ -70,6 +71,9 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 onNavigateToChat = {
                     navController.navigate("chat")
                 },
+                onNavigateToShowQr = {
+                    navController.navigate("qr_code")
+                },
                 onNavigateToScanner = {
                     navController.navigate("qr_scanner")
                 },
@@ -93,6 +97,20 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 },
                 onNavigateToSettings = {
                     navController.navigate("settings")
+                }
+            )
+        }
+
+        composable("qr_code") {
+            QrCodeScreen(
+                roomId = prefs.roomId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToChat = {
+                    navController.navigate("chat") {
+                        popUpTo("pairing") { inclusive = false }
+                    }
                 }
             )
         }

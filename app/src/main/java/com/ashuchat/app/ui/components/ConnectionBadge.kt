@@ -37,11 +37,11 @@ fun ConnectionBadge(
     modifier: Modifier = Modifier
 ) {
     val (dotColor, label) = when (state) {
-        P2PConnectionState.CONNECTED_P2P -> Pair(OnlineGreen, "Direct P2P Active")
-        P2PConnectionState.CONNECTING_SIGNALING -> Pair(ConnectingYellow, "Connecting Relay...")
-        P2PConnectionState.WAITING_FOR_PEER -> Pair(ConnectingYellow, "Peer Offline • Mailbox Ready")
-        P2PConnectionState.NEGOTIATING_WEBRTC -> Pair(ConnectingYellow, "Handshaking P2P...")
-        P2PConnectionState.FAILED -> Pair(OfflineRed, "Connection Failed")
+        P2PConnectionState.CONNECTED_P2P -> Pair(OnlineGreen, "Connected")
+        P2PConnectionState.CONNECTING_SIGNALING -> Pair(ConnectingYellow, "Connecting...")
+        P2PConnectionState.WAITING_FOR_PEER -> Pair(ConnectingYellow, "Waiting for partner...")
+        P2PConnectionState.NEGOTIATING_WEBRTC -> Pair(ConnectingYellow, "Connecting...")
+        P2PConnectionState.FAILED -> Pair(OfflineRed, "Not connected")
         P2PConnectionState.DISCONNECTED -> Pair(OfflineRed, "Offline")
     }
 
