@@ -26,6 +26,8 @@ object NotificationHelper {
             ).apply {
                 description = "Private P2P chat messages"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 220, 100, 220)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -50,14 +52,18 @@ object NotificationHelper {
             .setContentTitle(senderName)
             .setContentText(messageText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(1001, notification)
+        val notificationId = (System.currentTimeMillis() % 10000).toInt() + 1000
+        manager.notify(notificationId, notification)
     }
 
+    @Suppress("DEPRECATION")
     fun vibrateLovePing(context: Context) {
         try {
             // Modern double-pulse haptic alert

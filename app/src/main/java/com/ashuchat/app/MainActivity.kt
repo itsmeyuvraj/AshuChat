@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ashuchat.app.service.ChatSyncService
 import com.ashuchat.app.ui.screens.AboutScreen
 import com.ashuchat.app.ui.screens.ChatScreen
 import com.ashuchat.app.ui.screens.ChatSettingsScreen
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+
+        // Start P3 Background Sync Service (foreground service to survive Doze mode)
+        ChatSyncService.startService(this)
 
         setContent {
             AshuChatTheme {

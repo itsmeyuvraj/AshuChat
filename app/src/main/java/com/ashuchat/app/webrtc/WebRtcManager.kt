@@ -346,8 +346,16 @@ class WebRtcManager(
         signalingClient.sendOfflineMessage(packet, onComplete)
     }
 
+    fun sendOfflinePacketForRoom(roomId: String, packet: DataChannelPacket, onComplete: ((Boolean) -> Unit)? = null) {
+        signalingClient.sendOfflineMessageForRoom(roomId, packet, onComplete)
+    }
+
     fun sendOfflineAck(messageId: String, status: String) {
         signalingClient.sendOfflineAck(messageId, status)
+    }
+
+    fun sendOfflineAckForRoom(roomId: String, messageId: String, status: String) {
+        signalingClient.sendOfflineAckForRoom(roomId, messageId, status)
     }
 
     /**

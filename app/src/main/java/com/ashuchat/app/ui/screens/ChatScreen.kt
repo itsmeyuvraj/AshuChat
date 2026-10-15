@@ -55,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -100,6 +101,7 @@ import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.random.Random
 
+import com.ashuchat.app.AshuChatApp
 import com.ashuchat.app.ui.components.SettingsMenuButton
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,6 +148,16 @@ fun ChatScreen(
     ) { success: Boolean ->
         if (success) {
             cameraPhotoUri?.let { viewModel.sendAttachment(it) }
+        }
+    }
+
+    // Track active chat room for heads-up notification filtering
+    DisposableEffect(activeRoomId) {
+        AshuChatApp.activeChatRoom = activeRoomId
+        onDispose {
+            if (AshuChatApp.activeChatRoom == activeRoomId) {
+                AshuChatApp.activeChatRoom = null
+            }
         }
     }
 

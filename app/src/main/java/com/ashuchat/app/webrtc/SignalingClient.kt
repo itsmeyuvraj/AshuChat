@@ -963,6 +963,10 @@ class SignalingClient(
             onResult?.invoke(false)
             return
         }
+        sendOfflineMessageForRoom(roomId, packet, onResult)
+    }
+
+    fun sendOfflineMessageForRoom(roomId: String, packet: DataChannelPacket, onResult: ((Boolean) -> Unit)? = null) {
         val messageId = packet.messageId ?: run {
             onResult?.invoke(false)
             return
@@ -1025,7 +1029,11 @@ class SignalingClient(
 
     fun sendOfflineAck(messageId: String, status: String) {
         val roomId = currentRoomId ?: return
-        if (messageId.isBlank()) return
+        sendOfflineAckForRoom(roomId, messageId, status)
+    }
+
+    fun sendOfflineAckForRoom(roomId: String, messageId: String, status: String) {
+        if (messageId.isBlank() || roomId.isBlank()) return
 
         when (activeMode) {
             SignalingMode.FIREBASE -> {

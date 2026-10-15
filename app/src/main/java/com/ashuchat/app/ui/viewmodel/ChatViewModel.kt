@@ -12,8 +12,10 @@ import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
 import com.ashuchat.app.data.repository.ChatRepository
 import com.ashuchat.app.data.repository.PreferencesRepository
+import com.ashuchat.app.AshuChatApp
 import com.ashuchat.app.utils.AppUpdateInfo
 import com.ashuchat.app.utils.FileUtils
+import com.ashuchat.app.utils.NetworkMonitor
 import com.ashuchat.app.utils.NotificationHelper
 import com.ashuchat.app.utils.UpdateManager
 import com.ashuchat.app.webrtc.P2PConnectionState
@@ -40,6 +42,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val chatRepository = ChatRepository(db.messageDao(), db.roomDao())
     val prefs = PreferencesRepository(application)
     val updateManager = UpdateManager(application)
+    val networkMonitor = NetworkMonitor(application)
 
     val webRtcManager = WebRtcManager(application, viewModelScope)
 
@@ -110,6 +113,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         observeIncomingPackets()
         observeFileTransfers()
         observeConnectionChanges()
+        observeNetworkState()
         observePeerNameSync()
         seedInitialRoomIfAny()
 
@@ -117,6 +121,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             delay(2500)
             checkForUpdates(silent = true)
+        }
+    }
+
+    private fun observeNetworkState() {
+        viewModelScope.launch {
+            networkMonitor.isConnected.collect { isConnected ->
+                if (isConnected) {
+                    flushAllPendingMessages()
+                    val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+                    if (currentRoom.isNotBlank() && !webRtcManager.isP2pConnected()) {
+                        startConnection()
+                    }
+                }
+            }
         }
     }
 
@@ -298,11 +316,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             )
                             chatRepository.insertMessage(incomingMessage)
 
-                            NotificationHelper.showMessageNotification(
-                                getApplication(),
-                                currentPartner,
-                                packet.text ?: "New message"
-                            )
+                            val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
+                            if (shouldNotify) {
+                                NotificationHelper.showMessageNotification(
+                                    getApplication(),
+                                    currentPartner,
+                                    packet.text ?: "New message"
+                                )
+                            }
                         }
 
                         // Send delivery ack back to peer (via P2P if open, or cloud relay)
@@ -356,6 +377,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             // Trigger romantic heartbeat vibration & visual effect
                             NotificationHelper.vibrateLovePing(getApplication())
                             triggerLoveAnimation()
+
+                            val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
+                            if (shouldNotify) {
+                                NotificationHelper.showMessageNotification(
+                                    getApplication(),
+                                    packet.senderName ?: currentPartner,
+                                    "❤️ Sent you a Love Ping!"
+                                )
+                            }
                         }
 
                         // Send delivery ack back to peer
@@ -422,11 +452,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 if (isIncoming) {
-                    NotificationHelper.showMessageNotification(
-                        getApplication(),
-                        _partnerName.value,
-                        "Received attachment"
-                    )
+                    val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
+                    if (shouldNotify) {
+                        NotificationHelper.showMessageNotification(
+                            getApplication(),
+                            _partnerName.value,
+                            "Received attachment"
+                        )
+                    }
                 }
             }
         }
@@ -465,12 +499,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val sent = webRtcManager.sendPacket(packet)
                 if (sent) {
                     chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                    // P2P ACK watchdog: if peer does not acknowledge within 4.5s, fallback to cloud relay
+                    launch {
+                        delay(4500)
+                        val msg = chatRepository.getMessage(messageId)
+                        if (msg != null && msg.status != MessageStatus.DELIVERED && msg.status != MessageStatus.READ) {
+                            webRtcManager.sendOfflinePacketForRoom(currentRoom, packet)
+                        }
+                    }
                     return@launch
                 }
             }
 
             // Partner offline or P2P not yet open: deliver via Serverless Cloud Mailbox
-            webRtcManager.sendOfflinePacket(packet) { success ->
+            webRtcManager.sendOfflinePacketForRoom(currentRoom, packet) { success ->
                 viewModelScope.launch(Dispatchers.IO) {
                     val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
                     chatRepository.updateMessageStatus(messageId, newStatus)
@@ -547,11 +589,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val sent = webRtcManager.sendPacket(packet)
                 if (sent) {
                     chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                    launch {
+                        delay(4500)
+                        val msg = chatRepository.getMessage(messageId)
+                        if (msg != null && msg.status != MessageStatus.DELIVERED && msg.status != MessageStatus.READ) {
+                            webRtcManager.sendOfflinePacketForRoom(currentRoom, packet)
+                        }
+                    }
                     return@launch
                 }
             }
 
-            webRtcManager.sendOfflinePacket(packet) { success ->
+            webRtcManager.sendOfflinePacketForRoom(currentRoom, packet) { success ->
                 viewModelScope.launch(Dispatchers.IO) {
                     val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
                     chatRepository.updateMessageStatus(messageId, newStatus)
@@ -588,10 +637,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun flushPendingMessages() {
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
-        if (currentRoom.isBlank()) return
+        flushAllPendingMessages(currentRoom)
+    }
 
+    fun flushAllPendingMessages(targetRoomId: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
-            val pendingList = chatRepository.getPendingOutgoingMessagesForRoom(currentRoom)
+            val pendingList = if (!targetRoomId.isNullOrBlank()) {
+                chatRepository.getPendingOutgoingMessagesForRoom(targetRoomId)
+            } else {
+                chatRepository.getPendingOutgoingMessages()
+            }
+
             for (msg in pendingList) {
                 val packet = DataChannelPacket(
                     type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
@@ -601,17 +657,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     timestamp = msg.timestamp
                 )
 
-                if (webRtcManager.isP2pConnected()) {
+                if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
                     val sent = webRtcManager.sendPacket(packet)
                     if (sent) {
                         chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
-                    }
-                } else {
-                    webRtcManager.sendOfflinePacket(packet) { success ->
-                        if (success) {
-                            viewModelScope.launch(Dispatchers.IO) {
-                                chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                        launch {
+                            delay(4500)
+                            val curr = chatRepository.getMessage(msg.id)
+                            if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
+                                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet)
                             }
+                        }
+                        continue
+                    }
+                }
+
+                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet) { success ->
+                    if (success) {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
                         }
                     }
                 }
@@ -632,16 +696,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 timestamp = msg.timestamp
             )
 
-            if (webRtcManager.isP2pConnected()) {
+            if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
                 val sent = webRtcManager.sendPacket(packet)
-                val newStatus = if (sent) MessageStatus.SENT else MessageStatus.FAILED
-                chatRepository.updateMessageStatus(messageId, newStatus)
-            } else {
-                webRtcManager.sendOfflinePacket(packet) { success ->
-                    viewModelScope.launch(Dispatchers.IO) {
-                        val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
-                        chatRepository.updateMessageStatus(messageId, newStatus)
+                if (sent) {
+                    chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                    launch {
+                        delay(4500)
+                        val curr = chatRepository.getMessage(messageId)
+                        if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
+                            webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet)
+                        }
                     }
+                    return@launch
+                }
+            }
+
+            webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet) { success ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                    chatRepository.updateMessageStatus(messageId, newStatus)
                 }
             }
         }
