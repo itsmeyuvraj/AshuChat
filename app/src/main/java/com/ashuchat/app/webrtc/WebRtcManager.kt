@@ -366,11 +366,12 @@ class WebRtcManager(
         uri: Uri,
         fileName: String,
         fileSize: Long,
-        mimeType: String?
+        mimeType: String?,
+        senderName: String? = null
     ) {
         val dc = dataChannel
         if (dc != null && dc.state() == DataChannel.State.OPEN) {
-            fileTransferManager.sendFile(dc, messageId, uri, fileName, fileSize, mimeType)
+            fileTransferManager.sendFile(dc, messageId, uri, fileName, fileSize, mimeType, senderName)
         } else {
             Log.w(TAG, "DataChannel is not open, cannot send file")
         }

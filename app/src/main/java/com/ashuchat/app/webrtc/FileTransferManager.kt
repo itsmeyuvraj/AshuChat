@@ -196,7 +196,8 @@ class FileTransferManager(
         uri: Uri,
         fileName: String,
         fileSize: Long,
-        mimeType: String?
+        mimeType: String?,
+        senderName: String? = null
     ) {
         scope.launch(Dispatchers.IO) {
             val fileId = UUID.randomUUID().toString()
@@ -207,6 +208,7 @@ class FileTransferManager(
                 val headerPacket = DataChannelPacket(
                     type = "file_header",
                     messageId = messageId,
+                    senderName = senderName,
                     fileId = fileId,
                     fileName = fileName,
                     fileSize = fileSize,

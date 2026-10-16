@@ -407,25 +407,156 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
-                    "file_header" -> {
-                        // Insert placeholder message for incoming file transfer
-                        val msgId = packet.messageId ?: UUID.randomUUID().toString()
-                        val isImage = FileUtils.isImageMimeType(packet.mimeType)
-                        val fileMsg = ChatMessage(
-                            id = msgId,
-                            roomId = currentRoom,
-                            senderName = packet.senderName ?: _partnerName.value,
-                            isFromMe = false,
-                            text = "",
-                            type = if (isImage) MessageType.IMAGE else MessageType.FILE,
-                            timestamp = packet.timestamp,
-                            status = MessageStatus.SENDING,
-                            attachmentName = packet.fileName,
-                            attachmentSize = packet.fileSize,
-                            mimeType = packet.mimeType,
-                            transferProgress = 0f
+                    "image" -> {
+                        val messageId = packet.messageId ?: UUID.randomUUID().toString()
+                        val currentPartner = _partnerName.value
+                        val existing = chatRepository.getMessage(messageId)
+
+                        var localPath: String? = null
+                        val base64 = packet.dataBase64
+                        if (!base64.isNullOrBlank()) {
+                            try {
+                                val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                localPath = FileUtils.saveTransferBytesToAppStorage(
+                                    getApplication(),
+                                    bytes,
+                                    packet.fileName ?: "photo.jpg"
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed saving incoming image: ${e.localizedMessage}")
+                            }
+                        }
+
+                        if (existing == null) {
+                            val incomingMessage = ChatMessage(
+                                id = messageId,
+                                roomId = currentRoom,
+                                senderName = packet.senderName ?: currentPartner,
+                                isFromMe = false,
+                                text = packet.text ?: "",
+                                type = MessageType.IMAGE,
+                                timestamp = packet.timestamp,
+                                status = MessageStatus.DELIVERED,
+                                attachmentPath = localPath,
+                                attachmentName = packet.fileName ?: "photo.jpg",
+                                attachmentSize = packet.fileSize,
+                                mimeType = packet.mimeType ?: "image/jpeg",
+                                transferProgress = 1.0f
+                            )
+                            chatRepository.insertMessage(incomingMessage)
+
+                            val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
+                            if (shouldNotify) {
+                                NotificationHelper.showMessageNotification(
+                                    getApplication(),
+                                    packet.senderName ?: currentPartner,
+                                    "📷 Sent you a photo"
+                                )
+                            }
+                        } else if (localPath != null && existing.attachmentPath.isNullOrBlank()) {
+                            chatRepository.updateAttachmentPath(messageId, localPath)
+                            chatRepository.updateMessageStatus(messageId, MessageStatus.DELIVERED)
+                        }
+
+                        // Send delivery ack back to peer
+                        val ackPacket = DataChannelPacket(
+                            type = "ack",
+                            messageId = messageId,
+                            status = "DELIVERED"
                         )
-                        chatRepository.insertMessage(fileMsg)
+                        if (webRtcManager.isP2pConnected()) {
+                            webRtcManager.sendPacket(ackPacket)
+                        } else {
+                            webRtcManager.sendOfflineAck(messageId, "DELIVERED")
+                        }
+                    }
+
+                    "file" -> {
+                        val messageId = packet.messageId ?: UUID.randomUUID().toString()
+                        val currentPartner = _partnerName.value
+                        val existing = chatRepository.getMessage(messageId)
+
+                        var localPath: String? = null
+                        val base64 = packet.dataBase64
+                        if (!base64.isNullOrBlank()) {
+                            try {
+                                val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                localPath = FileUtils.saveTransferBytesToAppStorage(
+                                    getApplication(),
+                                    bytes,
+                                    packet.fileName ?: "attachment"
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed saving incoming file: ${e.localizedMessage}")
+                            }
+                        }
+
+                        if (existing == null) {
+                            val incomingMessage = ChatMessage(
+                                id = messageId,
+                                roomId = currentRoom,
+                                senderName = packet.senderName ?: currentPartner,
+                                isFromMe = false,
+                                text = packet.text ?: "",
+                                type = MessageType.FILE,
+                                timestamp = packet.timestamp,
+                                status = MessageStatus.DELIVERED,
+                                attachmentPath = localPath,
+                                attachmentName = packet.fileName ?: "attachment",
+                                attachmentSize = packet.fileSize,
+                                mimeType = packet.mimeType,
+                                transferProgress = 1.0f
+                            )
+                            chatRepository.insertMessage(incomingMessage)
+
+                            val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
+                            if (shouldNotify) {
+                                NotificationHelper.showMessageNotification(
+                                    getApplication(),
+                                    packet.senderName ?: currentPartner,
+                                    "📁 Sent you a file"
+                                )
+                            }
+                        } else if (localPath != null && existing.attachmentPath.isNullOrBlank()) {
+                            chatRepository.updateAttachmentPath(messageId, localPath)
+                            chatRepository.updateMessageStatus(messageId, MessageStatus.DELIVERED)
+                        }
+
+                        // Send delivery ack back to peer
+                        val ackPacket = DataChannelPacket(
+                            type = "ack",
+                            messageId = messageId,
+                            status = "DELIVERED"
+                        )
+                        if (webRtcManager.isP2pConnected()) {
+                            webRtcManager.sendPacket(ackPacket)
+                        } else {
+                            webRtcManager.sendOfflineAck(messageId, "DELIVERED")
+                        }
+                    }
+
+                    "file_header" -> {
+                        // Insert placeholder message for incoming file transfer if not already created
+                        val msgId = packet.messageId ?: UUID.randomUUID().toString()
+                        val existing = chatRepository.getMessage(msgId)
+                        if (existing == null) {
+                            val isImage = FileUtils.isImageMimeType(packet.mimeType)
+                            val fileMsg = ChatMessage(
+                                id = msgId,
+                                roomId = currentRoom,
+                                senderName = packet.senderName ?: _partnerName.value,
+                                isFromMe = false,
+                                text = "",
+                                type = if (isImage) MessageType.IMAGE else MessageType.FILE,
+                                timestamp = packet.timestamp,
+                                status = MessageStatus.SENDING,
+                                attachmentName = packet.fileName,
+                                attachmentSize = packet.fileSize,
+                                mimeType = packet.mimeType,
+                                transferProgress = 0f
+                            )
+                            chatRepository.insertMessage(fileMsg)
+                        }
                     }
 
                     "file_ack" -> {
@@ -451,11 +582,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 currentMap.remove(messageId)
                 _activeFileProgress.value = currentMap
 
-                chatRepository.updateAttachmentPath(messageId, localPath)
-                chatRepository.updateMessageStatus(
-                    messageId,
-                    if (isIncoming) MessageStatus.DELIVERED else MessageStatus.SENT
-                )
+                val existing = chatRepository.getMessage(messageId)
+                if (existing != null) {
+                    chatRepository.updateAttachmentPath(messageId, localPath)
+                    chatRepository.updateMessageStatus(
+                        messageId,
+                        if (isIncoming) MessageStatus.DELIVERED else MessageStatus.SENT
+                    )
+                } else {
+                    val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+                    val isImage = FileUtils.isImageMimeType(FileUtils.getMimeType(getApplication(), Uri.fromFile(File(localPath))))
+                    val fileMsg = ChatMessage(
+                        id = messageId,
+                        roomId = currentRoom,
+                        senderName = _partnerName.value,
+                        isFromMe = !isIncoming,
+                        text = "",
+                        type = if (isImage) MessageType.IMAGE else MessageType.FILE,
+                        timestamp = System.currentTimeMillis(),
+                        status = if (isIncoming) MessageStatus.DELIVERED else MessageStatus.SENT,
+                        attachmentPath = localPath,
+                        attachmentName = File(localPath).name,
+                        transferProgress = 1.0f
+                    )
+                    chatRepository.insertMessage(fileMsg)
+                }
 
                 if (isIncoming) {
                     val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
@@ -563,18 +714,96 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             attachmentName = fileName,
             attachmentSize = fileSize,
             mimeType = mimeType,
-            transferProgress = 0f
+            transferProgress = 1.0f // Local sender already has file available
         )
 
         viewModelScope.launch(Dispatchers.IO) {
             chatRepository.insertMessage(chatMessage)
-            webRtcManager.sendFileAttachment(
-                messageId = messageId,
-                uri = fileUriToSend,
-                fileName = fileName,
-                fileSize = fileSize,
-                mimeType = mimeType
-            )
+
+            if (isImage) {
+                // Compress image for ultra-reliable transfer across both P2P and cloud mailbox
+                val compressedBytes = FileUtils.compressImageForTransfer(context, fileUriToSend)
+                if (compressedBytes != null && compressedBytes.size < 2 * 1024 * 1024) {
+                    val base64 = android.util.Base64.encodeToString(compressedBytes, android.util.Base64.NO_WRAP)
+                    val imagePacket = DataChannelPacket(
+                        type = "image",
+                        messageId = messageId,
+                        senderName = prefs.myName,
+                        fileName = fileName,
+                        fileSize = compressedBytes.size.toLong(),
+                        mimeType = "image/jpeg",
+                        timestamp = chatMessage.timestamp,
+                        dataBase64 = base64
+                    )
+
+                    // 1. Direct P2P send if WebRTC DataChannel is open
+                    if (webRtcManager.isP2pConnected()) {
+                        val sent = webRtcManager.sendPacket(imagePacket)
+                        if (sent) {
+                            chatRepository.updateMessageStatus(messageId, MessageStatus.SENT)
+                            // P2P ACK watchdog: if peer does not ack within 4.5s, fallback to cloud relay
+                            launch {
+                                delay(4500)
+                                val msg = chatRepository.getMessage(messageId)
+                                if (msg != null && msg.status != MessageStatus.DELIVERED && msg.status != MessageStatus.READ) {
+                                    webRtcManager.sendOfflinePacketForRoom(currentRoom, imagePacket)
+                                }
+                            }
+                            return@launch
+                        }
+                    }
+
+                    // 2. Direct P2P not open or send failed: deliver via Serverless Cloud Mailbox!
+                    webRtcManager.sendOfflinePacketForRoom(currentRoom, imagePacket) { success ->
+                        viewModelScope.launch(Dispatchers.IO) {
+                            val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
+                            chatRepository.updateMessageStatus(messageId, newStatus)
+                        }
+                    }
+                    return@launch
+                }
+            }
+
+            // For non-images or large files:
+            if (webRtcManager.isP2pConnected()) {
+                webRtcManager.sendFileAttachment(
+                    messageId = messageId,
+                    uri = fileUriToSend,
+                    fileName = fileName,
+                    fileSize = fileSize,
+                    mimeType = mimeType,
+                    senderName = prefs.myName
+                )
+            } else {
+                // Try sending small non-image files (< 1MB) via cloud mailbox
+                if (fileSize in 1..1024 * 1024) {
+                    try {
+                        val stream = context.contentResolver.openInputStream(fileUriToSend) ?: File(permanentLocalPath).inputStream()
+                        val bytes = stream.use { it.readBytes() }
+                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        val filePacket = DataChannelPacket(
+                            type = "file",
+                            messageId = messageId,
+                            senderName = prefs.myName,
+                            fileName = fileName,
+                            fileSize = fileSize,
+                            mimeType = mimeType,
+                            timestamp = chatMessage.timestamp,
+                            dataBase64 = base64
+                        )
+                        webRtcManager.sendOfflinePacketForRoom(currentRoom, filePacket) { success ->
+                            viewModelScope.launch(Dispatchers.IO) {
+                                val newStatus = if (success) MessageStatus.SENT else MessageStatus.SENDING
+                                chatRepository.updateMessageStatus(messageId, newStatus)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed reading file for mailbox fallback: ${e.localizedMessage}")
+                    }
+                } else {
+                    Log.w(TAG, "P2P not connected and file too large for cloud mailbox (${fileSize} bytes)")
+                }
+            }
         }
     }
 

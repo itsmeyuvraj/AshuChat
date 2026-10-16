@@ -113,6 +113,113 @@ object FileUtils {
         } catch (_: Exception) {}
     }
 
+    fun saveTransferBytesToAppStorage(
+        context: Context,
+        bytes: ByteArray,
+        preferredName: String
+    ): String {
+        val safeName = sanitizeFileName(preferredName)
+        val destFile = File(getAttachmentsDir(context), "${System.currentTimeMillis()}_$safeName")
+        destFile.writeBytes(bytes)
+        return destFile.absolutePath
+    }
+
+    fun compressImageForTransfer(
+        context: Context,
+        uri: Uri,
+        maxDimension: Int = 1280,
+        quality: Int = 80
+    ): ByteArray? {
+        return try {
+            val contentResolver = context.contentResolver
+
+            // 1. Determine bounds
+            val options = android.graphics.BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            contentResolver.openInputStream(uri)?.use { input ->
+                android.graphics.BitmapFactory.decodeStream(input, null, options)
+            } ?: return null
+
+            val origWidth = options.outWidth
+            val origHeight = options.outHeight
+            if (origWidth <= 0 || origHeight <= 0) return null
+
+            // 2. Compute sample size
+            var inSampleSize = 1
+            var maxSide = maxOf(origWidth, origHeight)
+            while (maxSide / 2 >= maxDimension) {
+                inSampleSize *= 2
+                maxSide /= 2
+            }
+
+            // 3. Decode bitmap with downsampling
+            val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+                inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+            }
+            val sampledBitmap = contentResolver.openInputStream(uri)?.use { input ->
+                android.graphics.BitmapFactory.decodeStream(input, null, decodeOptions)
+            } ?: return null
+
+            // 4. Handle EXIF rotation
+            var rotationDegrees = 0
+            try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val exif = android.media.ExifInterface(input)
+                    val orientation = exif.getAttributeInt(
+                        android.media.ExifInterface.TAG_ORIENTATION,
+                        android.media.ExifInterface.ORIENTATION_NORMAL
+                    )
+                    rotationDegrees = when (orientation) {
+                        android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                        android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                        android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                        else -> 0
+                    }
+                }
+            } catch (_: Exception) {}
+
+            // 5. Scale down precisely if needed and apply rotation
+            val currentMax = maxOf(sampledBitmap.width, sampledBitmap.height)
+            val scaleFactor = if (currentMax > maxDimension) {
+                maxDimension.toFloat() / currentMax.toFloat()
+            } else {
+                1f
+            }
+
+            val matrix = android.graphics.Matrix().apply {
+                if (scaleFactor != 1f) postScale(scaleFactor, scaleFactor)
+                if (rotationDegrees != 0) postRotate(rotationDegrees.toFloat())
+            }
+
+            val finalBitmap = if (scaleFactor != 1f || rotationDegrees != 0) {
+                android.graphics.Bitmap.createBitmap(
+                    sampledBitmap,
+                    0,
+                    0,
+                    sampledBitmap.width,
+                    sampledBitmap.height,
+                    matrix,
+                    true
+                ).also {
+                    if (it != sampledBitmap) sampledBitmap.recycle()
+                }
+            } else {
+                sampledBitmap
+            }
+
+            // 6. Compress to JPEG
+            val out = java.io.ByteArrayOutputStream()
+            finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, out)
+            finalBitmap.recycle()
+            out.toByteArray()
+        } catch (e: Exception) {
+            android.util.Log.e("FileUtils", "Error compressing image: ${e.localizedMessage}", e)
+            null
+        }
+    }
+
     fun clearAllLocalFiles(context: Context) {
         try {
             // Delete all stored attachments

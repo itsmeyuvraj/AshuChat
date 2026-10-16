@@ -45,5 +45,9 @@ data class DataChannelPacket(
     val status: String? = null,
 
     @SerializedName("isTyping")
-    val isTyping: Boolean? = null
+    val isTyping: Boolean? = null,
+
+    // Base64 payload for direct image and file transfer (mailbox & instant P2P)
+    @SerializedName("dataBase64")
+    val dataBase64: String? = null
 )

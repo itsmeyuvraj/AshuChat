@@ -74,6 +74,7 @@ fun MediaViewerDialog(
                 val imageModel = androidx.compose.runtime.remember(filePath) {
                     when {
                         filePath.startsWith("content://") || filePath.startsWith("file://") -> android.net.Uri.parse(filePath)
+                        filePath.startsWith("/") -> android.net.Uri.fromFile(File(filePath))
                         else -> File(filePath)
                     }
                 }

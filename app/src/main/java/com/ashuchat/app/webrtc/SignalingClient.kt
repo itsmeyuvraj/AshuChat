@@ -717,6 +717,10 @@ class SignalingClient(
         val sender = candObj.get("senderId")?.asString
         if (sender != currentClientId && !processedCandidateKeys.contains(key)) {
             processedCandidateKeys.add(key)
+            val timestamp = if (candObj.has("timestamp")) candObj.get("timestamp").asLong else 0L
+            val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 90_000L
+            if (!isFresh) return
+
             val sdp = candObj.get("sdp")?.asString
             val sdpMid = candObj.get("sdpMid")?.asString
             val sdpMLineIndex = candObj.get("sdpMLineIndex")?.asInt
@@ -760,6 +764,20 @@ class SignalingClient(
             SignalingMode.FIREBASE -> {
                 val baseUrl = currentServerUrl.trimEnd('/')
                 val roomId = currentRoomId ?: return
+
+                // Clear old candidates and answer before advertising fresh offer
+                val delCandReq = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/candidates.json")
+                    .delete()
+                    .build()
+                client.newCall(delCandReq).enqueue(NoOpCallback)
+
+                val delAnsReq = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/answer.json")
+                    .delete()
+                    .build()
+                client.newCall(delAnsReq).enqueue(NoOpCallback)
+
                 val body = JsonObject().apply {
                     addProperty("sdp", sdp)
                     addProperty("senderId", currentClientId)
@@ -894,6 +912,12 @@ class SignalingClient(
                     .delete()
                     .build()
                 client.newCall(req).enqueue(NoOpCallback)
+
+                val cleanOfferReq = Request.Builder()
+                    .url("$baseUrl/rooms/$roomId/offer.json")
+                    .delete()
+                    .build()
+                client.newCall(cleanOfferReq).enqueue(NoOpCallback)
             }
 
             webSocket?.close(1000, "Normal Closure")

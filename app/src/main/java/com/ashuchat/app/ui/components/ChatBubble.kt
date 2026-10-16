@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -170,6 +170,16 @@ private fun ImageBubbleContent(
     val path = message.attachmentPath
     val isTransferring = message.transferProgress < 1.0f
 
+    val fileExists = remember(path) {
+        if (path.isNullOrBlank()) false
+        else when {
+            path.startsWith("content://") -> true
+            path.startsWith("file://") -> File(path.removePrefix("file://")).exists()
+            path.startsWith("/") -> File(path).exists()
+            else -> File(path).exists()
+        }
+    }
+
     Column {
         Box(
             contentAlignment = Alignment.Center,
@@ -178,15 +188,16 @@ private fun ImageBubbleContent(
                 .height(180.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.Black.copy(alpha = 0.3f))
-                .clickable(enabled = path != null && !isTransferring) {
+                .clickable(enabled = path != null && fileExists && !isTransferring) {
                     path?.let { onImageClick(it, message.attachmentName) }
                 }
         ) {
-            if (path != null) {
+            if (path != null && fileExists) {
                 val context = LocalContext.current
                 val imageModel = remember(path) {
                     when {
                         path.startsWith("content://") || path.startsWith("file://") -> Uri.parse(path)
+                        path.startsWith("/") -> Uri.fromFile(File(path))
                         else -> File(path)
                     }
                 }
@@ -199,6 +210,25 @@ private fun ImageBubbleContent(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize()
                 )
+            } else if (!isTransferring) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+                        contentDescription = "Photo",
+                        tint = TextMuted,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = message.attachmentName ?: "Photo",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
             }
 
             if (isTransferring) {
@@ -249,7 +279,7 @@ private fun FileBubbleContent(message: ChatMessage) {
                     .background(Color.White.copy(alpha = 0.15f))
             ) {
                 Icon(
-                    imageVector = Icons.Default.InsertDriveFile,
+                    imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                     contentDescription = "File",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
