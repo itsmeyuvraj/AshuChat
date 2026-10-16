@@ -66,10 +66,6 @@ fun PairingScreen(
     onNavigateToChat: () -> Unit,
     onNavigateToShowQr: (String) -> Unit,
     onNavigateToScanner: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onNavigateToRelay: () -> Unit,
-    onNavigateToChatSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit,
     onNavigateBack: (() -> Unit)? = null
 ) {
     val prefs = viewModel.prefs
@@ -128,17 +124,6 @@ fun PairingScreen(
                     )
                 }
             }
-
-            SettingsMenuButton(
-                onNavigateToProfile = onNavigateToProfile,
-                onNavigateToRelay = onNavigateToRelay,
-                onNavigateToChat = onNavigateToChatSettings,
-                onNavigateToAbout = onNavigateToAbout,
-                iconModifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceElevated)
-            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))

@@ -34,6 +34,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.util.Log
+import java.io.File
 import java.util.UUID
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
@@ -78,8 +80,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _partnerName = MutableStateFlow(prefs.partnerName)
     val partnerName: StateFlow<String> = _partnerName.asStateFlow()
 
-    private val _showLoveHeartEffect = MutableStateFlow(false)
-    val showLoveHeartEffect: StateFlow<Boolean> = _showLoveHeartEffect.asStateFlow()
+    private val _showPingEffect = MutableStateFlow(false)
+    val showPingEffect: StateFlow<Boolean> = _showPingEffect.asStateFlow()
+    val showLoveHeartEffect: StateFlow<Boolean> get() = showPingEffect
 
     private val _activeFileProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
 
@@ -357,33 +360,36 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
-                    "love_ping" -> {
+                    "ping", "love_ping" -> {
+                        // Ignore self-sent pings (Fixes bug: receiving notification when you ping)
+                        if (packet.senderName == prefs.myName) return@collect
+
                         val messageId = packet.messageId ?: UUID.randomUUID().toString()
                         val currentPartner = _partnerName.value
                         val existing = chatRepository.getMessage(messageId)
                         if (existing == null) {
-                            val loveMessage = ChatMessage(
+                            val pingMessage = ChatMessage(
                                 id = messageId,
                                 roomId = currentRoom,
                                 senderName = packet.senderName ?: currentPartner,
                                 isFromMe = false,
                                 text = "",
-                                type = MessageType.LOVE_PING,
+                                type = MessageType.PING,
                                 timestamp = packet.timestamp,
                                 status = MessageStatus.DELIVERED
                             )
-                            chatRepository.insertMessage(loveMessage)
+                            chatRepository.insertMessage(pingMessage)
 
-                            // Trigger romantic heartbeat vibration & visual effect
-                            NotificationHelper.vibrateLovePing(getApplication())
-                            triggerLoveAnimation()
+                            // Trigger haptic vibration & visual alert for receiver only
+                            NotificationHelper.vibratePing(getApplication())
+                            triggerPingAnimation()
 
                             val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
                             if (shouldNotify) {
                                 NotificationHelper.showMessageNotification(
                                     getApplication(),
                                     packet.senderName ?: currentPartner,
-                                    "❤️ Sent you a Love Ping!"
+                                    "⚡ Sent you a Ping!"
                                 )
                             }
                         }
@@ -528,6 +534,20 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val mimeType = FileUtils.getMimeType(context, uri)
         val isImage = FileUtils.isImageMimeType(mimeType)
 
+        // Save permanent local copy for sender so photo is immediately visible and persistent
+        val permanentLocalPath = try {
+            FileUtils.copyUriToAppStorage(context, uri, fileName)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed copying attachment to app storage: ${e.localizedMessage}")
+            uri.toString()
+        }
+
+        val fileUriToSend = if (permanentLocalPath.startsWith("/")) {
+            Uri.fromFile(File(permanentLocalPath))
+        } else {
+            uri
+        }
+
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
         val chatMessage = ChatMessage(
@@ -539,7 +559,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             type = if (isImage) MessageType.IMAGE else MessageType.FILE,
             timestamp = System.currentTimeMillis(),
             status = MessageStatus.SENDING,
-            attachmentPath = uri.toString(),
+            attachmentPath = permanentLocalPath,
             attachmentName = fileName,
             attachmentSize = fileSize,
             mimeType = mimeType,
@@ -550,7 +570,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             chatRepository.insertMessage(chatMessage)
             webRtcManager.sendFileAttachment(
                 messageId = messageId,
-                uri = uri,
+                uri = fileUriToSend,
                 fileName = fileName,
                 fileSize = fileSize,
                 mimeType = mimeType
@@ -558,32 +578,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendLovePing() {
+    fun sendPing() {
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
-        val loveMessage = ChatMessage(
+        val pingMessage = ChatMessage(
             id = messageId,
             roomId = currentRoom,
             senderName = prefs.myName,
             isFromMe = true,
             text = "",
-            type = MessageType.LOVE_PING,
+            type = MessageType.PING,
             timestamp = System.currentTimeMillis(),
             status = MessageStatus.SENDING
         )
 
         viewModelScope.launch(Dispatchers.IO) {
-            chatRepository.insertMessage(loveMessage)
+            chatRepository.insertMessage(pingMessage)
 
             val packet = DataChannelPacket(
-                type = "love_ping",
+                type = "ping",
                 messageId = messageId,
                 senderName = prefs.myName,
-                timestamp = loveMessage.timestamp
+                timestamp = pingMessage.timestamp
             )
 
-            NotificationHelper.vibrateLovePing(getApplication())
-            triggerLoveAnimation()
+            // Do NOT vibrate or trigger "Ping received from..." for the sender
 
             if (webRtcManager.isP2pConnected()) {
                 val sent = webRtcManager.sendPacket(packet)
@@ -609,6 +628,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    @Deprecated("Use sendPing()", ReplaceWith("sendPing()"))
+    fun sendLovePing() = sendPing()
+
     fun setTyping(isTyping: Boolean) {
         webRtcManager.sendPacket(
             DataChannelPacket(
@@ -618,20 +640,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    private fun triggerLoveAnimation() {
+    private fun triggerPingAnimation() {
         viewModelScope.launch {
-            _showLoveHeartEffect.value = true
+            _showPingEffect.value = true
             delay(2500)
-            _showLoveHeartEffect.value = false
+            _showPingEffect.value = false
         }
     }
+
+    @Deprecated("Use triggerPingAnimation()", ReplaceWith("triggerPingAnimation()"))
+    private fun triggerLoveAnimation() = triggerPingAnimation()
 
     fun clearChat() {
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         if (currentRoom.isNotBlank()) {
             viewModelScope.launch(Dispatchers.IO) {
-                chatRepository.clearRoomMessages(currentRoom)
+                chatRepository.clearRoomMessages(currentRoom, getApplication())
             }
+        }
+    }
+
+    fun clearAllData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.clearAllData(getApplication())
+            prefs.clearRoom()
+            _activeRoomId.value = ""
         }
     }
 
@@ -650,7 +683,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             for (msg in pendingList) {
                 val packet = DataChannelPacket(
-                    type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
+                    type = if (msg.type == MessageType.PING || msg.type == MessageType.LOVE_PING) "ping" else "text",
                     messageId = msg.id,
                     senderName = prefs.myName,
                     text = msg.text,
@@ -689,7 +722,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             chatRepository.updateMessageStatus(messageId, MessageStatus.SENDING)
 
             val packet = DataChannelPacket(
-                type = if (msg.type == MessageType.LOVE_PING) "love_ping" else "text",
+                type = if (msg.type == MessageType.PING || msg.type == MessageType.LOVE_PING) "ping" else "text",
                 messageId = msg.id,
                 senderName = prefs.myName,
                 text = msg.text,
@@ -772,5 +805,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         webRtcManager.stop()
+    }
+
+    companion object {
+        private const val TAG = "ChatViewModel"
     }
 }

@@ -422,6 +422,10 @@ class SignalingClient(
     private fun handleWebSocketMessage(text: String) {
         try {
             val payload = gson.fromJson(text, SignalingPayload::class.java) ?: return
+            val sender = payload.clientId
+            if (sender != null && sender == currentClientId) {
+                return // Ignore our own messages
+            }
             payload.clientName?.let { peerName ->
                 if (peerName.isNotBlank()) {
                     listener.onPeerNameReceived(peerName)

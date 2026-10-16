@@ -44,7 +44,7 @@ fun AttachmentPickerSheet(
     onPickImage: () -> Unit,
     onPickFile: () -> Unit,
     onTakePhoto: () -> Unit,
-    onSendLovePing: () -> Unit
+    onSendPing: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -104,7 +104,7 @@ fun AttachmentPickerSheet(
                     color = BrandLight,
                     onClick = {
                         onDismiss()
-                        onSendLovePing()
+                        onSendPing()
                     }
                 )
             }

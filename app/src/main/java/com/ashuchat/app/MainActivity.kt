@@ -113,18 +113,6 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                 onNavigateToScanner = {
                     navController.navigate("qr_scanner")
                 },
-                onNavigateToProfile = {
-                    navController.navigate("settings/profile")
-                },
-                onNavigateToRelay = {
-                    navController.navigate("settings/relay")
-                },
-                onNavigateToChatSettings = {
-                    navController.navigate("settings/chat")
-                },
-                onNavigateToAbout = {
-                    navController.navigate("settings/about")
-                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
@@ -142,18 +130,6 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
                             popUpTo("chat") { inclusive = true }
                         }
                     }
-                },
-                onNavigateToProfile = {
-                    navController.navigate("settings/profile")
-                },
-                onNavigateToRelay = {
-                    navController.navigate("settings/relay")
-                },
-                onNavigateToChatSettings = {
-                    navController.navigate("settings/chat")
-                },
-                onNavigateToAbout = {
-                    navController.navigate("settings/about")
                 },
                 onNavigateToShowQr = { roomId ->
                     navController.navigate("qr_code/$roomId")

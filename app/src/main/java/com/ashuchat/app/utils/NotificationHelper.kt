@@ -64,7 +64,7 @@ object NotificationHelper {
     }
 
     @Suppress("DEPRECATION")
-    fun vibrateLovePing(context: Context) {
+    fun vibratePing(context: Context) {
         try {
             // Modern double-pulse haptic alert
             val pattern = longArrayOf(0, 120, 80, 120)
@@ -83,4 +83,7 @@ object NotificationHelper {
             }
         } catch (_: Exception) {}
     }
+
+    @Deprecated("Use vibratePing instead", ReplaceWith("vibratePing(context)"))
+    fun vibrateLovePing(context: Context) = vibratePing(context)
 }

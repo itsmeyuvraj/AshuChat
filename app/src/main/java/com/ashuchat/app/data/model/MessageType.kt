@@ -5,5 +5,6 @@ enum class MessageType {
     IMAGE,
     FILE,
     AUDIO,
-    LOVE_PING
+    PING,
+    LOVE_PING // Backward compatibility with previous records
 }

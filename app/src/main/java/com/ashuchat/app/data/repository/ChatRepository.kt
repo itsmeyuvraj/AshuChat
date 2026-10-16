@@ -7,7 +7,10 @@ import com.ashuchat.app.data.local.RoomEntity
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
+import android.content.Context
+import com.ashuchat.app.utils.FileUtils
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 class ChatRepository(
@@ -79,7 +82,7 @@ class ChatRepository(
             MessageType.IMAGE -> "📷 Photo"
             MessageType.FILE -> "📄 ${message.attachmentName ?: "File"}"
             MessageType.AUDIO -> "🎵 Audio"
-            MessageType.LOVE_PING -> "❤️ Love Ping"
+            MessageType.PING, MessageType.LOVE_PING -> "⚡ Ping"
         }
         val existingRoom = roomDao.getRoomById(message.roomId)
         if (existingRoom != null) {
@@ -108,12 +111,19 @@ class ChatRepository(
         messageDao.deleteMessage(id)
     }
 
-    suspend fun clearRoomMessages(roomId: String) {
+    suspend fun clearRoomMessages(roomId: String, context: Context? = null) {
+        if (context != null) {
+            val messages = messageDao.getMessagesForRoomFlow(roomId).firstOrNull() ?: emptyList()
+            messages.forEach { msg ->
+                FileUtils.deleteFile(msg.attachmentPath)
+            }
+        }
         messageDao.deleteMessagesForRoom(roomId)
         roomDao.updateLastMessage(roomId, "Chat cleared", System.currentTimeMillis())
     }
 
-    suspend fun clearAllMessages() {
+    suspend fun clearAllData(context: Context) {
+        FileUtils.clearAllLocalFiles(context)
         messageDao.deleteAllMessages()
         roomDao.deleteAllRooms()
     }

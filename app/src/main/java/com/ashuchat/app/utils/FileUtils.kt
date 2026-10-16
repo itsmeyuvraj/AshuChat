@@ -83,4 +83,44 @@ object FileUtils {
     fun isImageMimeType(mimeType: String?): Boolean {
         return mimeType?.startsWith("image/") == true
     }
+
+    fun getAttachmentsDir(context: Context): File {
+        val dir = File(context.filesDir, "attachments")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir
+    }
+
+    fun copyUriToAppStorage(context: Context, uri: Uri, preferredName: String? = null): String {
+        val fileName = sanitizeFileName(preferredName ?: getFileName(context, uri))
+        val destFile = File(getAttachmentsDir(context), "${System.currentTimeMillis()}_$fileName")
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            destFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: throw IllegalStateException("Could not read URI: $uri")
+        return destFile.absolutePath
+    }
+
+    fun deleteFile(path: String?) {
+        if (path.isNullOrBlank()) return
+        try {
+            val file = File(path)
+            if (file.exists()) {
+                file.delete()
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun clearAllLocalFiles(context: Context) {
+        try {
+            // Delete all stored attachments
+            getAttachmentsDir(context).listFiles()?.forEach { it.deleteRecursively() }
+            // Delete cache files (temp camera captures, chunks)
+            context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+            // Delete external files if any
+            context.getExternalFilesDir(null)?.listFiles()?.forEach { it.deleteRecursively() }
+        } catch (_: Exception) {}
+    }
 }

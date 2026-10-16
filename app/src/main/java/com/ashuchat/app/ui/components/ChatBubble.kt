@@ -45,7 +45,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
+import androidx.compose.runtime.remember
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
@@ -100,7 +103,7 @@ fun ChatBubble(
                 .then(
                     if (!isMe) Modifier.border(1.dp, SurfaceBorder, bubbleShape) else Modifier
                 )
-                .padding(if (message.type == MessageType.LOVE_PING) 12.dp else 10.dp)
+                .padding(if (message.type == MessageType.PING || message.type == MessageType.LOVE_PING) 12.dp else 10.dp)
         ) {
             Column {
                 when (message.type) {
@@ -124,8 +127,8 @@ fun ChatBubble(
                         FileBubbleContent(message = message)
                     }
 
-                    MessageType.LOVE_PING -> {
-                        LovePingBubbleContent(message = message, isMe = isMe)
+                    MessageType.PING, MessageType.LOVE_PING -> {
+                        PingBubbleContent(message = message, isMe = isMe)
                     }
 
                     MessageType.AUDIO -> {
@@ -180,8 +183,18 @@ private fun ImageBubbleContent(
                 }
         ) {
             if (path != null) {
+                val context = LocalContext.current
+                val imageModel = remember(path) {
+                    when {
+                        path.startsWith("content://") || path.startsWith("file://") -> Uri.parse(path)
+                        else -> File(path)
+                    }
+                }
                 AsyncImage(
-                    model = File(path),
+                    model = ImageRequest.Builder(context)
+                        .data(imageModel)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = message.attachmentName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize()
@@ -286,7 +299,7 @@ private fun FileBubbleContent(message: ChatMessage) {
 }
 
 @Composable
-private fun LovePingBubbleContent(message: ChatMessage, isMe: Boolean) {
+private fun PingBubbleContent(message: ChatMessage, isMe: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "pingPulse")
     val scaleAnim by infiniteTransition.animateFloat(
         initialValue = 0.95f,

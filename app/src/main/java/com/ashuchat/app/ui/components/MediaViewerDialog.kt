@@ -70,8 +70,18 @@ fun MediaViewerDialog(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp, vertical = 72.dp)
             ) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val imageModel = androidx.compose.runtime.remember(filePath) {
+                    when {
+                        filePath.startsWith("content://") || filePath.startsWith("file://") -> android.net.Uri.parse(filePath)
+                        else -> File(filePath)
+                    }
+                }
                 AsyncImage(
-                    model = File(filePath),
+                    model = coil.request.ImageRequest.Builder(context)
+                        .data(imageModel)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = fileName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()

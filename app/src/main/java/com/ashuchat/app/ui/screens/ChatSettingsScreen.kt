@@ -160,7 +160,7 @@ fun ChatSettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Messages are stored securely in your phone's private Room database. You can wipe all local chat records at any time.",
+                    text = "Messages, media, and room histories are stored securely in your phone's private Room database and local app storage. You can wipe all local chat records at any time.",
                     fontSize = 12.sp,
                     color = TextSecondary,
                     lineHeight = 17.sp
@@ -185,7 +185,7 @@ fun ChatSettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Clear Local Chat History",
+                        text = "Clear All Local Data",
                         color = OfflineRed,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -199,11 +199,11 @@ fun ChatSettingsScreen(
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
             title = {
-                Text(text = "Clear All Messages?", color = TextPrimary)
+                Text(text = "Clear All Local Data?", color = TextPrimary)
             },
             text = {
                 Text(
-                    text = "This will permanently remove all text and media records saved locally on this phone.",
+                    text = "This will permanently remove all chat rooms, message histories, and downloaded media files saved on this device.",
                     color = TextSecondary
                 )
             },
@@ -211,10 +211,10 @@ fun ChatSettingsScreen(
                 TextButton(
                     onClick = {
                         showClearConfirmDialog = false
-                        viewModel.clearChat()
+                        viewModel.clearAllData()
                     }
                 ) {
-                    Text("Clear All", color = OfflineRed)
+                    Text("Clear All Data", color = OfflineRed)
                 }
             },
             dismissButton = {

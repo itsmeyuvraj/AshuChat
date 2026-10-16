@@ -24,7 +24,8 @@ data class MessageEntity(
 ) {
     fun toChatMessage(progress: Float = 1.0f): ChatMessage {
         val parsedType = try {
-            MessageType.valueOf(type)
+            val t = MessageType.valueOf(type)
+            if (t == MessageType.LOVE_PING) MessageType.PING else t
         } catch (_: Exception) {
             MessageType.TEXT
         }

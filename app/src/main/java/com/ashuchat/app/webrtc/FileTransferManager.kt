@@ -74,8 +74,8 @@ class FileTransferManager(
         Log.d(TAG, "Incoming file: $fileName, size: $fileSize bytes, total chunks: $totalChunks")
 
         try {
-            val cacheDir = context.cacheDir
-            val tempFile = File(cacheDir, "transfer_$fileId.tmp")
+            val storageDir = FileUtils.getAttachmentsDir(context)
+            val tempFile = File(storageDir, "transfer_$fileId.tmp")
             if (tempFile.exists()) tempFile.delete()
             tempFile.createNewFile()
 
@@ -95,7 +95,7 @@ class FileTransferManager(
 
             incomingTransfers[fileId] = transfer
             activeProgress[fileId] = 0f
-            listener.onFileTransferProgress(fileId, 0f)
+            listener.onFileTransferProgress(messageId, 0f)
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing incoming file transfer: ${e.localizedMessage}", e)
             listener.onFileTransferFailed(fileId, e.localizedMessage ?: "File init failed")
@@ -145,17 +145,20 @@ class FileTransferManager(
                     1f
                 }
                 activeProgress[fileId] = progress
-                listener.onFileTransferProgress(fileId, progress)
+                listener.onFileTransferProgress(transfer.messageId, progress)
 
                 if (transfer.receivedChunks >= transfer.totalChunks || transfer.receivedBytes >= transfer.fileSize) {
                     Log.d(TAG, "File transfer completed for fileId: $fileId")
                     transfer.randomAccessFile.close()
 
                     // Move file to permanent app storage
-                    val finalDir = context.getExternalFilesDir(null) ?: context.filesDir
+                    val storageDir = FileUtils.getAttachmentsDir(context)
                     val safeFileName = FileUtils.sanitizeFileName(transfer.fileName)
-                    val finalFile = File(finalDir, "${System.currentTimeMillis()}_$safeFileName")
-                    transfer.tempFile.renameTo(finalFile)
+                    val finalFile = File(storageDir, "${System.currentTimeMillis()}_$safeFileName")
+                    if (!transfer.tempFile.renameTo(finalFile)) {
+                        transfer.tempFile.copyTo(finalFile, overwrite = true)
+                        transfer.tempFile.delete()
+                    }
 
                     incomingTransfers.remove(fileId)
                     activeProgress.remove(fileId)
@@ -216,9 +219,13 @@ class FileTransferManager(
                 // Small pause to allow peer to allocate file buffer
                 delay(100)
 
-                // 2. Open input stream from content resolver
-                val inputStream = context.contentResolver.openInputStream(uri)
-                    ?: throw IllegalStateException("Could not open input stream for $uri")
+                // 2. Open input stream from content resolver or local file
+                val inputStream = if (uri.scheme == "content") {
+                    context.contentResolver.openInputStream(uri)
+                } else {
+                    val filePath = if (uri.scheme == "file") uri.path ?: uri.toString().removePrefix("file://") else uri.toString()
+                    File(filePath).inputStream()
+                } ?: throw IllegalStateException("Could not open input stream for $uri")
 
                 val buffer = ByteArray(CHUNK_SIZE)
                 var chunkIndex = 0
@@ -250,7 +257,7 @@ class FileTransferManager(
                         chunkIndex++
 
                         val progress = (bytesSent.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f)
-                        listener.onFileTransferProgress(fileId, progress)
+                        listener.onFileTransferProgress(messageId, progress)
                     }
                 }
 

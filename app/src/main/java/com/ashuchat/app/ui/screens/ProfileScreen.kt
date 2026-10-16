@@ -62,7 +62,6 @@ fun ProfileScreen(
 ) {
     val prefs = viewModel.prefs
     var myName by remember { mutableStateOf(prefs.myName) }
-    val partnerName by viewModel.partnerName.collectAsState()
 
     Scaffold(
         containerColor = MidnightBg,
@@ -174,54 +173,6 @@ fun ProfileScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Connected Peer Information Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceElevated)
-                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
-                    .padding(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Connected Peer",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = partnerName.ifBlank { "Peer" },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MidnightBg)
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "Auto-Synced",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = BrandLight
-                        )
-                    }
-                }
             }
         }
     }

@@ -43,15 +43,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -101,18 +106,14 @@ import kotlinx.coroutines.delay
 import java.io.File
 import kotlin.random.Random
 
+import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.AshuChatApp
-import com.ashuchat.app.ui.components.SettingsMenuButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onNavigateToRelay: () -> Unit,
-    onNavigateToChatSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit,
     onNavigateToShowQr: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -121,12 +122,14 @@ fun ChatScreen(
     val activeRoomId by viewModel.activeRoomId.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val isPartnerTyping by viewModel.isPartnerTyping.collectAsState()
-    val showLoveEffect by viewModel.showLoveHeartEffect.collectAsState()
+    val showPingEffect by viewModel.showPingEffect.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
     var showAttachmentSheet by remember { mutableStateOf(false) }
     var activeViewerMedia by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var cameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var showRoomMenu by remember { mutableStateOf(false) }
+    var showClearRoomDialog by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
 
@@ -282,12 +285,61 @@ fun ChatScreen(
                             )
                         }
                     }
-                    SettingsMenuButton(
-                        onNavigateToProfile = onNavigateToProfile,
-                        onNavigateToRelay = onNavigateToRelay,
-                        onNavigateToChat = onNavigateToChatSettings,
-                        onNavigateToAbout = onNavigateToAbout
-                    )
+                    Box {
+                        IconButton(onClick = { showRoomMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Room Options",
+                                tint = TextSecondary
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showRoomMenu,
+                            onDismissRequest = { showRoomMenu = false },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(SurfaceElevated)
+                                .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
+                        ) {
+                            if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text("Room QR Code", color = TextPrimary, fontSize = 14.sp)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.QrCode,
+                                            contentDescription = null,
+                                            tint = BrandLight,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        showRoomMenu = false
+                                        onNavigateToShowQr(activeRoomId)
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = {
+                                    Text("Clear Chat", color = OfflineRed, fontSize = 14.sp)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = null,
+                                        tint = OfflineRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                onClick = {
+                                    showRoomMenu = false
+                                    showClearRoomDialog = true
+                                }
+                            )
+                        }
+                    }
                 }
             )
         },
@@ -477,7 +529,7 @@ fun ChatScreen(
 
             // Ping / Nudge Alert Banner Overlay
             androidx.compose.animation.AnimatedVisibility(
-                visible = showLoveEffect,
+                visible = showPingEffect,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
             ) {
@@ -506,9 +558,40 @@ fun ChatScreen(
                 cameraPhotoUri = uri
                 takePhotoLauncher.launch(uri)
             },
-            onSendLovePing = {
-                viewModel.sendLovePing()
+            onSendPing = {
+                viewModel.sendPing()
             }
+        )
+    }
+
+    if (showClearRoomDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearRoomDialog = false },
+            title = {
+                Text(text = "Clear Room Chat?", color = TextPrimary)
+            },
+            text = {
+                Text(
+                    text = "This will permanently delete all messages and media records for this chat.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearRoomDialog = false
+                        viewModel.clearChat()
+                    }
+                ) {
+                    Text("Clear", color = OfflineRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearRoomDialog = false }) {
+                    Text("Cancel", color = TextPrimary)
+                }
+            },
+            containerColor = SurfaceElevated
         )
     }
 
