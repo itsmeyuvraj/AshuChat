@@ -48,19 +48,17 @@ fun MediaViewerDialog(
                 .clickable(onClick = onDismiss)
         ) {
             // Close Button
-            IconButton(
-                onClick = onDismiss,
+            Box(
                 modifier = Modifier
                     .padding(24.dp)
-                    .size(44.dp)
                     .align(Alignment.TopEnd)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f))
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
+                NeoBrutalIconButton(
+                    icon = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = Color.White
+                    backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
+                    size = 44.dp,
+                    onClick = onDismiss
                 )
             }
 

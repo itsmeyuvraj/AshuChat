@@ -17,6 +17,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -195,17 +196,18 @@ fun QrScannerScreen(
                     modifier = Modifier
                         .size(260.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .border(2.dp, BrandLight.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                        .background(Color.Black.copy(alpha = 0.25f))
+                        .border(3.5.dp, com.ashuchat.app.ui.theme.NeoHeaderYellow, RoundedCornerShape(24.dp))
                 ) {
                     // Moving scan laser
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(0, laserY.dp.roundToPx()) }
                             .fillMaxWidth()
-                            .height(2.dp)
+                            .height(3.dp)
                             .background(
                                 Brush.horizontalGradient(
-                                    listOf(Color.Transparent, BrandLight, Color.Transparent)
+                                    listOf(Color.Transparent, com.ashuchat.app.ui.theme.NeoHeaderYellow, Color.Transparent)
                                 )
                             )
                     )
@@ -220,17 +222,16 @@ fun QrScannerScreen(
                     .align(Alignment.TopCenter)
                     .padding(top = 56.dp, start = 24.dp, end = 24.dp)
             ) {
-                Text(
-                    text = "Scan QR Code",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                com.ashuchat.app.ui.components.NeoPillBadge(
+                    text = "POINT AT QR CODE",
+                    backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Point camera at the QR code on the other phone",
+                    text = "Align the code inside the yellow frame to connect",
                     fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     textAlign = TextAlign.Center
                 )
             }
@@ -240,46 +241,55 @@ fun QrScannerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(com.ashuchat.app.ui.theme.NeoBackground)
                     .padding(32.dp)
-                    .align(Alignment.Center)
+                    .align(Alignment.Center),
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "Camera Access Needed",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "AshuChat needs camera access to scan the QR code",
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                com.ashuchat.app.ui.components.NeoBrutalCard(
+                    backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Allow Camera Access")
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "CAMERA ACCESS NEEDED",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = com.ashuchat.app.ui.theme.NeoBlack
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "AshuChat needs camera access to scan your peer's QR code and establish a direct connection.",
+                            fontSize = 13.sp,
+                            color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                        com.ashuchat.app.ui.components.NeoBrutalButton(
+                            text = "GRANT PERMISSION",
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
+                            onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }
+                        )
+                    }
                 }
             }
         }
 
         // Back Button
-        IconButton(
-            onClick = onNavigateBack,
+        Box(
             modifier = Modifier
-                .padding(20.dp)
-                .size(44.dp)
                 .align(Alignment.TopStart)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.5f))
+                .padding(20.dp)
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = Color.White
+                backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow,
+                size = 46.dp,
+                onClick = onNavigateBack
             )
         }
     }

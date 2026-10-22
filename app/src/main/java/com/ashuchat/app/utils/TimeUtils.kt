@@ -41,4 +41,9 @@ object TimeUtils {
         val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }
+
+    fun formatCurrentHeaderTime(): String {
+        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
+        return sdf.format(Date()).uppercase()
+    }
 }

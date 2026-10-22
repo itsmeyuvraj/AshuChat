@@ -56,8 +56,9 @@ fun UpdateDialog(
         onDismissRequest = {
             if (!isDownloading) onDismiss()
         },
-        containerColor = SurfaceElevated,
+        containerColor = Color.White,
         shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(2.5.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(20.dp)),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -65,16 +66,16 @@ fun UpdateDialog(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(SurfaceCard)
-                        .border(1.dp, SurfaceBorder, CircleShape)
+                        .background(com.ashuchat.app.ui.theme.NeoCardYellow)
+                        .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.SystemUpdate,
                         contentDescription = null,
-                        tint = BrandLight,
-                        modifier = Modifier.size(22.dp)
+                        tint = com.ashuchat.app.ui.theme.NeoBlack,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -82,15 +83,16 @@ fun UpdateDialog(
 
                 Column {
                     Text(
-                        text = "Update Available",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        text = "UPDATE AVAILABLE",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black,
+                        color = com.ashuchat.app.ui.theme.NeoBlack
                     )
                     Text(
-                        text = "Version ${updateInfo.latestVersionName}",
+                        text = "v${updateInfo.latestVersionName}",
                         fontSize = 12.sp,
-                        color = BrandLight
+                        fontWeight = FontWeight.Bold,
+                        color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -103,10 +105,10 @@ fun UpdateDialog(
             ) {
                 if (updateInfo.releaseNotes.isNotBlank()) {
                     Text(
-                        text = "What's New:",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        text = "WHAT'S NEW:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        color = com.ashuchat.app.ui.theme.NeoBlack
                     )
                     Spacer(modifier = Modifier.height(6.dp))
 
@@ -114,14 +116,15 @@ fun UpdateDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceCard)
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(12.dp))
+                            .background(com.ashuchat.app.ui.theme.NeoBackground)
+                            .border(1.5.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {
                         Text(
                             text = updateInfo.releaseNotes,
                             fontSize = 12.sp,
-                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium,
+                            color = com.ashuchat.app.ui.theme.NeoBlack,
                             modifier = Modifier.verticalScroll(rememberScrollState())
                         )
                     }
@@ -135,8 +138,8 @@ fun UpdateDialog(
                     Text(
                         text = "Downloading update: $percentage%",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextPrimary
+                        fontWeight = FontWeight.Black,
+                        color = com.ashuchat.app.ui.theme.NeoBlack
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -145,45 +148,43 @@ fun UpdateDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = BrandLight,
-                        trackColor = SurfaceCard
+                            .clip(RoundedCornerShape(4.dp))
+                            .border(1.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(4.dp)),
+                        color = com.ashuchat.app.ui.theme.NeoHeaderYellow,
+                        trackColor = Color.LightGray.copy(alpha = 0.5f)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "Installer will open automatically once finished.",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.6f)
                     )
                 } else {
                     Text(
                         text = "Would you like to download and install this update now?",
                         fontSize = 13.sp,
-                        color = TextSecondary
+                        color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.8f)
                     )
                 }
             }
         },
         confirmButton = {
             if (!isDownloading) {
-                Button(
-                    onClick = onConfirmUpdate,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    modifier = Modifier
-                        .background(
-                            Brush.horizontalGradient(listOf(BrandPrimary, BrandDark)),
-                            RoundedCornerShape(12.dp)
-                        )
-                ) {
-                    Text("Update Now", color = Color.White, fontWeight = FontWeight.SemiBold)
-                }
+                NeoBrutalButton(
+                    text = "UPDATE NOW",
+                    backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
+                    onClick = onConfirmUpdate
+                )
             }
         },
         dismissButton = {
             if (!isDownloading) {
                 TextButton(onClick = onDismiss) {
-                    Text("Later", color = TextSecondary)
+                    Text(
+                        "LATER",
+                        fontWeight = FontWeight.Bold,
+                        color = com.ashuchat.app.ui.theme.NeoBlack
+                    )
                 }
             }
         }

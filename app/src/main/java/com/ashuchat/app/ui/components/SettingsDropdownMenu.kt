@@ -43,20 +43,25 @@ fun SettingsMenuButton(
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
     iconModifier: Modifier = Modifier,
-    iconTint: Color = TextSecondary
+    iconTint: Color = TextSecondary,
+    trigger: (@Composable (onClick: () -> Unit) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
-        IconButton(
-            onClick = { expanded = true },
-            modifier = iconModifier
-        ) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
-                tint = iconTint
-            )
+        if (trigger != null) {
+            trigger { expanded = true }
+        } else {
+            IconButton(
+                onClick = { expanded = true },
+                modifier = iconModifier
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = iconTint
+                )
+            }
         }
 
         DropdownMenu(
@@ -64,23 +69,23 @@ fun SettingsMenuButton(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
-                .background(SurfaceElevated)
-                .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
+                .background(Color(0xFFFEFDF5))
+                .border(2.dp, Color(0xFF18181B), RoundedCornerShape(16.dp))
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = "Profile",
-                        color = TextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Profile",
-                        tint = BrandLight,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -94,16 +99,16 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "Relay",
-                        color = TextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Dns,
                         contentDescription = "Relay",
-                        tint = BrandLight,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -116,17 +121,17 @@ fun SettingsMenuButton(
             DropdownMenuItem(
                 text = {
                     Text(
-                        text = "Chat",
-                        color = TextPrimary,
+                        text = "Chat Settings",
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Chat,
                         contentDescription = "Chat",
-                        tint = BrandLight,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -137,8 +142,8 @@ fun SettingsMenuButton(
             )
 
             HorizontalDivider(
-                color = SurfaceBorder,
-                thickness = 0.5.dp,
+                color = Color(0xFF18181B).copy(alpha = 0.2f),
+                thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             )
 
@@ -146,16 +151,16 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "About",
-                        color = TextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = "About",
-                        tint = BrandLight,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },

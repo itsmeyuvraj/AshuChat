@@ -81,7 +81,7 @@ class MainActivity : FragmentActivity() {
             AshuChatTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MidnightBg
+                    color = com.ashuchat.app.ui.theme.NeoBackground
                 ) {
                     if (isAppUnlocked) {
                         AppNavigation(chatViewModel = chatViewModel)
@@ -125,7 +125,8 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun updateFlagSecure() {
-        if (chatViewModel.prefs.isFlagSecureEnabled) {
+        val isDebug = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!isDebug && chatViewModel.prefs.isFlagSecureEnabled) {
             window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,30 +17,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
-import com.ashuchat.app.ui.components.UpdateDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,8 +45,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,31 +54,71 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.data.local.RoomEntity
-import com.ashuchat.app.ui.theme.AccentIndigo
-import com.ashuchat.app.ui.theme.AccentTeal
-import com.ashuchat.app.ui.theme.BrandDark
-import com.ashuchat.app.ui.theme.BrandLight
-import com.ashuchat.app.ui.theme.BrandPrimary
-import com.ashuchat.app.ui.theme.MidnightBg
+import com.ashuchat.app.ui.components.NeoBrutalCard
+import com.ashuchat.app.ui.components.NeoBrutalIconButton
+import com.ashuchat.app.ui.components.NeoChatBubbleIcon
+import com.ashuchat.app.ui.components.NeoEmojiAvatar
+import com.ashuchat.app.ui.components.NeoPillBadge
+import com.ashuchat.app.ui.components.NeoUnreadBadge
+import com.ashuchat.app.ui.components.SettingsMenuButton
+import com.ashuchat.app.ui.components.UpdateDialog
+import com.ashuchat.app.ui.theme.NeoBackground
+import com.ashuchat.app.ui.theme.NeoBlack
+import com.ashuchat.app.ui.theme.NeoBtnBlue
+import com.ashuchat.app.ui.theme.NeoBtnMint
+import com.ashuchat.app.ui.theme.NeoBtnPeach
+import com.ashuchat.app.ui.theme.NeoCardLavender
+import com.ashuchat.app.ui.theme.NeoCardMint
+import com.ashuchat.app.ui.theme.NeoCardPeach
+import com.ashuchat.app.ui.theme.NeoCardPink
+import com.ashuchat.app.ui.theme.NeoCardSky
+import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoHeaderYellow
+import com.ashuchat.app.ui.theme.NeoTextDark
+import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OnlineGreen
-import com.ashuchat.app.ui.theme.SurfaceBorder
-import com.ashuchat.app.ui.theme.SurfaceCard
-import com.ashuchat.app.ui.theme.SurfaceElevated
-import com.ashuchat.app.ui.theme.TextMuted
-import com.ashuchat.app.ui.theme.TextPrimary
-import com.ashuchat.app.ui.theme.TextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import com.ashuchat.app.utils.TimeUtils
 import com.ashuchat.app.webrtc.P2PConnectionState
 
-import com.ashuchat.app.ui.components.SettingsMenuButton
+// Card color rotating cycle matching the reference image aesthetic
+private val NeoCardColorPalette = listOf(
+    NeoCardYellow,   // Card 0: Sunshine Yellow
+    NeoCardMint,     // Card 1: Seafoam Mint Green
+    NeoCardLavender, // Card 2: Soft Lilac / Lavender
+    NeoCardPeach,    // Card 3: Peach / Tangerine
+    NeoCardPink,     // Card 4: Bubblegum Pink
+    NeoCardSky       // Card 5: Sky Blue
+)
+
+/**
+ * Deterministic fun emoji picker based on room ID / partner name
+ */
+private fun getRoomAvatarEmoji(roomId: String, partnerName: String): String {
+    val key = (roomId + partnerName).lowercase()
+    return when {
+        key.contains("586") || key.contains("bot") -> "🤖"
+        key.contains("604") || key.contains("rocket") -> "🚀"
+        key.contains("450") || key.contains("flash") -> "⚡"
+        key.contains("doodle") || key.contains("art") || key.contains("squad") -> "🎨"
+        else -> {
+            val emojis = listOf(
+                "🤖", "🚀", "⚡", "🎨", "🎮", "👾", "🦊", "🐱",
+                "🍕", "🍩", "🔮", "🛸", "🔥", "🌈", "🎸", "🏄‍♂️"
+            )
+            val hash = Math.abs(key.hashCode())
+            emojis[hash % emojis.size]
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +141,7 @@ fun RoomsScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
+    var showQuickActionDialog by remember { mutableStateOf(false) }
 
     var roomToDelete by remember { mutableStateOf<RoomEntity?>(null) }
 
@@ -121,233 +158,340 @@ fun RoomsScreen(
     }
 
     Scaffold(
-        containerColor = MidnightBg,
+        containerColor = NeoBackground,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceElevated
-                ),
-                title = {
-                    Column {
-                        Text(
-                            text = "AshuChat",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Private direct chats",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { isSearchActive = !isSearchActive }) {
-                        Icon(
-                            imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = TextSecondary
-                        )
-                    }
-                    IconButton(onClick = onNavigateToPairing) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Room",
-                            tint = BrandLight
-                        )
-                    }
-                    SettingsMenuButton(
-                        onNavigateToProfile = onNavigateToProfile,
-                        onNavigateToRelay = onNavigateToRelay,
-                        onNavigateToChat = onNavigateToChatSettings,
-                        onNavigateToAbout = onNavigateToAbout
-                    )
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNavigateToPairing,
-                containerColor = Color.Transparent,
-                contentColor = TextPrimary,
-                elevation = FloatingActionButtonDefaults.elevation(6.dp),
-                shape = CircleShape,
+            Column(
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(listOf(BrandPrimary, BrandDark)),
-                        CircleShape
-                    )
-                    .border(1.dp, SurfaceBorder, CircleShape)
+                    .fillMaxWidth()
+                    .background(NeoHeaderYellow)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Chat,
-                    contentDescription = "New Room",
-                    tint = TextPrimary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Search Input Bar
-            AnimatedVisibility(
-                visible = isSearchActive,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
+                // System Status Bar spacing
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SurfaceElevated)
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search by code or name...", color = TextMuted) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BrandLight,
-                            unfocusedBorderColor = SurfaceBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            cursorColor = BrandLight
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+                        .statusBarsPadding()
+                )
 
-            // Update Available Banner
-            AnimatedVisibility(
-                visible = updateInfo != null && updateInfo!!.isUpdateAvailable,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                updateInfo?.let { info ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                Brush.horizontalGradient(listOf(BrandPrimary, BrandDark))
+                // Main Sunshine Yellow Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 2.5.dp,
+                            color = NeoBlack
+                        )
+                        .background(NeoHeaderYellow)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left Brand: 🎨 AshuChat & Subtitle
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "🎨",
+                                fontSize = 22.sp
                             )
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(14.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "AshuChat",
+                                fontSize = 23.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NeoBlack
+                            )
+                        }
+
+                        Text(
+                            text = "PRIVATE DIRECT CHATS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
+                            color = NeoBlack.copy(alpha = 0.9f)
+                        )
+                    }
+
+                    // Right Actions: Search & Settings
+                    Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                        // Search Button
+                        NeoBrutalIconButton(
+                            onClick = { isSearchActive = !isSearchActive },
+                            backgroundColor = NeoBtnBlue,
+                            size = 42.dp
                         ) {
                             Icon(
-                                imageVector = Icons.Default.SystemUpdate,
-                                contentDescription = null,
-                                tint = BrandLight,
-                                modifier = Modifier.size(22.dp)
+                                imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = Color(0xFF2B7CD3),
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Update Available: ${info.latestVersionName}",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Tap to update AshuChat",
-                                    fontSize = 11.sp,
-                                    color = TextSecondary
-                                )
-                            }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Button(
-                                onClick = { viewModel.startAppUpdate(info.downloadUrl) },
-                                enabled = !isDownloadingUpdate,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = SurfaceElevated),
-                                modifier = Modifier.height(32.dp)
-                            ) {
-                                Text("Update", fontSize = 11.sp, color = TextPrimary)
+                        // Settings Menu Button with custom Peach Neo-Brutalist trigger
+                        SettingsMenuButton(
+                            onNavigateToProfile = onNavigateToProfile,
+                            onNavigateToRelay = onNavigateToRelay,
+                            onNavigateToChat = onNavigateToChatSettings,
+                            onNavigateToAbout = onNavigateToAbout,
+                            trigger = { openMenu ->
+                                NeoBrutalIconButton(
+                                    onClick = openMenu,
+                                    backgroundColor = NeoBtnPeach,
+                                    size = 42.dp
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        tint = Color(0xFF4A90E2),
+                                        modifier = Modifier.size(21.dp)
+                                    )
+                                }
                             }
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(NeoBackground)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Search Input Bar (Neo-brutalist styled)
+                AnimatedVisibility(
+                    visible = isSearchActive,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        NeoBrutalCard(
+                            backgroundColor = Color.White,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                textStyle = TextStyle(
+                                    color = NeoBlack,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                placeholder = {
+                                    Text(
+                                        "Search by code or name...",
+                                        color = NeoBlack.copy(alpha = 0.55f),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 15.sp
+                                    )
+                                },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    focusedTextColor = NeoBlack,
+                                    unfocusedTextColor = NeoBlack,
+                                    cursorColor = NeoBlack
+                                ),
+                                trailingIcon = {
+                                    if (searchQuery.isNotBlank()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Clear",
+                                                tint = NeoBlack
+                                            )
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
-                            IconButton(
-                                onClick = { viewModel.dismissUpdateDialog() },
-                                modifier = Modifier.size(28.dp)
+                // In-App Update Banner (Neo-brutalist styled)
+                AnimatedVisibility(
+                    visible = updateInfo != null && updateInfo!!.isUpdateAvailable,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    updateInfo?.let { info ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            NeoBrutalCard(
+                                backgroundColor = NeoCardLavender,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Dismiss",
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(14.dp)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(38.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(Color.White)
+                                                .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.SystemUpdate,
+                                                contentDescription = null,
+                                                tint = NeoBlack,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = "Update Available: ${info.latestVersionName}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = NeoBlack
+                                            )
+                                            Text(
+                                                text = "Tap to update AshuChat",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = NeoTextMuted
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        NeoBrutalIconButton(
+                                            onClick = { viewModel.startAppUpdate(info.downloadUrl) },
+                                            backgroundColor = NeoBtnMint,
+                                            size = 36.dp
+                                        ) {
+                                            Text(
+                                                text = "Update",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = NeoBlack
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = { viewModel.dismissUpdateDialog() },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Dismiss",
+                                                tint = NeoBlack,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                        }
+                    }
+                }
+
+                // Rooms List or Empty State
+                if (filteredRooms.isEmpty()) {
+                    EmptyNeoRoomsView(
+                        isSearch = searchQuery.isNotBlank(),
+                        onActionClick = onNavigateToPairing
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 14.dp,
+                            bottom = 96.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        itemsIndexed(
+                            items = filteredRooms,
+                            key = { _, room -> room.roomId }
+                        ) { index, room ->
+                            val cardColor = NeoCardColorPalette[index % NeoCardColorPalette.size]
+
+                            NeoRoomCardItem(
+                                room = room,
+                                backgroundColor = cardColor,
+                                isActive = room.roomId == activeRoomId && connectionState == P2PConnectionState.CONNECTED_P2P,
+                                onClick = {
+                                    onRoomClick(room.roomId)
+                                },
+                                onDeleteClick = {
+                                    roomToDelete = room
+                                }
+                            )
                         }
                     }
                 }
             }
 
-            if (filteredRooms.isEmpty()) {
-                EmptyRoomsView(
-                    isSearch = searchQuery.isNotBlank(),
-                    onActionClick = onNavigateToPairing
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+            // Bottom-Right Yellow Neo FAB with Speech Bubble Icon
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 20.dp)
+            ) {
+                NeoBrutalIconButton(
+                    onClick = onNavigateToPairing,
+                    backgroundColor = NeoHeaderYellow,
+                    size = 64.dp,
+                    borderColor = NeoBlack,
+                    borderWidth = 2.5.dp,
+                    shadowOffset = 4.5.dp,
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    items(
-                        items = filteredRooms,
-                        key = { it.roomId }
-                    ) { room ->
-                        RoomItemRow(
-                            room = room,
-                            isActive = room.roomId == activeRoomId && connectionState == P2PConnectionState.CONNECTED_P2P,
-                            onClick = {
-                                onRoomClick(room.roomId)
-                            },
-                            onDeleteClick = {
-                                roomToDelete = room
-                            }
-                        )
-                        HorizontalDivider(
-                            color = SurfaceBorder.copy(alpha = 0.5f),
-                            thickness = 0.5.dp,
-                            modifier = Modifier.padding(start = 76.dp)
-                        )
-                    }
+                    NeoChatBubbleIcon(size = 34.dp)
                 }
             }
         }
     }
 
-    // Delete Room Confirmation Dialog
+    // Delete Room Confirmation Dialog (Neo-brutalist style)
     roomToDelete?.let { room ->
         AlertDialog(
             onDismissRequest = { roomToDelete = null },
             title = {
                 Text(
                     text = "Delete Chat Room?",
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
+                    color = NeoBlack,
+                    fontWeight = FontWeight.Black
                 )
             },
             text = {
                 Text(
                     text = "Are you sure you want to delete room \"${room.roomId}\"? All messages in this room will be permanently removed.",
-                    color = TextSecondary
+                    color = NeoTextMuted,
+                    fontSize = 13.sp
                 )
             },
             confirmButton = {
@@ -357,18 +501,21 @@ fun RoomsScreen(
                         roomToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = BrandPrimary
-                    )
+                        containerColor = Color(0xFFEF4444)
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
                 ) {
-                    Text("Delete", color = Color.White)
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { roomToDelete = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = NeoBlack, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = SurfaceElevated
+            containerColor = NeoBackground,
+            modifier = Modifier.border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
         )
     }
 
@@ -388,9 +535,13 @@ fun RoomsScreen(
     }
 }
 
+/**
+ * Individual Neo-Brutalist Room Item Card
+ */
 @Composable
-fun RoomItemRow(
+private fun NeoRoomCardItem(
     room: RoomEntity,
+    backgroundColor: Color,
     isActive: Boolean,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -403,157 +554,166 @@ fun RoomItemRow(
         room.roomId
     }
 
-    val initialLetter = displayTitle.take(1).uppercase()
+    val emoji = remember(room.roomId, room.partnerName) {
+        getRoomAvatarEmoji(room.roomId, room.partnerName)
+    }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val lastMessageSnippet = if (room.lastMessage.isBlank()) {
+        "Room created successfully! 🎉"
+    } else {
+        room.lastMessage
+    }
+
+    val timeStr = TimeUtils.formatRoomTimestamp(room.lastTimestamp)
+
+    NeoBrutalCard(
+        backgroundColor = backgroundColor,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Avatar with online badge
-        Box(
-            modifier = Modifier.size(50.dp),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Squircle Avatar with Emoji & Online Badge
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(AccentTeal, AccentIndigo)
-                        )
-                    )
+                modifier = Modifier.size(52.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = initialLetter,
-                    color = TextPrimary,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                NeoEmojiAvatar(
+                    emoji = emoji,
+                    size = 52.dp,
+                    shape = RoundedCornerShape(16.dp)
                 )
+
+                if (isActive) {
+                    Box(
+                        modifier = Modifier
+                            .size(13.dp)
+                            .clip(CircleShape)
+                            .background(OnlineGreen)
+                            .border(2.dp, NeoBlack, CircleShape)
+                            .align(Alignment.BottomEnd)
+                    )
+                }
             }
 
-            if (isActive) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(OnlineGreen)
-                        .border(2.dp, MidnightBg, CircleShape)
-                        .align(Alignment.BottomEnd)
-                )
-            }
-        }
+            Spacer(modifier = Modifier.width(14.dp))
 
-        Spacer(modifier = Modifier.width(14.dp))
-
-        // Center Content: Room title, room code tag, and message snippet
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+            // Center Content: Room title, room code badge, last message
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = displayTitle,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
+                        fontWeight = FontWeight.Black,
+                        color = NeoTextDark,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Room code badge
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(SurfaceCard)
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = room.roomId,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = BrandLight
-                        )
-                    }
+                    // Neo Dark Pill Badge for Room Code
+                    NeoPillBadge(text = room.roomId)
                 }
 
-                // Timestamp
-                val timeStr = TimeUtils.formatRoomTimestamp(room.lastTimestamp)
+                Spacer(modifier = Modifier.height(5.dp))
+
+                // Last message snippet
+                Text(
+                    text = lastMessageSnippet,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = NeoBlack.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Right Column: Timestamp & Unread Badge / More Menu
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
                 if (timeStr.isNotBlank()) {
                     Text(
                         text = timeStr,
                         fontSize = 11.sp,
-                        color = TextMuted
+                        fontWeight = FontWeight.Bold,
+                        color = NeoBlack.copy(alpha = 0.8f)
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            // Last message snippet
-            Text(
-                text = if (room.lastMessage.isBlank()) "Tap to chat" else room.lastMessage,
-                fontSize = 13.sp,
-                color = if (room.lastMessage.isBlank()) TextMuted else TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+                if (room.unreadCount > 0) {
+                    NeoUnreadBadge(count = room.unreadCount)
+                } else {
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                tint = NeoBlack,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
 
-        // Options dropdown menu button
-        Box {
-            IconButton(
-                onClick = { showMenu = true },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Options",
-                    tint = TextMuted,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                modifier = Modifier.background(SurfaceElevated)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Delete Room", color = Color(0xFFEF4444)) },
-                    onClick = {
-                        showMenu = false
-                        onDeleteClick()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = null,
-                            tint = Color(0xFFEF4444)
-                        )
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(NeoBackground)
+                                .border(2.dp, NeoBlack, RoundedCornerShape(16.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Delete Room",
+                                        color = Color(0xFFEF4444),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onDeleteClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = null,
+                                        tint = Color(0xFFEF4444)
+                                    )
+                                }
+                            )
+                        }
                     }
-                )
+                }
             }
         }
     }
 }
 
+/**
+ * Playful Neo-Brutalist Empty State View
+ */
 @Composable
-fun EmptyRoomsView(
+private fun EmptyNeoRoomsView(
     isSearch: Boolean,
     onActionClick: () -> Unit
 ) {
@@ -563,78 +723,81 @@ fun EmptyRoomsView(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        NeoBrutalCard(
+            backgroundColor = NeoCardYellow,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .size(90.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceElevated)
-                    .border(1.dp, SurfaceBorder, CircleShape)
+                    .fillMaxWidth()
+                    .padding(28.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Chat,
-                    contentDescription = null,
-                    tint = BrandLight,
-                    modifier = Modifier.size(42.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = if (isSearch) "No Matching Rooms" else "No Chats Yet",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = if (isSearch) {
-                    "No room found matching your search term."
-                } else {
-                    "Create a room code or enter your partner's code to start a private, end-to-end direct chat."
-                },
-                fontSize = 13.sp,
-                color = TextSecondary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            if (!isSearch) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = onActionClick,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    ),
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .height(48.dp)
-                        .background(
-                            Brush.horizontalGradient(listOf(BrandPrimary, BrandDark)),
-                            RoundedCornerShape(14.dp)
-                        )
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White)
+                        .border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Join or Create Room",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = if (isSearch) "🔍" else "💬",
+                        fontSize = 38.sp
                     )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Text(
+                    text = if (isSearch) "No Matching Rooms" else "No Chats Yet!",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = NeoBlack
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = if (isSearch) {
+                        "No room found matching your search term."
+                    } else {
+                        "Create a room code or enter your partner's code to start a private, end-to-end direct chat."
+                    },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = NeoBlack.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center
+                )
+
+                if (!isSearch) {
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    NeoBrutalIconButton(
+                        onClick = onActionClick,
+                        backgroundColor = NeoBtnMint,
+                        size = 48.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = NeoBlack,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Join or Create Room",
+                                color = NeoBlack,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
                 }
             }
         }

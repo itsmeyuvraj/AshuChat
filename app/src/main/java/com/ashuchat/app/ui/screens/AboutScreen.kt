@@ -18,47 +18,41 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.components.NeoBrutalButton
+import com.ashuchat.app.ui.components.NeoBrutalCard
+import com.ashuchat.app.ui.components.NeoTopAppBar
 import com.ashuchat.app.ui.components.UpdateDialog
-import com.ashuchat.app.ui.theme.AccentIndigo
-import com.ashuchat.app.ui.theme.AccentTeal
-import com.ashuchat.app.ui.theme.BrandLight
-import com.ashuchat.app.ui.theme.MidnightBg
+import com.ashuchat.app.ui.theme.NeoBackground
+import com.ashuchat.app.ui.theme.NeoBlack
+import com.ashuchat.app.ui.theme.NeoBtnBlue
+import com.ashuchat.app.ui.theme.NeoBtnMint
+import com.ashuchat.app.ui.theme.NeoCardLavender
+import com.ashuchat.app.ui.theme.NeoCardPeach
+import com.ashuchat.app.ui.theme.NeoCardPink
+import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoTextDark
+import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OnlineGreen
-import com.ashuchat.app.ui.theme.RoseDark
-import com.ashuchat.app.ui.theme.RosePrimary
-import com.ashuchat.app.ui.theme.SurfaceBorder
-import com.ashuchat.app.ui.theme.SurfaceCard
-import com.ashuchat.app.ui.theme.SurfaceElevated
-import com.ashuchat.app.ui.theme.TextPrimary
-import com.ashuchat.app.ui.theme.TextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,29 +68,12 @@ fun AboutScreen(
     val updateCheckMessage by viewModel.updateCheckMessage.collectAsState()
 
     Scaffold(
-        containerColor = MidnightBg,
+        containerColor = NeoBackground,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceElevated
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                title = {
-                    Text(
-                        text = "About",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
+            NeoTopAppBar(
+                title = "About AshuChat",
+                subtitle = "App Info & Updates",
+                onNavigateBack = onNavigateBack
             )
         }
     ) { innerPadding ->
@@ -104,215 +81,213 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(NeoBackground)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // App Icon / Logo
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(listOf(RosePrimary, RoseDark))
-                    )
-                    .border(2.dp, SurfaceBorder, CircleShape)
+                    .size(86.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(NeoCardYellow)
+                    .border(2.5.dp, NeoBlack, RoundedCornerShape(22.dp))
             ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(42.dp)
+                Text(
+                    text = "🎨",
+                    fontSize = 42.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = "AshuChat",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = NeoBlack
             )
 
             Text(
-                text = "Private Peer-to-Peer Encrypted Chat",
-                fontSize = 13.sp,
-                color = TextSecondary
+                text = "PRIVATE DIRECT PEER-TO-PEER ENCRYPTED CHAT",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.8.sp,
+                color = NeoTextMuted
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // App Version & In-App Updater Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceElevated)
-                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
-                    .padding(18.dp)
+            // App Version & In-App Updater Card (Pastel Lavender NeoBrutalCard)
+            NeoBrutalCard(
+                backgroundColor = NeoCardLavender,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Installed Version",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "v${viewModel.updateManager.currentVersionName} (Build ${viewModel.updateManager.currentVersionCode})",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Installed Version",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeoTextMuted
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "v${viewModel.updateManager.currentVersionName} (Build ${viewModel.updateManager.currentVersionCode})",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NeoBlack
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        NeoBrutalButton(
+                            onClick = { viewModel.checkForUpdates(silent = false) },
+                            enabled = !isCheckingUpdate && !isDownloadingUpdate,
+                            backgroundColor = NeoBtnMint,
+                            modifier = Modifier.width(140.dp)
+                        ) {
+                            if (isCheckingUpdate) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = NeoBlack,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = NeoBlack,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Check",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = NeoBlack
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    OutlinedButton(
-                        onClick = { viewModel.checkForUpdates(silent = false) },
-                        enabled = !isCheckingUpdate && !isDownloadingUpdate,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = Brush.horizontalGradient(listOf(SurfaceBorder, SurfaceBorder))
-                        )
-                    ) {
-                        if (isCheckingUpdate) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = BrandLight,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
+                    if (updateCheckMessage != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White)
+                                .border(1.5.dp, NeoBlack, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.SystemUpdate,
+                                imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = BrandLight,
+                                tint = OnlineGreen,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Check Updates",
+                                text = updateCheckMessage ?: "",
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold,
+                                color = NeoBlack
                             )
                         }
                     }
                 }
+            }
 
-                if (updateCheckMessage != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(SurfaceCard)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = OnlineGreen,
-                            modifier = Modifier.size(16.dp)
-                        )
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Dedication Card (Pastel Pink NeoBrutalCard)
+            NeoBrutalCard(
+                backgroundColor = NeoCardPink,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "💖", fontSize = 28.sp)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Developed by Yuvraj Poudyal for Ashu",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        color = NeoBlack,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Built with infinite love for private, unbreakable moments.",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = NeoBlack.copy(alpha = 0.85f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Technology & Security Details Card (Pastel Peach NeoBrutalCard)
+            NeoBrutalCard(
+                backgroundColor = NeoCardPeach,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "⚡", fontSize = 20.sp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = updateCheckMessage ?: "",
-                            fontSize = 12.sp,
-                            color = TextPrimary
+                            text = "Specifications & Security",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = NeoBlack
                         )
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-            // Dedication Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceElevated)
-                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    tint = Color(0xFFE11D48),
-                    modifier = Modifier.size(24.dp)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Developed by Yuvraj Poudyal for Ashu",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Built with infinite love for private, unbreakable moments.",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Technology & Security Details Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceElevated)
-                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
-                    .padding(18.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = BrandLight,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Specifications",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        text = "• Architecture: Peer-to-Peer WebRTC DataChannel\n" +
+                                "• Encryption: DTLS-SRTP 256-bit AES\n" +
+                                "• Media Transfer: Chunked binary streaming\n" +
+                                "• Local Storage: SQLite Room Database (Local Only)\n" +
+                                "• Auto-Updates: GitHub Releases CI/CD Integration",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeoBlack.copy(alpha = 0.9f),
+                        lineHeight = 20.sp
                     )
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "• Architecture: Peer-to-Peer WebRTC DataChannel\n" +
-                            "• Encryption: DTLS-SRTP 256-bit AES\n" +
-                            "• Media Transfer: Chunked binary streaming\n" +
-                            "• Local Storage: SQLite Room Database (Local Only)\n" +
-                            "• Auto-Updates: GitHub Releases CI/CD Integration",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    lineHeight = 18.sp
-                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

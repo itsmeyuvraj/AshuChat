@@ -150,35 +150,21 @@ fun VoiceCallOverlay(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = onReject,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE53935))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CallEnd,
-                            contentDescription = "Decline",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                    com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                        icon = Icons.Default.CallEnd,
+                        contentDescription = "Decline",
+                        backgroundColor = Color(0xFFFF6B6B),
+                        size = 64.dp,
+                        onClick = onReject
+                    )
 
-                    IconButton(
-                        onClick = onAccept,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF43A047))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Accept",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                    com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                        icon = Icons.Default.Phone,
+                        contentDescription = "Accept",
+                        backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
+                        size = 64.dp,
+                        onClick = onAccept
+                    )
                 }
             } else {
                 Row(
@@ -186,50 +172,29 @@ fun VoiceCallOverlay(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = onToggleMute,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(if (isMuted) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Mute",
-                            tint = if (isMuted) Color(0xFFFF5252) else Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                    com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                        icon = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                        contentDescription = "Mute",
+                        backgroundColor = if (isMuted) Color(0xFFFF6B6B) else Color.White,
+                        size = 54.dp,
+                        onClick = onToggleMute
+                    )
 
-                    IconButton(
-                        onClick = onEnd,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE53935))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CallEnd,
-                            contentDescription = "End Call",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                    com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                        icon = Icons.Default.CallEnd,
+                        contentDescription = "End Call",
+                        backgroundColor = Color(0xFFFF6B6B),
+                        size = 64.dp,
+                        onClick = onEnd
+                    )
 
-                    IconButton(
-                        onClick = onToggleSpeaker,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(if (isSpeakerOn) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            imageVector = if (isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
-                            contentDescription = "Speaker",
-                            tint = if (isSpeakerOn) Color(0xFF69F0AE) else Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                    com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                        icon = if (isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
+                        contentDescription = "Speaker",
+                        backgroundColor = if (isSpeakerOn) com.ashuchat.app.ui.theme.NeoBtnMint else Color.White,
+                        size = 54.dp,
+                        onClick = onToggleSpeaker
+                    )
                 }
             }
         }

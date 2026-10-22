@@ -237,170 +237,178 @@ fun ChatScreen(
     }
 
     Scaffold(
-        containerColor = MidnightBg,
+        containerColor = com.ashuchat.app.ui.theme.NeoBackground,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceElevated
-                ),
-                navigationIcon = {
-                    IconButton(onClick = {
-                        viewModel.leaveActiveRoom()
-                        onNavigateBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                title = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(com.ashuchat.app.ui.theme.NeoHeaderYellow)
+                    .border(androidx.compose.foundation.BorderStroke(2.5.dp, com.ashuchat.app.ui.theme.NeoBlack))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(1f)
                     ) {
-                        // Partner Avatar
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(listOf(RosePrimary, RoseDark))
-                                )
-                        ) {
-                            Text(
-                                text = partnerName.take(1).uppercase(),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
+                        com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            backgroundColor = Color.White,
+                            size = 40.dp,
+                            onClick = {
+                                viewModel.leaveActiveRoom()
+                                onNavigateBack()
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        com.ashuchat.app.ui.components.NeoEmojiAvatar(
+                            name = partnerName,
+                            size = 40.dp
+                        )
 
                         Spacer(modifier = Modifier.width(10.dp))
 
                         Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = partnerName,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                )
-                                if (activeRoomId.isNotBlank()) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "• $activeRoomId",
-                                        fontSize = 12.sp,
-                                        color = TextMuted
-                                    )
+                            Text(
+                                text = partnerName.uppercase(),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp,
+                                color = com.ashuchat.app.ui.theme.NeoBlack,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            val statusText = if (isPartnerTyping) {
+                                "TYPING..."
+                            } else if (connectionState == P2PConnectionState.CONNECTED_P2P) {
+                                "ONLINE • DIRECT"
+                            } else {
+                                "OFFLINE"
+                            }
+                            Text(
+                                text = statusText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp,
+                                color = if (isPartnerTyping) Color(0xFFD84315) else if (connectionState == P2PConnectionState.CONNECTED_P2P) Color(0xFF2E7D32) else com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.55f)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                            icon = Icons.Default.Phone,
+                            contentDescription = "Voice Call",
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoCardPeach,
+                            size = 40.dp,
+                            onClick = {
+                                val hasAudioPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.RECORD_AUDIO
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                if (hasAudioPermission) {
+                                    viewModel.startCall()
+                                } else {
+                                    recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                 }
                             }
-                            if (isPartnerTyping) {
-                                Text(
-                                    text = "typing...",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = BrandAccent
-                                )
-                            } else {
-                                ConnectionBadge(state = connectionState)
-                            }
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        val hasAudioPermission = ContextCompat.checkSelfPermission(
-                            context,
-                            android.Manifest.permission.RECORD_AUDIO
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        if (hasAudioPermission) {
-                            viewModel.startCall()
-                        } else {
-                            recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Voice Call",
-                            tint = RoseAccent
                         )
-                    }
 
-                    if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
-                        IconButton(onClick = { onNavigateToShowQr(activeRoomId) }) {
-                            Icon(
-                                imageVector = Icons.Default.QrCode,
+                        if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
+                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                                icon = Icons.Default.QrCode,
                                 contentDescription = "Show QR",
-                                tint = TextSecondary
-                            )
-                        }
-                    }
-                    Box {
-                        IconButton(onClick = { showRoomMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Room Options",
-                                tint = TextSecondary
+                                backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
+                                size = 40.dp,
+                                onClick = { onNavigateToShowQr(activeRoomId) }
                             )
                         }
 
-                        DropdownMenu(
-                            expanded = showRoomMenu,
-                            onDismissRequest = { showRoomMenu = false },
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(SurfaceElevated)
-                                .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
-                        ) {
-                            if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
+                        Box {
+                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                                icon = Icons.Default.MoreVert,
+                                contentDescription = "Room Options",
+                                backgroundColor = Color.White,
+                                size = 40.dp,
+                                onClick = { showRoomMenu = true }
+                            )
+
+                            DropdownMenu(
+                                expanded = showRoomMenu,
+                                onDismissRequest = { showRoomMenu = false },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.White)
+                                    .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
+                            ) {
+                                if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "ROOM QR CODE",
+                                                fontWeight = FontWeight.Black,
+                                                color = com.ashuchat.app.ui.theme.NeoBlack,
+                                                fontSize = 13.sp
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.QrCode,
+                                                contentDescription = null,
+                                                tint = com.ashuchat.app.ui.theme.NeoBlack,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        },
+                                        onClick = {
+                                            showRoomMenu = false
+                                            onNavigateToShowQr(activeRoomId)
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = {
-                                        Text("Room QR Code", color = TextPrimary, fontSize = 14.sp)
+                                        Text(
+                                            "CLEAR CHAT",
+                                            fontWeight = FontWeight.Black,
+                                            color = Color(0xFFD32F2F),
+                                            fontSize = 13.sp
+                                        )
                                     },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Default.QrCode,
+                                            imageVector = Icons.Default.DeleteOutline,
                                             contentDescription = null,
-                                            tint = BrandLight,
+                                            tint = Color(0xFFD32F2F),
                                             modifier = Modifier.size(20.dp)
                                         )
                                     },
                                     onClick = {
                                         showRoomMenu = false
-                                        onNavigateToShowQr(activeRoomId)
+                                        showClearRoomDialog = true
                                     }
                                 )
                             }
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Clear Chat", color = OfflineRed, fontSize = 14.sp)
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteOutline,
-                                        contentDescription = null,
-                                        tint = OfflineRed,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                onClick = {
-                                    showRoomMenu = false
-                                    showClearRoomDialog = true
-                                }
-                            )
                         }
                     }
                 }
-            )
+            }
         },
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceElevated)
+                    .background(Color.White)
+                    .border(androidx.compose.foundation.BorderStroke(2.5.dp, com.ashuchat.app.ui.theme.NeoBlack))
                     .imePadding()
             ) {
                 // Reply Preview Bar
@@ -409,41 +417,44 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFF1F1B2B))
-                            .border(1.dp, SurfaceBorder)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .background(com.ashuchat.app.ui.theme.NeoCardYellow)
+                            .border(androidx.compose.foundation.BorderStroke(1.5.dp, com.ashuchat.app.ui.theme.NeoBlack))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(3.dp)
+                                .width(4.dp)
                                 .height(32.dp)
-                                .background(RoseAccent)
+                                .background(com.ashuchat.app.ui.theme.NeoBlack)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Replying to ${replyingToMessage?.senderName ?: "Peer"}",
+                                text = "REPLYING TO ${(replyingToMessage?.senderName ?: "Peer").uppercase()}",
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = RoseAccent
+                                fontWeight = FontWeight.Black,
+                                color = com.ashuchat.app.ui.theme.NeoBlack
                             )
                             Text(
                                 text = replyingToMessage?.text?.ifBlank { replyingToMessage?.attachmentName ?: "Attachment" } ?: "",
                                 fontSize = 12.sp,
-                                color = TextPrimary.copy(alpha = 0.85f),
+                                color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.8f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                         IconButton(
-                            onClick = { viewModel.setReplyingTo(null) },
-                            modifier = Modifier.size(24.dp)
+                            onClick = {
+                                com.ashuchat.app.utils.HapticHelper.playClick(context)
+                                viewModel.setReplyingTo(null)
+                            },
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Cancel reply",
-                                tint = TextMuted,
-                                modifier = Modifier.size(16.dp)
+                                tint = com.ashuchat.app.ui.theme.NeoBlack,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -454,7 +465,7 @@ fun ChatScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(horizontal = 10.dp, vertical = 10.dp)
                 ) {
                     if (isRecordingVoice) {
                         // Voice Note Recording Mode
@@ -462,9 +473,9 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0xFF2A1C25))
-                                .border(1.dp, RoseAccent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(com.ashuchat.app.ui.theme.NeoBackground)
+                                .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {
                             val infiniteTransition = rememberInfiniteTransition(label = "recDot")
@@ -479,9 +490,10 @@ fun ChatScreen(
                             )
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
+                                    .size(12.dp)
                                     .clip(CircleShape)
                                     .background(Color.Red.copy(alpha = dotAlpha))
+                                    .border(1.dp, com.ashuchat.app.ui.theme.NeoBlack, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
 
@@ -489,8 +501,8 @@ fun ChatScreen(
                             Text(
                                 text = String.format(Locale.getDefault(), "%d:%02d", sec / 60, sec % 60),
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                fontWeight = FontWeight.Black,
+                                color = com.ashuchat.app.ui.theme.NeoBlack
                             )
 
                             Spacer(modifier = Modifier.width(12.dp))
@@ -498,75 +510,54 @@ fun ChatScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(16.dp),
+                                    .height(18.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val barCount = 12
+                                    val barCount = 14
                                     for (i in 0 until barCount) {
                                         val factor = ((voiceAmplitude * 1.5f + (i * 0.05f)) % 1f).coerceIn(0.2f, 1f)
                                         Box(
                                             modifier = Modifier
                                                 .width(3.dp)
-                                                .height((factor * 16).dp)
+                                                .height((factor * 18).dp)
                                                 .clip(RoundedCornerShape(1.5.dp))
-                                                .background(RoseAccent)
+                                                .background(com.ashuchat.app.ui.theme.NeoBlack)
                                         )
                                     }
                                 }
                             }
 
-                            IconButton(
-                                onClick = { viewModel.cancelVoiceRecording() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Cancel recording",
-                                    tint = OfflineRed,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                                icon = Icons.Default.Delete,
+                                contentDescription = "Cancel recording",
+                                backgroundColor = Color(0xFFFF6B6B),
+                                size = 34.dp,
+                                onClick = { viewModel.cancelVoiceRecording() }
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
-                                .clickable {
-                                    viewModel.stopAndSendVoiceRecording()
-                                }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send Voice Note",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send Voice Note",
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow,
+                            size = 46.dp,
+                            onClick = { viewModel.stopAndSendVoiceRecording() }
+                        )
                     } else {
                         // Attachments button
-                        IconButton(
-                            onClick = { showAttachmentSheet = true },
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(SurfaceCard)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Attach",
-                                tint = RosePrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                            icon = Icons.Default.Add,
+                            contentDescription = "Attach",
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
+                            size = 44.dp,
+                            onClick = { showAttachmentSheet = true }
+                        )
 
                         Spacer(modifier = Modifier.width(8.dp))
 
@@ -574,26 +565,28 @@ fun ChatScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(SurfaceCard)
-                                .border(1.dp, SurfaceBorder, RoundedCornerShape(24.dp))
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White)
+                                .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
                         ) {
                             if (inputText.isEmpty()) {
                                 Text(
-                                    text = "Message $partnerName...",
-                                    fontSize = 14.sp,
-                                    color = TextMuted
+                                    text = "Type message...",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.55f)
                                 )
                             }
                             BasicTextField(
                                 value = inputText,
                                 onValueChange = { inputText = it },
                                 textStyle = TextStyle(
-                                    fontSize = 14.sp,
-                                    color = TextPrimary
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = com.ashuchat.app.ui.theme.NeoBlack
                                 ),
-                                cursorBrush = SolidColor(RosePrimary),
+                                cursorBrush = SolidColor(com.ashuchat.app.ui.theme.NeoBlack),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -602,50 +595,34 @@ fun ChatScreen(
 
                         val isSendEnabled = inputText.trim().isNotEmpty()
                         if (isSendEnabled) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
-                                    .clickable {
-                                        viewModel.sendTextMessage(inputText)
-                                        inputText = ""
-                                    }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = "Send",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                                icon = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow,
+                                size = 44.dp,
+                                onClick = {
+                                    viewModel.sendTextMessage(inputText)
+                                    inputText = ""
+                                }
+                            )
                         } else {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(SurfaceCard)
-                                    .clickable {
-                                        val hasAudioPermission = ContextCompat.checkSelfPermission(
-                                            context,
-                                            android.Manifest.permission.RECORD_AUDIO
-                                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                        if (hasAudioPermission) {
-                                            viewModel.startVoiceRecording()
-                                        } else {
-                                            recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                                        }
+                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                                icon = Icons.Default.Mic,
+                                contentDescription = "Record Voice Note",
+                                backgroundColor = com.ashuchat.app.ui.theme.NeoCardPeach,
+                                size = 44.dp,
+                                onClick = {
+                                    val hasAudioPermission = ContextCompat.checkSelfPermission(
+                                        context,
+                                        android.Manifest.permission.RECORD_AUDIO
+                                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    if (hasAudioPermission) {
+                                        viewModel.startVoiceRecording()
+                                    } else {
+                                        recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                     }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Mic,
-                                    contentDescription = "Record Voice Note",
-                                    tint = RosePrimary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }
@@ -670,14 +647,15 @@ fun ChatScreen(
                         horizontalArrangement = Arrangement.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFF151B26))
-                            .border(1.dp, SurfaceBorder, RoundedCornerShape(0.dp))
-                            .padding(vertical = 6.dp, horizontal = 16.dp)
+                            .background(com.ashuchat.app.ui.theme.NeoCardPeach)
+                            .border(androidx.compose.foundation.BorderStroke(1.5.dp, com.ashuchat.app.ui.theme.NeoBlack))
+                            .padding(vertical = 8.dp, horizontal = 16.dp)
                     ) {
                         Text(
-                            text = "$partnerName is offline • Messages will deliver when they open the app",
+                            text = "$partnerName is offline • Messages queued for direct delivery",
                             fontSize = 11.sp,
-                            color = BrandLight
+                            fontWeight = FontWeight.Bold,
+                            color = com.ashuchat.app.ui.theme.NeoBlack
                         )
                     }
                 }
@@ -688,7 +666,7 @@ fun ChatScreen(
                         .fillMaxWidth()
                 ) {
                     if (messages.isEmpty()) {
-                        // Empty professional placeholder
+                        // Neo Brutal comic empty state
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -696,34 +674,30 @@ fun ChatScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(BrandPrimary.copy(alpha = 0.15f))
-                                    .border(1.dp, BrandPrimary.copy(alpha = 0.35f), CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Security,
-                                    contentDescription = null,
-                                    tint = BrandLight,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
+                            com.ashuchat.app.ui.components.NeoChatBubbleIcon(
+                                modifier = Modifier.size(68.dp)
+                            )
+                            Spacer(modifier = Modifier.height(18.dp))
                             Text(
-                                text = "Ready to chat",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                text = "READY TO CHAT!",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp,
+                                color = com.ashuchat.app.ui.theme.NeoBlack
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Send a message, photo, or file to $partnerName",
+                                text = "Send a text, photo, audio note, or tap + to ping $partnerName",
                                 fontSize = 13.sp,
-                                color = TextSecondary,
+                                fontWeight = FontWeight.Medium,
+                                color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.7f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            com.ashuchat.app.ui.components.NeoPillBadge(
+                                text = "⚡ DIRECT P2P ENCRYPTION",
+                                backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow
                             )
                         }
                     } else {
@@ -797,12 +771,16 @@ fun ChatScreen(
         AlertDialog(
             onDismissRequest = { showClearRoomDialog = false },
             title = {
-                Text(text = "Clear Room Chat?", color = TextPrimary)
+                Text(
+                    text = "CLEAR CHAT HISTORY?",
+                    fontWeight = FontWeight.Black,
+                    color = com.ashuchat.app.ui.theme.NeoBlack
+                )
             },
             text = {
                 Text(
-                    text = "This will permanently delete all messages and media records for this chat.",
-                    color = TextSecondary
+                    text = "This will permanently remove all messages and media records for this room on this device.",
+                    color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.8f)
                 )
             },
             confirmButton = {
@@ -812,15 +790,23 @@ fun ChatScreen(
                         viewModel.clearChat()
                     }
                 ) {
-                    Text("Clear", color = OfflineRed)
+                    Text(
+                        "CLEAR",
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFD32F2F)
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearRoomDialog = false }) {
-                    Text("Cancel", color = TextPrimary)
+                    Text(
+                        "CANCEL",
+                        fontWeight = FontWeight.Bold,
+                        color = com.ashuchat.app.ui.theme.NeoBlack
+                    )
                 }
             },
-            containerColor = SurfaceElevated
+            containerColor = Color.White
         )
     }
 
@@ -859,27 +845,12 @@ private fun PingAlertBanner(partnerName: String) {
             .padding(top = 16.dp),
         contentAlignment = Alignment.TopCenter
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(SurfaceCard)
-                .border(1.dp, BrandAccent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.NotificationsActive,
-                contentDescription = null,
-                tint = BrandAccent,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Ping received from $partnerName",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
-            )
-        }
+        com.ashuchat.app.ui.components.NeoPillBadge(
+            text = "⚡ PING RECEIVED FROM ${partnerName.uppercase()}!",
+            backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
+            borderWidth = 2.dp,
+            shadowOffsetX = 3.dp,
+            shadowOffsetY = 3.dp
+        )
     }
 }

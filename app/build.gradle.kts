@@ -8,8 +8,8 @@ android {
     namespace = "com.ashuchat.app"
     compileSdk = 34
 
-    val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 13
-    val vName = (project.findProperty("appVersionName") as? String) ?: "1.0.13"
+    val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 17
+    val vName = (project.findProperty("appVersionName") as? String) ?: "1.0.17"
 
     defaultConfig {
         applicationId = "com.ashuchat.app"
