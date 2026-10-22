@@ -19,9 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ashuchat.app.ui.theme.NeoCardBorder
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
-import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoBlack
+import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.webrtc.P2PConnectionState
 
 @Composable
@@ -30,15 +29,15 @@ fun ConnectionBadge(
     modifier: Modifier = Modifier
 ) {
     val isOnline = state == P2PConnectionState.CONNECTED_P2P
-    val dotColor = if (isOnline) Color(0xFF22C55E) else Color(0xFFEF4444)
+    val dotColor = if (isOnline) Color(0xFF2E7D32) else Color(0xFFE53935)
     val label = if (isOnline) "ONLINE" else "OFFLINE"
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(NeoSurfaceElevated)
-            .border(1.5.dp, NeoCardBorder, RoundedCornerShape(8.dp))
+            .background(Color.White)
+            .border(1.5.dp, NeoBlack, RoundedCornerShape(8.dp))
             .padding(horizontal = 7.dp, vertical = 2.dp)
     ) {
         Box(
@@ -53,7 +52,7 @@ fun ConnectionBadge(
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.5.sp,
-            color = NeoTextPrimary
+            color = NeoBlack
         )
     }
 }

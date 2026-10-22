@@ -44,17 +44,15 @@ import com.ashuchat.app.ui.components.NeoBrutalButton
 import com.ashuchat.app.ui.components.NeoBrutalCard
 import com.ashuchat.app.ui.components.NeoBrutalIconButton
 import com.ashuchat.app.ui.components.NeoTopAppBar
-import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
+import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnBlue
+import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoBtnPeach
-import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardLavender
 import com.ashuchat.app.ui.theme.NeoCardMint
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
+import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
-import com.ashuchat.app.ui.theme.NeoTextPrimary
-import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
@@ -92,7 +90,7 @@ fun RelayScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Header Info Card (Dark Tinted NeoBrutalCard)
+            // Header Info Card (Pastel Mint NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardMint,
                 modifier = Modifier.fillMaxWidth()
@@ -109,7 +107,7 @@ fun RelayScreen(
                             text = "Signaling Server URL",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextPrimary
+                            color = NeoTextDark
                         )
                     }
 
@@ -118,7 +116,7 @@ fun RelayScreen(
                         text = "Used exclusively for exchanging WebRTC connection handshakes (SDP & ICE). Messages are never relayed through this server once connected.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextSecondary,
+                        color = NeoTextDark.copy(alpha = 0.85f),
                         lineHeight = 17.sp
                     )
 
@@ -132,7 +130,7 @@ fun RelayScreen(
                             testResult = null
                         },
                         textStyle = TextStyle(
-                            color = NeoTextPrimary,
+                            color = NeoBlack,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -140,25 +138,25 @@ fun RelayScreen(
                             Text(
                                 "Server URL",
                                 fontWeight = FontWeight.Bold,
-                                color = NeoTextSecondary
+                                color = NeoBlack
                             )
                         },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeoAccentYellow,
-                            unfocusedBorderColor = NeoCardBorder,
-                            focusedContainerColor = NeoSurfaceElevated,
-                            unfocusedContainerColor = NeoSurfaceElevated,
-                            focusedTextColor = NeoTextPrimary,
-                            unfocusedTextColor = NeoTextPrimary,
-                            focusedLabelColor = NeoAccentYellow,
-                            unfocusedLabelColor = NeoTextSecondary,
-                            cursorColor = NeoAccentYellow
+                            focusedBorderColor = NeoBlack,
+                            unfocusedBorderColor = NeoBlack,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedTextColor = NeoBlack,
+                            unfocusedTextColor = NeoBlack,
+                            focusedLabelColor = NeoBlack,
+                            unfocusedLabelColor = NeoBlack.copy(alpha = 0.65f),
+                            cursorColor = NeoBlack
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(2.dp, NeoCardBorder, RoundedCornerShape(12.dp))
+                            .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -183,20 +181,20 @@ fun RelayScreen(
                             if (isTestingConnection) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    color = NeoTextPrimary,
+                                    color = NeoBlack,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Testing...", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NeoTextPrimary)
+                                Text("Testing...", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NeoBlack)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.NetworkCheck,
                                     contentDescription = null,
-                                    tint = NeoTextPrimary,
+                                    tint = NeoBlack,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Test Server", fontSize = 13.sp, fontWeight = FontWeight.Black, color = NeoTextPrimary)
+                                Text("Test Server", fontSize = 13.sp, fontWeight = FontWeight.Black, color = NeoBlack)
                             }
                         }
 
@@ -212,7 +210,7 @@ fun RelayScreen(
                             Icon(
                                 imageVector = Icons.Default.RestartAlt,
                                 contentDescription = "Reset",
-                                tint = NeoTextPrimary,
+                                tint = NeoBlack,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -226,7 +224,7 @@ fun RelayScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(NeoSurfaceElevated)
+                                .background(Color.White)
                                 .border(2.dp, if (success) OnlineGreen else OfflineRed, RoundedCornerShape(10.dp))
                                 .padding(12.dp)
                         ) {
@@ -250,7 +248,7 @@ fun RelayScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Explanation / How it works Card (Dark Tinted NeoBrutalCard)
+            // Explanation / How it works Card (Pastel Lavender NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardLavender,
                 modifier = Modifier.fillMaxWidth()
@@ -267,7 +265,7 @@ fun RelayScreen(
                             text = "How WebRTC P2P Works",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextPrimary
+                            color = NeoTextDark
                         )
                     }
 
@@ -279,7 +277,7 @@ fun RelayScreen(
                                 "3. Zero Server Storage: After the initial handshake, communication does not touch any server. Chats and files pass directly device-to-device.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextSecondary,
+                        color = NeoTextDark.copy(alpha = 0.9f),
                         lineHeight = 18.sp
                     )
                 }

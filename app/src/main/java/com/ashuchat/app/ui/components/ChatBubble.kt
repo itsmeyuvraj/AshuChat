@@ -64,19 +64,11 @@ import coil.request.ImageRequest
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
-import com.ashuchat.app.ui.theme.NeoAccentBlue
-import com.ashuchat.app.ui.theme.NeoAccentYellow
-import com.ashuchat.app.ui.theme.NeoBtnBlue
+import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnMint
-import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
-import com.ashuchat.app.ui.theme.NeoCardShadow
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
-import com.ashuchat.app.ui.theme.NeoTextMuted
-import com.ashuchat.app.ui.theme.NeoTextPrimary
-import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.utils.AudioPlayerHelper
 import com.ashuchat.app.utils.FileUtils
 import com.ashuchat.app.utils.HapticHelper
@@ -105,8 +97,7 @@ fun ChatBubble(
         RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
     }
 
-    val bubbleColor = if (isMe) NeoCardMint else NeoSurfaceElevated
-    val bubbleBorderColor = if (isMe) Color(0xFF28483B) else NeoCardBorder
+    val bubbleColor = if (isMe) NeoCardMint else Color.White
 
     Column(
         horizontalAlignment = alignment,
@@ -138,7 +129,7 @@ fun ChatBubble(
                     .matchParentSize()
                     .offset(x = if (isMe) 2.5.dp else (-2.5).dp, y = 2.5.dp)
                     .clip(bubbleShape)
-                    .background(NeoCardShadow)
+                    .background(NeoBlack)
             )
 
             // Foreground bubble
@@ -146,7 +137,7 @@ fun ChatBubble(
                 modifier = Modifier
                     .clip(bubbleShape)
                     .background(bubbleColor)
-                    .border(2.dp, bubbleBorderColor, bubbleShape)
+                    .border(2.dp, NeoBlack, bubbleShape)
                     .pointerInput(message.id) {
                         detectTapGestures(
                             onLongPress = {
@@ -172,7 +163,7 @@ fun ChatBubble(
                                 text = message.text,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = NeoTextPrimary,
+                                color = NeoBlack,
                                 lineHeight = 21.sp
                             )
                         }
@@ -213,7 +204,7 @@ fun ChatBubble(
                             Icon(
                                 imageVector = Icons.Default.Timer,
                                 contentDescription = if (isCountingDown) "Disappearing timer active" else "Disappearing after view",
-                                tint = NeoTextSecondary,
+                                tint = NeoBlack.copy(alpha = 0.7f),
                                 modifier = Modifier
                                     .size(12.dp)
                                     .padding(end = 2.dp)
@@ -224,7 +215,7 @@ fun ChatBubble(
                             text = formatTime(message.timestamp),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NeoTextMuted
+                            color = NeoBlack.copy(alpha = 0.6f)
                         )
 
                         if (isMe) {
@@ -245,8 +236,8 @@ fun ChatBubble(
                 modifier = Modifier
                     .offset(y = (-8).dp, x = if (isMe) (-6).dp else 6.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NeoSurfaceElevated)
-                    .border(1.5.dp, NeoCardBorder, RoundedCornerShape(12.dp))
+                    .background(NeoCardYellow)
+                    .border(1.5.dp, NeoBlack, RoundedCornerShape(12.dp))
                     .clickable { showReactionPicker = !showReactionPicker }
                     .padding(horizontal = 7.dp, vertical = 2.dp)
             ) {
@@ -272,8 +263,8 @@ private fun ReactionPickerBar(
         modifier = Modifier
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(NeoSurfaceElevated)
-            .border(2.dp, NeoCardBorder, RoundedCornerShape(20.dp))
+            .background(NeoCardYellow)
+            .border(2.dp, NeoBlack, RoundedCornerShape(20.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
     ) {
         Row(
@@ -298,7 +289,7 @@ private fun ReactionPickerBar(
                 modifier = Modifier
                     .width(1.5.dp)
                     .height(20.dp)
-                    .background(NeoCardBorder)
+                    .background(NeoBlack.copy(alpha = 0.3f))
             )
 
             Row(
@@ -314,7 +305,7 @@ private fun ReactionPickerBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Reply,
                     contentDescription = "Reply",
-                    tint = NeoTextPrimary,
+                    tint = NeoBlack,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -322,14 +313,14 @@ private fun ReactionPickerBar(
                     text = "Reply",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
-                    color = NeoTextPrimary
+                    color = NeoBlack
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
-                tint = NeoTextSecondary,
+                tint = NeoBlack.copy(alpha = 0.7f),
                 modifier = Modifier
                     .size(18.dp)
                     .clip(CircleShape)
@@ -353,14 +344,14 @@ private fun ReplyPreviewBox(
             .fillMaxWidth()
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(NeoSurfaceElevated.copy(alpha = 0.6f))
-            .border(1.dp, NeoCardBorder, RoundedCornerShape(10.dp))
+            .background(if (isMe) Color.White.copy(alpha = 0.7f) else NeoCardPeach.copy(alpha = 0.5f))
+            .border(1.5.dp, NeoBlack, RoundedCornerShape(10.dp))
     ) {
         Box(
             modifier = Modifier
                 .width(4.dp)
                 .height(36.dp)
-                .background(NeoAccentYellow)
+                .background(NeoBlack)
         )
         Column(
             modifier = Modifier
@@ -371,12 +362,12 @@ private fun ReplyPreviewBox(
                 text = replySender ?: "Peer",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
-                color = NeoAccentYellow
+                color = NeoBlack
             )
             Text(
                 text = replyText,
                 fontSize = 12.sp,
-                color = NeoTextSecondary,
+                color = NeoBlack.copy(alpha = 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -417,8 +408,8 @@ private fun AudioBubbleContent(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(NeoSurfaceElevated)
-            .border(1.5.dp, NeoCardBorder, RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .border(1.5.dp, NeoBlack, RoundedCornerShape(14.dp))
             .padding(8.dp)
     ) {
         IconButton(
@@ -432,13 +423,13 @@ private fun AudioBubbleContent(
             modifier = Modifier
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(NeoAccentYellow)
-                .border(1.dp, NeoCardBorder, CircleShape)
+                .background(NeoCardYellow)
+                .border(1.5.dp, NeoBlack, CircleShape)
         ) {
             Icon(
                 imageVector = if (isThisPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (isThisPlaying) "Pause" else "Play",
-                tint = Color.Black,
+                tint = NeoBlack,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -448,8 +439,8 @@ private fun AudioBubbleContent(
         Column(modifier = Modifier.weight(1f)) {
             LinearProgressIndicator(
                 progress = { thisProgress },
-                color = NeoAccentYellow,
-                trackColor = NeoCardBorder,
+                color = NeoBlack,
+                trackColor = NeoBlack.copy(alpha = 0.15f),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
@@ -467,7 +458,7 @@ private fun AudioBubbleContent(
                     text = durationText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NeoTextSecondary
+                    color = NeoBlack.copy(alpha = 0.7f)
                 )
 
                 if (currentPlayingId == message.id) {
@@ -475,7 +466,7 @@ private fun AudioBubbleContent(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(NeoBtnMint)
-                            .border(1.dp, NeoCardBorder, RoundedCornerShape(6.dp))
+                            .border(1.dp, NeoBlack, RoundedCornerShape(6.dp))
                             .clickable {
                                 HapticHelper.playClick(context)
                                 audioPlayerHelper?.toggleSpeed()
@@ -486,7 +477,7 @@ private fun AudioBubbleContent(
                             text = "${speed}x",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color(0xFF34D399)
+                            color = NeoBlack
                         )
                     }
                 }
@@ -520,8 +511,8 @@ private fun ImageBubbleContent(
                 .fillMaxWidth()
                 .height(180.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(NeoSurfaceElevated)
-                .border(1.5.dp, NeoCardBorder, RoundedCornerShape(12.dp))
+                .background(Color.White)
+                .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                 .clickable(enabled = path != null && fileExists && !isTransferring) {
                     path?.let { onImageClick(it, message.attachmentName) }
                 }
@@ -553,7 +544,7 @@ private fun ImageBubbleContent(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = "Photo",
-                        tint = NeoTextSecondary,
+                        tint = NeoBlack.copy(alpha = 0.5f),
                         modifier = Modifier.size(36.dp)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -561,7 +552,7 @@ private fun ImageBubbleContent(
                         text = message.attachmentName ?: "Photo",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NeoTextSecondary
+                        color = NeoBlack.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -575,7 +566,7 @@ private fun ImageBubbleContent(
                 ) {
                     CircularProgressIndicator(
                         progress = { message.transferProgress },
-                        color = NeoAccentYellow,
+                        color = NeoCardYellow,
                         modifier = Modifier.size(44.dp)
                     )
                 }
@@ -588,7 +579,7 @@ private fun ImageBubbleContent(
                 text = message.text,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = NeoTextPrimary
+                color = NeoBlack
             )
         }
     }
@@ -604,8 +595,8 @@ private fun FileBubbleContent(message: ChatMessage) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(NeoSurfaceElevated)
-                .border(1.5.dp, NeoCardBorder, RoundedCornerShape(12.dp))
+                .background(Color.White)
+                .border(1.5.dp, NeoBlack, RoundedCornerShape(12.dp))
                 .padding(8.dp)
         ) {
             Box(
@@ -613,13 +604,13 @@ private fun FileBubbleContent(message: ChatMessage) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(NeoBtnBlue)
-                    .border(1.5.dp, NeoCardBorder, CircleShape)
+                    .background(NeoCardYellow)
+                    .border(1.5.dp, NeoBlack, CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                     contentDescription = "File",
-                    tint = NeoAccentBlue,
+                    tint = NeoBlack,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -631,14 +622,14 @@ private fun FileBubbleContent(message: ChatMessage) {
                     text = message.attachmentName ?: "Attachment",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NeoTextPrimary,
+                    color = NeoBlack,
                     maxLines = 1
                 )
                 Text(
                     text = FileUtils.formatFileSize(message.attachmentSize),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = NeoTextSecondary
+                    color = NeoBlack.copy(alpha = 0.6f)
                 )
             }
         }
@@ -647,8 +638,8 @@ private fun FileBubbleContent(message: ChatMessage) {
             Spacer(modifier = Modifier.height(6.dp))
             LinearProgressIndicator(
                 progress = { message.transferProgress },
-                color = NeoAccentYellow,
-                trackColor = NeoCardBorder,
+                color = NeoBlack,
+                trackColor = NeoBlack.copy(alpha = 0.15f),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
@@ -662,7 +653,7 @@ private fun FileBubbleContent(message: ChatMessage) {
                 text = message.text,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = NeoTextPrimary
+                color = NeoBlack
             )
         }
     }
@@ -687,14 +678,14 @@ private fun PingBubbleContent(message: ChatMessage, isMe: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(NeoSurfaceElevated)
-            .border(1.5.dp, NeoCardBorder, RoundedCornerShape(12.dp))
+            .background(NeoCardYellow)
+            .border(1.5.dp, NeoBlack, RoundedCornerShape(12.dp))
             .padding(vertical = 8.dp, horizontal = 12.dp)
     ) {
         Icon(
             imageVector = Icons.Default.NotificationsActive,
             contentDescription = "Ping",
-            tint = NeoAccentYellow,
+            tint = NeoBlack,
             modifier = Modifier
                 .size(24.dp)
                 .scale(scaleAnim)
@@ -704,7 +695,7 @@ private fun PingBubbleContent(message: ChatMessage, isMe: Boolean) {
             text = if (isMe) "YOU SENT A PING ⚡" else "${message.senderName?.uppercase()} SENT A PING ⚡",
             fontSize = 13.sp,
             fontWeight = FontWeight.Black,
-            color = NeoTextPrimary
+            color = NeoBlack
         )
     }
 }
@@ -729,7 +720,7 @@ private fun StatusIndicator(
             Icon(
                 imageVector = Icons.Default.Schedule,
                 contentDescription = "Sending / Queued",
-                tint = NeoTextSecondary.copy(alpha = alpha),
+                tint = NeoBlack.copy(alpha = alpha),
                 modifier = Modifier.size(12.dp)
             )
         }
@@ -737,7 +728,7 @@ private fun StatusIndicator(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Sent",
-                tint = NeoTextSecondary,
+                tint = NeoBlack.copy(alpha = 0.75f),
                 modifier = Modifier.size(13.dp)
             )
         }
@@ -746,7 +737,7 @@ private fun StatusIndicator(
             Icon(
                 imageVector = Icons.Default.DoneAll,
                 contentDescription = "Delivered",
-                tint = if (status == MessageStatus.READ) NeoAccentBlue else NeoTextSecondary,
+                tint = if (status == MessageStatus.READ) Color(0xFF1E88E5) else NeoBlack,
                 modifier = Modifier.size(14.dp)
             )
         }

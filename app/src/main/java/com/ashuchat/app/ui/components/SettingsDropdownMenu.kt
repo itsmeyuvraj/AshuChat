@@ -29,10 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ashuchat.app.ui.theme.NeoCardBorder
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
-import com.ashuchat.app.ui.theme.NeoTextPrimary
-import com.ashuchat.app.ui.theme.NeoTextSecondary
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.SurfaceBorder
+import com.ashuchat.app.ui.theme.SurfaceElevated
+import com.ashuchat.app.ui.theme.TextPrimary
+import com.ashuchat.app.ui.theme.TextSecondary
 
 @Composable
 fun SettingsMenuButton(
@@ -42,7 +43,7 @@ fun SettingsMenuButton(
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
     iconModifier: Modifier = Modifier,
-    iconTint: Color = NeoTextSecondary,
+    iconTint: Color = TextSecondary,
     trigger: (@Composable (onClick: () -> Unit) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -68,14 +69,14 @@ fun SettingsMenuButton(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
-                .background(NeoSurfaceElevated)
-                .border(2.dp, NeoCardBorder, RoundedCornerShape(16.dp))
+                .background(Color(0xFFFEFDF5))
+                .border(2.dp, Color(0xFF18181B), RoundedCornerShape(16.dp))
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = "Profile",
-                        color = NeoTextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -84,7 +85,7 @@ fun SettingsMenuButton(
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Profile",
-                        tint = NeoTextPrimary,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -98,7 +99,7 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "Relay",
-                        color = NeoTextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -107,7 +108,7 @@ fun SettingsMenuButton(
                     Icon(
                         imageVector = Icons.Default.Dns,
                         contentDescription = "Relay",
-                        tint = NeoTextPrimary,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -121,7 +122,7 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "Chat Settings",
-                        color = NeoTextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -130,7 +131,7 @@ fun SettingsMenuButton(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Chat,
                         contentDescription = "Chat",
-                        tint = NeoTextPrimary,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -141,7 +142,7 @@ fun SettingsMenuButton(
             )
 
             HorizontalDivider(
-                color = NeoCardBorder,
+                color = Color(0xFF18181B).copy(alpha = 0.2f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             )
@@ -150,7 +151,7 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "About",
-                        color = NeoTextPrimary,
+                        color = Color(0xFF18181B),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -159,7 +160,7 @@ fun SettingsMenuButton(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = "About",
-                        tint = NeoTextPrimary,
+                        tint = Color(0xFF18181B),
                         modifier = Modifier.size(20.dp)
                     )
                 },

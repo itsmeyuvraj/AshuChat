@@ -2,7 +2,7 @@ package com.ashuchat.app.ui.theme
 
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
@@ -10,20 +10,20 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val NeoColorScheme = darkColorScheme(
-    primary = NeoAccentYellow,
-    onPrimary = Color.Black,
-    secondary = NeoAccentMint,
-    onSecondary = Color.Black,
-    tertiary = NeoAccentBlue,
-    onTertiary = Color.Black,
+private val NeoColorScheme = lightColorScheme(
+    primary = NeoBlack,
+    onPrimary = Color.White,
+    secondary = NeoBlack,
+    onSecondary = Color.White,
+    tertiary = NeoBlack,
+    onTertiary = Color.White,
     background = NeoBackground,
-    onBackground = NeoTextPrimary,
-    surface = NeoSurface,
-    onSurface = NeoTextPrimary,
-    surfaceVariant = NeoSurfaceElevated,
-    onSurfaceVariant = NeoTextSecondary,
-    outline = NeoCardBorder
+    onBackground = NeoBlack,
+    surface = Color.White,
+    onSurface = NeoBlack,
+    surfaceVariant = Color.White,
+    onSurfaceVariant = NeoBlack,
+    outline = NeoBlack
 )
 
 @Composable
@@ -37,10 +37,10 @@ fun AshuChatTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = NeoBackground.toArgb()
+                window.statusBarColor = NeoHeaderYellow.toArgb()
                 window.navigationBarColor = NeoBackground.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
             }
         }
     }

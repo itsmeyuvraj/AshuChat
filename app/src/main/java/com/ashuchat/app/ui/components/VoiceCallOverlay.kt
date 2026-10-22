@@ -154,7 +154,6 @@ fun VoiceCallOverlay(
                         icon = Icons.Default.CallEnd,
                         contentDescription = "Decline",
                         backgroundColor = Color(0xFFFF6B6B),
-                        tint = Color.White,
                         size = 64.dp,
                         onClick = onReject
                     )
@@ -162,8 +161,7 @@ fun VoiceCallOverlay(
                     com.ashuchat.app.ui.components.NeoBrutalIconButton(
                         icon = Icons.Default.Phone,
                         contentDescription = "Accept",
-                        backgroundColor = com.ashuchat.app.ui.theme.NeoAccentYellow,
-                        tint = com.ashuchat.app.ui.theme.NeoBackground,
+                        backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
                         size = 64.dp,
                         onClick = onAccept
                     )
@@ -177,8 +175,7 @@ fun VoiceCallOverlay(
                     com.ashuchat.app.ui.components.NeoBrutalIconButton(
                         icon = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
                         contentDescription = "Mute",
-                        backgroundColor = if (isMuted) Color(0xFFFF6B6B) else com.ashuchat.app.ui.theme.NeoSurfaceElevated,
-                        tint = if (isMuted) Color.White else com.ashuchat.app.ui.theme.NeoTextPrimary,
+                        backgroundColor = if (isMuted) Color(0xFFFF6B6B) else Color.White,
                         size = 54.dp,
                         onClick = onToggleMute
                     )
@@ -187,7 +184,6 @@ fun VoiceCallOverlay(
                         icon = Icons.Default.CallEnd,
                         contentDescription = "End Call",
                         backgroundColor = Color(0xFFFF6B6B),
-                        tint = Color.White,
                         size = 64.dp,
                         onClick = onEnd
                     )
@@ -195,8 +191,7 @@ fun VoiceCallOverlay(
                     com.ashuchat.app.ui.components.NeoBrutalIconButton(
                         icon = if (isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
                         contentDescription = "Speaker",
-                        backgroundColor = if (isSpeakerOn) com.ashuchat.app.ui.theme.NeoAccentYellow else com.ashuchat.app.ui.theme.NeoSurfaceElevated,
-                        tint = if (isSpeakerOn) com.ashuchat.app.ui.theme.NeoBackground else com.ashuchat.app.ui.theme.NeoTextPrimary,
+                        backgroundColor = if (isSpeakerOn) com.ashuchat.app.ui.theme.NeoBtnMint else Color.White,
                         size = 54.dp,
                         onClick = onToggleSpeaker
                     )

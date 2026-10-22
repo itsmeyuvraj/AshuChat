@@ -224,7 +224,7 @@ fun QrScannerScreen(
             ) {
                 com.ashuchat.app.ui.components.NeoPillBadge(
                     text = "POINT AT QR CODE",
-                    backgroundColor = com.ashuchat.app.ui.theme.NeoSurfaceElevated
+                    backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -258,20 +258,19 @@ fun QrScannerScreen(
                             text = "CAMERA ACCESS NEEDED",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = com.ashuchat.app.ui.theme.NeoTextPrimary
+                            color = com.ashuchat.app.ui.theme.NeoBlack
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "AshuChat needs camera access to scan your peer's QR code and establish a direct connection.",
                             fontSize = 13.sp,
-                            color = com.ashuchat.app.ui.theme.NeoTextSecondary,
+                            color = com.ashuchat.app.ui.theme.NeoBlack.copy(alpha = 0.8f),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(18.dp))
                         com.ashuchat.app.ui.components.NeoBrutalButton(
                             text = "GRANT PERMISSION",
-                            backgroundColor = com.ashuchat.app.ui.theme.NeoAccentYellow,
-                            textColor = com.ashuchat.app.ui.theme.NeoBackground,
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
                             onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }
                         )
                     }
@@ -288,8 +287,7 @@ fun QrScannerScreen(
             com.ashuchat.app.ui.components.NeoBrutalIconButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                backgroundColor = com.ashuchat.app.ui.theme.NeoSurfaceElevated,
-                tint = com.ashuchat.app.ui.theme.NeoTextPrimary,
+                backgroundColor = com.ashuchat.app.ui.theme.NeoHeaderYellow,
                 size = 46.dp,
                 onClick = onNavigateBack
             )

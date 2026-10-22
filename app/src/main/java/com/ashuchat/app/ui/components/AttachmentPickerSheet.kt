@@ -42,14 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoCardBorder
+import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
-import com.ashuchat.app.ui.theme.NeoCardShadow
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
-import com.ashuchat.app.ui.theme.NeoTextPrimary
 import com.ashuchat.app.utils.HapticHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,7 +73,7 @@ fun AttachmentPickerSheet(
         ) {
             NeoPillBadge(
                 text = "SHARE CONTENT",
-                backgroundColor = NeoSurfaceElevated,
+                backgroundColor = NeoCardYellow,
                 modifier = Modifier.padding(bottom = 20.dp)
             )
 
@@ -166,7 +163,7 @@ private fun PickerOptionItem(
                     .matchParentSize()
                     .offset(x = 3.dp, y = 3.dp)
                     .clip(CircleShape)
-                    .background(NeoCardShadow)
+                    .background(NeoBlack)
             )
 
             // Front button
@@ -177,12 +174,12 @@ private fun PickerOptionItem(
                     .offset(x = translationOffset, y = translationOffset)
                     .clip(CircleShape)
                     .background(color)
-                    .border(2.dp, NeoCardBorder, CircleShape)
+                    .border(2.dp, NeoBlack, CircleShape)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    tint = NeoTextPrimary,
+                    tint = NeoBlack,
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -194,7 +191,7 @@ private fun PickerOptionItem(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
-            color = NeoTextPrimary
+            color = NeoBlack
         )
     }
 }

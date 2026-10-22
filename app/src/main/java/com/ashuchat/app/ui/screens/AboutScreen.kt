@@ -42,19 +42,16 @@ import com.ashuchat.app.ui.components.NeoBrutalButton
 import com.ashuchat.app.ui.components.NeoBrutalCard
 import com.ashuchat.app.ui.components.NeoTopAppBar
 import com.ashuchat.app.ui.components.UpdateDialog
-import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
+import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnBlue
 import com.ashuchat.app.ui.theme.NeoBtnMint
-import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardLavender
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardPink
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoSurfaceElevated
+import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
-import com.ashuchat.app.ui.theme.NeoTextPrimary
-import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 
@@ -98,7 +95,7 @@ fun AboutScreen(
                     .size(86.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .background(NeoCardYellow)
-                    .border(2.5.dp, NeoCardBorder, RoundedCornerShape(22.dp))
+                    .border(2.5.dp, NeoBlack, RoundedCornerShape(22.dp))
             ) {
                 Text(
                     text = "🎨",
@@ -112,7 +109,7 @@ fun AboutScreen(
                 text = "AshuChat",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black,
-                color = NeoTextPrimary
+                color = NeoBlack
             )
 
             Text(
@@ -125,7 +122,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // App Version & In-App Updater Card (Dark Tinted NeoBrutalCard)
+            // App Version & In-App Updater Card (Pastel Lavender NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardLavender,
                 modifier = Modifier.fillMaxWidth()
@@ -152,7 +149,7 @@ fun AboutScreen(
                                 text = "v${viewModel.updateManager.currentVersionName} (Build ${viewModel.updateManager.currentVersionCode})",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black,
-                                color = NeoTextPrimary
+                                color = NeoBlack
                             )
                         }
 
@@ -161,20 +158,20 @@ fun AboutScreen(
                         NeoBrutalButton(
                             onClick = { viewModel.checkForUpdates(silent = false) },
                             enabled = !isCheckingUpdate && !isDownloadingUpdate,
-                            backgroundColor = NeoAccentYellow,
+                            backgroundColor = NeoBtnMint,
                             modifier = Modifier.width(140.dp)
                         ) {
                             if (isCheckingUpdate) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    color = NeoBackground,
+                                    color = NeoBlack,
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.SystemUpdate,
                                     contentDescription = null,
-                                    tint = NeoBackground,
+                                    tint = NeoBlack,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -182,7 +179,7 @@ fun AboutScreen(
                                     text = "Check",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = NeoBackground
+                                    color = NeoBlack
                                 )
                             }
                         }
@@ -195,8 +192,8 @@ fun AboutScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(NeoSurfaceElevated)
-                                .border(1.5.dp, NeoCardBorder, RoundedCornerShape(10.dp))
+                                .background(Color.White)
+                                .border(1.5.dp, NeoBlack, RoundedCornerShape(10.dp))
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Icon(
@@ -210,7 +207,7 @@ fun AboutScreen(
                                 text = updateCheckMessage ?: "",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoTextPrimary
+                                color = NeoBlack
                             )
                         }
                     }
@@ -219,7 +216,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Dedication Card (Dark Tinted NeoBrutalCard)
+            // Dedication Card (Pastel Pink NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardPink,
                 modifier = Modifier.fillMaxWidth()
@@ -238,7 +235,7 @@ fun AboutScreen(
                         text = "Developed by Yuvraj Poudyal for Ashu",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Black,
-                        color = NeoTextPrimary,
+                        color = NeoBlack,
                         textAlign = TextAlign.Center
                     )
 
@@ -248,7 +245,7 @@ fun AboutScreen(
                         text = "Built with infinite love for private, unbreakable moments.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextSecondary,
+                        color = NeoBlack.copy(alpha = 0.85f),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -256,7 +253,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Technology & Security Details Card (Dark Tinted NeoBrutalCard)
+            // Technology & Security Details Card (Pastel Peach NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardPeach,
                 modifier = Modifier.fillMaxWidth()
@@ -273,7 +270,7 @@ fun AboutScreen(
                             text = "Specifications & Security",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextPrimary
+                            color = NeoBlack
                         )
                     }
 
@@ -287,7 +284,7 @@ fun AboutScreen(
                                 "• Auto-Updates: GitHub Releases CI/CD Integration",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NeoTextSecondary,
+                        color = NeoBlack.copy(alpha = 0.9f),
                         lineHeight = 20.sp
                     )
                 }
