@@ -36,6 +36,7 @@ import com.ashuchat.app.ui.theme.AshuChatTheme
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import com.ashuchat.app.utils.BiometricHelper
+import com.ashuchat.app.utils.PermissionHelper
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
@@ -50,9 +51,9 @@ class MainActivity : FragmentActivity() {
     private val chatViewModel: ChatViewModel by viewModels()
     private var isAppUnlocked by mutableStateOf(true)
 
-    private val requestNotificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-            // Notification permission result handled
+    private val requestMultiplePermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            PermissionHelper.markStartupPermissionsChecked(this, chatViewModel.prefs)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,9 +68,13 @@ class MainActivity : FragmentActivity() {
             triggerBiometricAuth()
         }
 
-        // Request POST_NOTIFICATIONS permission for Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // Ask for all required permissions when app opens for the first time or after update to a new build
+        if (com.ashuchat.app.utils.PermissionHelper.shouldCheckPermissionsOnStartup(this, chatViewModel.prefs)) {
+            val missing = com.ashuchat.app.utils.PermissionHelper.getMissingPermissions(this)
+            if (missing.isNotEmpty()) {
+                requestMultiplePermissionsLauncher.launch(missing)
+            }
+            com.ashuchat.app.utils.PermissionHelper.markStartupPermissionsChecked(this, chatViewModel.prefs)
         }
 
         // Start P3 Background Sync Service (foreground service to survive Doze mode)

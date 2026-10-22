@@ -1,6 +1,10 @@
 package com.ashuchat.app.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import com.ashuchat.app.ui.components.VoiceCallOverlay
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -180,6 +184,44 @@ fun ChatScreen(
     ) { success: Boolean ->
         if (success) {
             cameraPhotoUri?.let { viewModel.sendAttachment(it) }
+        }
+    }
+
+    val launchCameraPhoto: () -> Unit = {
+        try {
+            val photoFile = File(context.cacheDir, "camera_photo_${System.currentTimeMillis()}.jpg")
+            photoFile.parentFile?.mkdirs()
+            if (!photoFile.exists()) {
+                photoFile.createNewFile()
+            }
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                photoFile
+            )
+            cameraPhotoUri = uri
+            takePhotoLauncher.launch(uri)
+        } catch (e: Exception) {
+            Log.e("ChatScreen", "Error launching camera: ${e.message}", e)
+            Toast.makeText(
+                context,
+                "Unable to open camera: ${e.localizedMessage ?: "Unknown error"}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchCameraPhoto()
+        } else {
+            Toast.makeText(
+                context,
+                "Camera permission is required to capture photos",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -752,14 +794,16 @@ fun ChatScreen(
                 pickFileLauncher.launch("*/*")
             },
             onTakePhoto = {
-                val photoFile = File(context.cacheDir, "camera_photo_${System.currentTimeMillis()}.jpg")
-                val uri = FileProvider.getUriForFile(
+                val hasCameraPermission = ContextCompat.checkSelfPermission(
                     context,
-                    "${context.packageName}.provider",
-                    photoFile
-                )
-                cameraPhotoUri = uri
-                takePhotoLauncher.launch(uri)
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasCameraPermission) {
+                    launchCameraPhoto()
+                } else {
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }
             },
             onSendPing = {
                 viewModel.sendPing()
