@@ -34,6 +34,15 @@ interface MessageDao {
     @Query("UPDATE messages SET status = :status WHERE id = :id")
     suspend fun updateMessageStatus(id: String, status: String)
 
+    @Query("UPDATE messages SET expiresAt = :expiresAt WHERE id = :id")
+    suspend fun updateMessageExpiration(id: String, expiresAt: Long)
+
+    @Query("SELECT * FROM messages WHERE roomId = :roomId AND isFromMe = 0 AND status != 'READ'")
+    suspend fun getUnreadIncomingMessagesForRoom(roomId: String): List<MessageEntity>
+
+    @Query("UPDATE messages SET status = 'READ', expiresAt = CASE WHEN :expiresAt IS NOT NULL AND expiresAt IS NULL THEN :expiresAt ELSE expiresAt END WHERE id = :id")
+    suspend fun markMessageAsRead(id: String, expiresAt: Long?)
+
     @Query("UPDATE messages SET attachmentPath = :path WHERE id = :id")
     suspend fun updateAttachmentPath(id: String, path: String)
 

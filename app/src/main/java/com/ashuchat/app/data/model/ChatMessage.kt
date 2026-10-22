@@ -18,5 +18,6 @@ data class ChatMessage(
     val replyToId: String? = null,
     val replyToText: String? = null,
     val replyToSender: String? = null,
-    val expiresAt: Long? = null
+    val expiresAt: Long? = null,
+    val disappearingDuration: Long? = null
 )

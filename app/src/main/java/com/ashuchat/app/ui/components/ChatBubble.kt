@@ -196,11 +196,16 @@ fun ChatBubble(
                     modifier = Modifier.align(Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (message.expiresAt != null) {
+                    if (message.expiresAt != null || message.disappearingDuration != null) {
+                        val isCountingDown = message.expiresAt != null
                         Icon(
                             imageVector = Icons.Default.Timer,
-                            contentDescription = "Disappearing message",
-                            tint = if (isMe) Color.White.copy(alpha = 0.75f) else RoseAccent,
+                            contentDescription = if (isCountingDown) "Disappearing timer active" else "Disappearing after view",
+                            tint = if (isMe) {
+                                if (isCountingDown) RoseAccent else Color.White.copy(alpha = 0.75f)
+                            } else {
+                                RoseAccent
+                            },
                             modifier = Modifier
                                 .size(11.dp)
                                 .padding(end = 2.dp)

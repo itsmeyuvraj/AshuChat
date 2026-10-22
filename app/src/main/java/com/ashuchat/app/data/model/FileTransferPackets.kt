@@ -67,9 +67,12 @@ data class DataChannelPacket(
     @SerializedName("replyToSender")
     val replyToSender: String? = null,
 
-    // Disappearing message expiration
+    // Disappearing message expiration & duration
     @SerializedName("expiresAt")
     val expiresAt: Long? = null,
+
+    @SerializedName("disappearingDuration")
+    val disappearingDuration: Long? = null,
 
     // Audio Voice Note duration in ms
     @SerializedName("audioDurationMs")

@@ -1,12 +1,16 @@
 package com.ashuchat.app.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.ashuchat.app.data.model.ChatMessage
 import com.ashuchat.app.data.model.MessageStatus
 import com.ashuchat.app.data.model.MessageType
 
-@Entity(tableName = "messages")
+@Entity(
+    tableName = "messages",
+    indices = [Index(value = ["roomId"]), Index(value = ["expiresAt"])]
+)
 data class MessageEntity(
     @PrimaryKey
     val id: String,
@@ -25,7 +29,8 @@ data class MessageEntity(
     val replyToId: String? = null,
     val replyToText: String? = null,
     val replyToSender: String? = null,
-    val expiresAt: Long? = null
+    val expiresAt: Long? = null,
+    val disappearingDuration: Long? = null
 ) {
     fun toChatMessage(progress: Float = 1.0f): ChatMessage {
         val parsedType = try {
@@ -59,7 +64,8 @@ data class MessageEntity(
             replyToId = replyToId,
             replyToText = replyToText,
             replyToSender = replyToSender,
-            expiresAt = expiresAt
+            expiresAt = expiresAt,
+            disappearingDuration = disappearingDuration
         )
     }
 
@@ -82,7 +88,8 @@ data class MessageEntity(
                 replyToId = msg.replyToId,
                 replyToText = msg.replyToText,
                 replyToSender = msg.replyToSender,
-                expiresAt = msg.expiresAt
+                expiresAt = msg.expiresAt,
+                disappearingDuration = msg.disappearingDuration
             )
         }
     }

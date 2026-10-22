@@ -183,9 +183,12 @@ fun ChatScreen(
         }
     }
 
-    // Track active chat room for heads-up notification filtering
+    // Track active chat room for heads-up notification filtering & mark messages as viewed
     DisposableEffect(activeRoomId) {
         AshuChatApp.activeChatRoom = activeRoomId
+        if (activeRoomId.isNotBlank()) {
+            viewModel.markRoomMessagesAsRead(activeRoomId)
+        }
         onDispose {
             if (AshuChatApp.activeChatRoom == activeRoomId) {
                 AshuChatApp.activeChatRoom = null
@@ -198,8 +201,11 @@ fun ChatScreen(
         viewModel.startConnection()
     }
 
-    // Auto-scroll to bottom on new messages
+    // Auto-scroll to bottom on new messages and mark viewed
     LaunchedEffect(messages.size) {
+        if (activeRoomId.isNotBlank()) {
+            viewModel.markRoomMessagesAsRead(activeRoomId)
+        }
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }

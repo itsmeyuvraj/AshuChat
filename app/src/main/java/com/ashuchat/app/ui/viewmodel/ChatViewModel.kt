@@ -144,7 +144,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         // Periodic cleanup of expired disappearing messages
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(10_000)
+                delay(3000)
                 try {
                     chatRepository.deleteExpiredMessages(getApplication())
                 } catch (e: Exception) {
@@ -286,20 +286,35 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            webRtcManager.fileCompleteFlow.collect { (messageId, localPath, isIncoming) ->
+            webRtcManager.fileCompleteFlow.collect { event ->
+                val messageId = event.messageId
+                val localPath = event.localPath
+                val isIncoming = event.isIncoming
+                val disappearingDuration = event.disappearingDuration
+
                 val currentMap = _activeFileProgress.value.toMutableMap()
                 currentMap.remove(messageId)
                 _activeFileProgress.value = currentMap
 
+                val currentRoom = activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+                val isViewed = AshuChatApp.isAppInForeground && AshuChatApp.activeChatRoom == currentRoom
+                val initialStatus = if (isIncoming) {
+                    if (isViewed) MessageStatus.READ else MessageStatus.DELIVERED
+                } else MessageStatus.SENT
+
+                val expiresAt = if (isIncoming && isViewed && disappearingDuration != null && disappearingDuration > 0) {
+                    System.currentTimeMillis() + (disappearingDuration * 1000L)
+                } else null
+
                 val existing = chatRepository.getMessage(messageId)
                 if (existing != null) {
                     chatRepository.updateAttachmentPath(messageId, localPath)
-                    chatRepository.updateMessageStatus(
-                        messageId,
-                        if (isIncoming) MessageStatus.DELIVERED else MessageStatus.SENT
-                    )
+                    chatRepository.updateMessageStatus(messageId, initialStatus)
+                    if (isIncoming && isViewed) {
+                        if (expiresAt != null) chatRepository.updateMessageExpiration(messageId, expiresAt)
+                        ChatConnectionManager.sendReadAck(messageId, currentRoom)
+                    }
                 } else {
-                    val currentRoom = activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
                     val isImage = FileUtils.isImage(localPath, null)
                     val fileMsg = ChatMessage(
                         id = messageId,
@@ -309,24 +324,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         text = "",
                         type = if (isImage) MessageType.IMAGE else MessageType.FILE,
                         timestamp = System.currentTimeMillis(),
-                        status = if (isIncoming) MessageStatus.DELIVERED else MessageStatus.SENT,
+                        status = initialStatus,
                         attachmentPath = localPath,
                         attachmentName = File(localPath).name,
-                        transferProgress = 1.0f
+                        transferProgress = 1.0f,
+                        disappearingDuration = disappearingDuration,
+                        expiresAt = expiresAt
                     )
                     chatRepository.insertMessage(fileMsg)
+                    if (isIncoming && isViewed) {
+                        ChatConnectionManager.sendReadAck(messageId, currentRoom)
+                    }
                 }
 
-                if (isIncoming) {
-                    val currentRoom = activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
-                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
-                    if (shouldNotify) {
-                        NotificationHelper.showMessageNotification(
-                            getApplication(),
-                            partnerName.value,
-                            "Received attachment"
-                        )
-                    }
+                if (isIncoming && !isViewed) {
+                    NotificationHelper.showMessageNotification(
+                        getApplication(),
+                        partnerName.value,
+                        "Received attachment"
+                    )
                 }
             }
         }
@@ -352,9 +368,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _replyingToMessage.value = null
 
         val disappearingDuration = prefs.disappearingDurationSeconds
-        val expiresAt = if (disappearingDuration > 0) {
-            System.currentTimeMillis() + (disappearingDuration * 1000L)
-        } else null
+        val durationToUse = if (disappearingDuration > 0) disappearingDuration else null
 
         val chatMessage = ChatMessage(
             id = messageId,
@@ -368,7 +382,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             replyToId = replyingTo?.id,
             replyToText = replyingTo?.text?.ifBlank { replyingTo.attachmentName ?: "Attachment" },
             replyToSender = replyingTo?.senderName,
-            expiresAt = expiresAt
+            expiresAt = null,
+            disappearingDuration = durationToUse
         )
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -383,7 +398,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 replyToId = chatMessage.replyToId,
                 replyToText = chatMessage.replyToText,
                 replyToSender = chatMessage.replyToSender,
-                expiresAt = chatMessage.expiresAt
+                disappearingDuration = durationToUse
             )
 
             // Direct P2P send if open
@@ -436,6 +451,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         val currentRoom = activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         val messageId = UUID.randomUUID().toString()
+        val disappearingDuration = prefs.disappearingDurationSeconds
+        val durationToUse = if (disappearingDuration > 0) disappearingDuration else null
+
         val chatMessage = ChatMessage(
             id = messageId,
             roomId = currentRoom,
@@ -449,7 +467,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             attachmentName = fileName,
             attachmentSize = fileSize,
             mimeType = mimeType,
-            transferProgress = 1.0f // Local sender already has file available
+            transferProgress = 1.0f, // Local sender already has file available
+            expiresAt = null,
+            disappearingDuration = durationToUse
         )
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -468,7 +488,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         fileSize = compressedBytes.size.toLong(),
                         mimeType = "image/jpeg",
                         timestamp = chatMessage.timestamp,
-                        dataBase64 = base64
+                        dataBase64 = base64,
+                        disappearingDuration = durationToUse
                     )
 
                     // 1. Direct P2P send if WebRTC DataChannel is open
@@ -507,7 +528,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     fileName = fileName,
                     fileSize = fileSize,
                     mimeType = mimeType,
-                    senderName = prefs.myName
+                    senderName = prefs.myName,
+                    disappearingDuration = durationToUse
                 )
             } else {
                 // Try sending small non-image files (< 1MB) via cloud mailbox
@@ -529,7 +551,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             fileSize = fileSize,
                             mimeType = mimeType,
                             timestamp = chatMessage.timestamp,
-                            dataBase64 = base64
+                            dataBase64 = base64,
+                            disappearingDuration = durationToUse
                         )
                         webRtcManager.sendOfflinePacketForRoom(currentRoom, filePacket) { success ->
                             viewModelScope.launch(Dispatchers.IO) {
@@ -669,7 +692,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     messageId = msg.id,
                     senderName = prefs.myName,
                     text = msg.text,
-                    timestamp = msg.timestamp
+                    timestamp = msg.timestamp,
+                    disappearingDuration = msg.disappearingDuration
                 )
 
                 if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
@@ -719,7 +743,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         fileSize = compressedBytes.size.toLong(),
                         mimeType = msg.mimeType ?: "image/jpeg",
                         timestamp = msg.timestamp,
-                        dataBase64 = base64
+                        dataBase64 = base64,
+                        disappearingDuration = msg.disappearingDuration
                     )
 
                     if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
@@ -765,7 +790,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         fileName = msg.attachmentName ?: file.name,
                         fileSize = msg.attachmentSize.takeIf { it > 0 } ?: file.length(),
                         mimeType = msg.mimeType,
-                        senderName = prefs.myName
+                        senderName = prefs.myName,
+                        disappearingDuration = msg.disappearingDuration
                     )
                 } else if (file.length() in 1..1024 * 1024) {
                     try {
@@ -779,7 +805,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             fileSize = file.length(),
                             mimeType = msg.mimeType,
                             timestamp = msg.timestamp,
-                            dataBase64 = base64
+                            dataBase64 = base64,
+                            disappearingDuration = msg.disappearingDuration
                         )
                         webRtcManager.sendOfflinePacketForRoom(msg.roomId, filePacket) { success ->
                             viewModelScope.launch(Dispatchers.IO) {
@@ -821,7 +848,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             replyToId = msg.replyToId,
                             replyToText = msg.replyToText,
                             replyToSender = msg.replyToSender,
-                            expiresAt = msg.expiresAt
+                            disappearingDuration = msg.disappearingDuration
                         )
                         if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
                             val sent = webRtcManager.sendPacket(audioPacket)
@@ -841,6 +868,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
                     }
                 }
+            }
+        }
+    }
+
+    fun markRoomMessagesAsRead(roomId: String) {
+        val cleanRoom = roomId.trim().uppercase()
+        if (cleanRoom.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val unread = chatRepository.getUnreadIncomingMessagesForRoom(cleanRoom)
+            if (unread.isEmpty()) return@launch
+
+            val now = System.currentTimeMillis()
+            for (msg in unread) {
+                val duration = msg.disappearingDuration
+                val expiresAt = if (duration != null && duration > 0) {
+                    now + (duration * 1000L)
+                } else null
+
+                chatRepository.markMessageAsRead(msg.id, expiresAt)
+                ChatConnectionManager.sendReadAck(msg.id, cleanRoom)
             }
         }
     }
@@ -910,9 +957,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val messageId = UUID.randomUUID().toString()
 
         val disappearingDuration = prefs.disappearingDurationSeconds
-        val expiresAt = if (disappearingDuration > 0) {
-            System.currentTimeMillis() + (disappearingDuration * 1000L)
-        } else null
+        val durationToUse = if (disappearingDuration > 0) disappearingDuration else null
 
         val replyingTo = _replyingToMessage.value
         _replyingToMessage.value = null
@@ -934,7 +979,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             replyToId = replyingTo?.id,
             replyToText = replyingTo?.text?.ifBlank { replyingTo.attachmentName ?: "Attachment" },
             replyToSender = replyingTo?.senderName,
-            expiresAt = expiresAt
+            expiresAt = null,
+            disappearingDuration = durationToUse
         )
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -956,7 +1002,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     replyToId = chatMessage.replyToId,
                     replyToText = chatMessage.replyToText,
                     replyToSender = chatMessage.replyToSender,
-                    expiresAt = chatMessage.expiresAt
+                    disappearingDuration = durationToUse
                 )
 
                 if (webRtcManager.isP2pConnected()) {

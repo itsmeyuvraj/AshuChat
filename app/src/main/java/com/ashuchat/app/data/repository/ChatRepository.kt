@@ -103,6 +103,18 @@ class ChatRepository(
         messageDao.updateMessageStatus(id, status.name)
     }
 
+    suspend fun updateMessageExpiration(id: String, expiresAt: Long) {
+        messageDao.updateMessageExpiration(id, expiresAt)
+    }
+
+    suspend fun getUnreadIncomingMessagesForRoom(roomId: String): List<ChatMessage> {
+        return messageDao.getUnreadIncomingMessagesForRoom(roomId).map { it.toChatMessage() }
+    }
+
+    suspend fun markMessageAsRead(id: String, expiresAt: Long?) {
+        messageDao.markMessageAsRead(id, expiresAt)
+    }
+
     suspend fun updateAttachmentPath(id: String, path: String) {
         messageDao.updateAttachmentPath(id, path)
     }

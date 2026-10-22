@@ -29,7 +29,7 @@ class FileTransferManager(
 ) {
     interface Listener {
         fun onFileTransferProgress(messageId: String, progress: Float)
-        fun onFileTransferComplete(messageId: String, fileId: String, localPath: String, isIncoming: Boolean)
+        fun onFileTransferComplete(messageId: String, fileId: String, localPath: String, isIncoming: Boolean, disappearingDuration: Long? = null)
         fun onFileTransferFailed(messageId: String, fileId: String, error: String)
         fun sendControlPacket(packet: DataChannelPacket)
     }
@@ -54,7 +54,8 @@ class FileTransferManager(
         val tempFile: File,
         val randomAccessFile: RandomAccessFile,
         var receivedChunks: Int = 0,
-        var receivedBytes: Long = 0L
+        var receivedBytes: Long = 0L,
+        val disappearingDuration: Long? = null
     )
 
     private val incomingTransfers = ConcurrentHashMap<String, IncomingTransfer>()
@@ -106,7 +107,8 @@ class FileTransferManager(
                 mimeType = mimeType,
                 totalChunks = totalChunks,
                 tempFile = tempFile,
-                randomAccessFile = raf
+                randomAccessFile = raf,
+                disappearingDuration = packet.disappearingDuration
             )
 
             incomingTransfers[fileId] = transfer
@@ -195,7 +197,8 @@ class FileTransferManager(
                         messageId = transfer.messageId,
                         fileId = fileId,
                         localPath = finalFile.absolutePath,
-                        isIncoming = true
+                        isIncoming = true,
+                        disappearingDuration = transfer.disappearingDuration
                     )
                 }
             }
@@ -223,7 +226,8 @@ class FileTransferManager(
         fileName: String,
         fileSize: Long,
         mimeType: String?,
-        senderName: String? = null
+        senderName: String? = null,
+        disappearingDuration: Long? = null
     ) {
         scope.launch(Dispatchers.IO) {
             val fileId = UUID.randomUUID().toString()
@@ -244,7 +248,8 @@ class FileTransferManager(
                     fileSize = fileSize,
                     mimeType = mimeType,
                     totalChunks = totalChunks,
-                    chunkSize = CHUNK_SIZE
+                    chunkSize = CHUNK_SIZE,
+                    disappearingDuration = disappearingDuration
                 )
                 listener.sendControlPacket(headerPacket)
 
@@ -314,7 +319,8 @@ class FileTransferManager(
                     messageId = messageId,
                     fileId = fileId,
                     localPath = uri.toString(),
-                    isIncoming = false
+                    isIncoming = false,
+                    disappearingDuration = disappearingDuration
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending file: ${e.localizedMessage}", e)

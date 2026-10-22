@@ -65,8 +65,15 @@ class WebRtcManager(
     private val _fileProgressFlow = MutableSharedFlow<Pair<String, Float>>(extraBufferCapacity = 64)
     val fileProgressFlow: SharedFlow<Pair<String, Float>> = _fileProgressFlow.asSharedFlow()
 
-    private val _fileCompleteFlow = MutableSharedFlow<Triple<String, String, Boolean>>(extraBufferCapacity = 64)
-    val fileCompleteFlow: SharedFlow<Triple<String, String, Boolean>> = _fileCompleteFlow.asSharedFlow()
+    data class FileTransferCompleteEvent(
+        val messageId: String,
+        val localPath: String,
+        val isIncoming: Boolean,
+        val disappearingDuration: Long? = null
+    )
+
+    private val _fileCompleteFlow = MutableSharedFlow<FileTransferCompleteEvent>(extraBufferCapacity = 64)
+    val fileCompleteFlow: SharedFlow<FileTransferCompleteEvent> = _fileCompleteFlow.asSharedFlow()
 
     private val _fileFailedFlow = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 64)
     val fileFailedFlow: SharedFlow<Pair<String, String>> = _fileFailedFlow.asSharedFlow()
@@ -387,11 +394,12 @@ class WebRtcManager(
         fileName: String,
         fileSize: Long,
         mimeType: String?,
-        senderName: String? = null
+        senderName: String? = null,
+        disappearingDuration: Long? = null
     ) {
         val dc = dataChannel
         if (dc != null && dc.state() == DataChannel.State.OPEN) {
-            fileTransferManager.sendFile(dc, messageId, uri, fileName, fileSize, mimeType, senderName)
+            fileTransferManager.sendFile(dc, messageId, uri, fileName, fileSize, mimeType, senderName, disappearingDuration)
         } else {
             Log.w(TAG, "DataChannel is not open, cannot send file")
         }
@@ -600,9 +608,9 @@ class WebRtcManager(
         }
     }
 
-    override fun onFileTransferComplete(messageId: String, fileId: String, localPath: String, isIncoming: Boolean) {
+    override fun onFileTransferComplete(messageId: String, fileId: String, localPath: String, isIncoming: Boolean, disappearingDuration: Long?) {
         scope.launch {
-            _fileCompleteFlow.emit(Triple(messageId, localPath, isIncoming))
+            _fileCompleteFlow.emit(FileTransferCompleteEvent(messageId, localPath, isIncoming, disappearingDuration))
         }
     }
 

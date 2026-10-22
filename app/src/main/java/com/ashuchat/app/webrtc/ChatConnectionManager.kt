@@ -103,6 +103,19 @@ object ChatConnectionManager {
 
         observeIncomingPackets()
         observeNetworkState()
+
+        // Periodic cleanup of expired disappearing messages
+        scope.launch(Dispatchers.IO) {
+            while (isActive) {
+                delay(3000)
+                try {
+                    chatRepository.deleteExpiredMessages(applicationContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error cleaning expired messages: ${e.localizedMessage}")
+                }
+            }
+        }
+
         isInitialized = true
         Log.d(TAG, "ChatConnectionManager initialized")
     }
@@ -217,6 +230,13 @@ object ChatConnectionManager {
             "text" -> {
                 val messageId = packet.messageId ?: UUID.randomUUID().toString()
                 val existing = chatRepository.getMessage(messageId)
+                val isViewed = AshuChatApp.isAppInForeground && AshuChatApp.activeChatRoom == currentRoom
+                val duration = packet.disappearingDuration
+                val initialStatus = if (isViewed) MessageStatus.READ else MessageStatus.DELIVERED
+                val expiresAt = if (isViewed && duration != null && duration > 0) {
+                    System.currentTimeMillis() + (duration * 1000L)
+                } else null
+
                 if (existing == null) {
                     val incomingMessage = ChatMessage(
                         id = messageId,
@@ -226,17 +246,17 @@ object ChatConnectionManager {
                         text = packet.text ?: "",
                         type = MessageType.TEXT,
                         timestamp = packet.timestamp,
-                        status = MessageStatus.DELIVERED,
+                        status = initialStatus,
                         reaction = packet.reaction,
                         replyToId = packet.replyToId,
                         replyToText = packet.replyToText,
                         replyToSender = packet.replyToSender,
-                        expiresAt = packet.expiresAt
+                        expiresAt = expiresAt,
+                        disappearingDuration = duration
                     )
                     chatRepository.insertMessage(incomingMessage)
 
-                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
-                    if (shouldNotify) {
+                    if (!isViewed) {
                         NotificationHelper.showMessageNotification(
                             context = context,
                             senderName = packet.senderName ?: currentPartner,
@@ -246,8 +266,11 @@ object ChatConnectionManager {
                     }
                 }
 
-                // Send delivery ack
-                sendDeliveryAck(messageId, currentRoom)
+                if (isViewed) {
+                    sendReadAck(messageId, currentRoom)
+                } else {
+                    sendDeliveryAck(messageId, currentRoom)
+                }
             }
 
             "ping", "love_ping" -> {
@@ -303,6 +326,13 @@ object ChatConnectionManager {
                     }
                 }
 
+                val isViewed = AshuChatApp.isAppInForeground && AshuChatApp.activeChatRoom == currentRoom
+                val duration = packet.disappearingDuration
+                val initialStatus = if (isViewed) MessageStatus.READ else MessageStatus.DELIVERED
+                val expiresAt = if (isViewed && duration != null && duration > 0) {
+                    System.currentTimeMillis() + (duration * 1000L)
+                } else null
+
                 if (existing == null) {
                     val incomingMessage = ChatMessage(
                         id = messageId,
@@ -312,7 +342,7 @@ object ChatConnectionManager {
                         text = packet.text ?: "",
                         type = MessageType.IMAGE,
                         timestamp = packet.timestamp,
-                        status = MessageStatus.DELIVERED,
+                        status = initialStatus,
                         attachmentPath = localPath,
                         attachmentName = packet.fileName ?: "photo.jpg",
                         attachmentSize = packet.fileSize,
@@ -321,12 +351,12 @@ object ChatConnectionManager {
                         replyToId = packet.replyToId,
                         replyToText = packet.replyToText,
                         replyToSender = packet.replyToSender,
-                        expiresAt = packet.expiresAt
+                        expiresAt = expiresAt,
+                        disappearingDuration = duration
                     )
                     chatRepository.insertMessage(incomingMessage)
 
-                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
-                    if (shouldNotify) {
+                    if (!isViewed) {
                         NotificationHelper.showMessageNotification(
                             context = context,
                             senderName = packet.senderName ?: currentPartner,
@@ -336,10 +366,14 @@ object ChatConnectionManager {
                     }
                 } else if (localPath != null && existing.attachmentPath.isNullOrBlank()) {
                     chatRepository.updateAttachmentPath(messageId, localPath)
-                    chatRepository.updateMessageStatus(messageId, MessageStatus.DELIVERED)
+                    chatRepository.updateMessageStatus(messageId, initialStatus)
                 }
 
-                sendDeliveryAck(messageId, currentRoom)
+                if (isViewed) {
+                    sendReadAck(messageId, currentRoom)
+                } else {
+                    sendDeliveryAck(messageId, currentRoom)
+                }
             }
 
             "file" -> {
@@ -361,6 +395,13 @@ object ChatConnectionManager {
                     }
                 }
 
+                val isViewed = AshuChatApp.isAppInForeground && AshuChatApp.activeChatRoom == currentRoom
+                val duration = packet.disappearingDuration
+                val initialStatus = if (isViewed) MessageStatus.READ else MessageStatus.DELIVERED
+                val expiresAt = if (isViewed && duration != null && duration > 0) {
+                    System.currentTimeMillis() + (duration * 1000L)
+                } else null
+
                 if (existing == null) {
                     val incomingMessage = ChatMessage(
                         id = messageId,
@@ -370,7 +411,7 @@ object ChatConnectionManager {
                         text = packet.text ?: "",
                         type = MessageType.FILE,
                         timestamp = packet.timestamp,
-                        status = MessageStatus.DELIVERED,
+                        status = initialStatus,
                         attachmentPath = localPath,
                         attachmentName = packet.fileName ?: "attachment",
                         attachmentSize = packet.fileSize,
@@ -379,12 +420,12 @@ object ChatConnectionManager {
                         replyToId = packet.replyToId,
                         replyToText = packet.replyToText,
                         replyToSender = packet.replyToSender,
-                        expiresAt = packet.expiresAt
+                        expiresAt = expiresAt,
+                        disappearingDuration = duration
                     )
                     chatRepository.insertMessage(incomingMessage)
 
-                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
-                    if (shouldNotify) {
+                    if (!isViewed) {
                         NotificationHelper.showMessageNotification(
                             context = context,
                             senderName = packet.senderName ?: currentPartner,
@@ -394,10 +435,14 @@ object ChatConnectionManager {
                     }
                 } else if (localPath != null && existing.attachmentPath.isNullOrBlank()) {
                     chatRepository.updateAttachmentPath(messageId, localPath)
-                    chatRepository.updateMessageStatus(messageId, MessageStatus.DELIVERED)
+                    chatRepository.updateMessageStatus(messageId, initialStatus)
                 }
 
-                sendDeliveryAck(messageId, currentRoom)
+                if (isViewed) {
+                    sendReadAck(messageId, currentRoom)
+                } else {
+                    sendDeliveryAck(messageId, currentRoom)
+                }
             }
 
             "audio" -> {
@@ -419,6 +464,13 @@ object ChatConnectionManager {
                     }
                 }
 
+                val isViewed = AshuChatApp.isAppInForeground && AshuChatApp.activeChatRoom == currentRoom
+                val duration = packet.disappearingDuration
+                val initialStatus = if (isViewed) MessageStatus.READ else MessageStatus.DELIVERED
+                val expiresAt = if (isViewed && duration != null && duration > 0) {
+                    System.currentTimeMillis() + (duration * 1000L)
+                } else null
+
                 if (existing == null) {
                     val durationSec = (packet.audioDurationMs ?: 0L) / 1000
                     val incomingMessage = ChatMessage(
@@ -429,7 +481,7 @@ object ChatConnectionManager {
                         text = "Voice message (${durationSec}s)",
                         type = MessageType.AUDIO,
                         timestamp = packet.timestamp,
-                        status = MessageStatus.DELIVERED,
+                        status = initialStatus,
                         attachmentPath = localPath,
                         attachmentName = packet.fileName ?: "voice_note.m4a",
                         attachmentSize = packet.fileSize,
@@ -438,12 +490,12 @@ object ChatConnectionManager {
                         replyToId = packet.replyToId,
                         replyToText = packet.replyToText,
                         replyToSender = packet.replyToSender,
-                        expiresAt = packet.expiresAt
+                        expiresAt = expiresAt,
+                        disappearingDuration = duration
                     )
                     chatRepository.insertMessage(incomingMessage)
 
-                    val shouldNotify = !AshuChatApp.isAppInForeground || AshuChatApp.activeChatRoom != currentRoom
-                    if (shouldNotify) {
+                    if (!isViewed) {
                         NotificationHelper.showMessageNotification(
                             context = context,
                             senderName = packet.senderName ?: currentPartner,
@@ -453,13 +505,28 @@ object ChatConnectionManager {
                     }
                 }
 
-                sendDeliveryAck(messageId, currentRoom)
+                if (isViewed) {
+                    sendReadAck(messageId, currentRoom)
+                } else {
+                    sendDeliveryAck(messageId, currentRoom)
+                }
             }
 
             "ack" -> {
                 packet.messageId?.let { id ->
                     val status = if (packet.status == "READ") MessageStatus.READ else MessageStatus.DELIVERED
                     chatRepository.updateMessageStatus(id, status)
+
+                    if (status == MessageStatus.READ) {
+                        val msg = chatRepository.getMessage(id)
+                        if (msg != null && msg.disappearingDuration != null && msg.disappearingDuration > 0) {
+                            if (msg.expiresAt == null) {
+                                val readTimestamp = if (packet.timestamp > 0) packet.timestamp else System.currentTimeMillis()
+                                val expiresAt = readTimestamp + (msg.disappearingDuration * 1000L)
+                                chatRepository.updateMessageExpiration(id, expiresAt)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -514,12 +581,28 @@ object ChatConnectionManager {
         }
     }
 
+    fun sendReadAck(messageId: String, roomId: String) {
+        val ackPacket = DataChannelPacket(
+            type = "ack",
+            messageId = messageId,
+            status = "READ",
+            roomId = roomId,
+            timestamp = System.currentTimeMillis()
+        )
+        if (webRtcManager.isP2pConnected()) {
+            webRtcManager.sendPacket(ackPacket)
+        } else {
+            webRtcManager.sendOfflineAckForRoom(roomId, messageId, "READ")
+        }
+    }
+
     private fun sendDeliveryAck(messageId: String, roomId: String) {
         val ackPacket = DataChannelPacket(
             type = "ack",
             messageId = messageId,
             status = "DELIVERED",
-            roomId = roomId
+            roomId = roomId,
+            timestamp = System.currentTimeMillis()
         )
         if (webRtcManager.isP2pConnected()) {
             webRtcManager.sendPacket(ackPacket)

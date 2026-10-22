@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -200,7 +201,7 @@ fun ChatSettingsScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = "Automatically delete messages and media after timer",
+                        text = "Messages disappear after timer, only once viewed by partner",
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
@@ -209,6 +210,7 @@ fun ChatSettingsScreen(
 
                     val options = listOf(
                         0L to "Off",
+                        10L to "View Once",
                         30L to "30 sec",
                         300L to "5 min",
                         3600L to "1 hour",
@@ -217,7 +219,9 @@ fun ChatSettingsScreen(
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
                     ) {
                         options.forEach { (duration, label) ->
                             val isSelected = disappearingDuration == duration

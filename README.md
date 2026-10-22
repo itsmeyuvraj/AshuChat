@@ -27,7 +27,7 @@ Designed with love for couples to chat, make encrypted crystal-clear voice calls
 ### 🔒 Biometric App Lock & Privacy Suite
 - **Biometric Authentication (`BiometricPrompt`)**: Secure the app with Fingerprint or Face Unlock upon startup and when resuming from the background.
 - **Anti-Screenshot & Screen Guard (`FLAG_SECURE`)**: Prevent screenshots and screen recording, and obscure chat previews in Android's recent apps switcher.
-- **Disappearing Messages**: Set self-destruct timers (**Off**, **30s**, **5m**, **1h**, **24h**) with automated background deletion of messages and cached attachment files.
+- **Disappearing Messages**: Self-destruct timers (**Off**, **View Once**, **30s**, **5m**, **1h**, **24h**) anchored to view time — countdown triggers only after the other user opens and views the message, with automated deletion of messages and cached attachments.
 
 ### 📞 Direct P2P Encrypted Voice Calls
 - **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
@@ -176,7 +176,7 @@ AshuChat/
 - **Zero Intermediary Storage**: No central server logs or stores your chats, calls, or media.
 - **Biometric Hardware Isolation**: Leverages Android's `KeyStore` and `BiometricPrompt` framework with StrongBox / TEE support.
 - **Screen Protection**: `FLAG_SECURE` blocks external recording, screen mirroring, and screenshots.
-- **Ephemeral Cleanup**: Disappearing messages automatically purge local SQLite records and delete cached files from disk.
+- **Ephemeral Cleanup**: Disappearing messages automatically purge local SQLite records and delete cached files from disk once the countdown completes after viewing.
 
 ---
 
