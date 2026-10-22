@@ -43,9 +43,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
@@ -59,6 +67,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.core.content.ContextCompat
+import com.ashuchat.app.ui.viewmodel.CallState
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -123,6 +135,14 @@ fun ChatScreen(
     val connectionState by viewModel.connectionState.collectAsState()
     val isPartnerTyping by viewModel.isPartnerTyping.collectAsState()
     val showPingEffect by viewModel.showPingEffect.collectAsState()
+    val replyingToMessage by viewModel.replyingToMessage.collectAsState()
+    val isRecordingVoice by viewModel.isRecordingVoice.collectAsState()
+    val voiceRecordDurationMs by viewModel.voiceRecordDurationMs.collectAsState()
+    val voiceAmplitude by viewModel.voiceAmplitude.collectAsState()
+    val callState by viewModel.callState.collectAsState()
+    val callDurationSeconds by viewModel.callDurationSeconds.collectAsState()
+    val isCallMuted by viewModel.isCallMuted.collectAsState()
+    val isCallSpeakerOn by viewModel.isCallSpeakerOn.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
     var showAttachmentSheet by remember { mutableStateOf(false) }
@@ -132,6 +152,14 @@ fun ChatScreen(
     var showClearRoomDialog by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+
+    val recordAudioLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted: Boolean ->
+        if (granted) {
+            viewModel.startVoiceRecording()
+        }
+    }
 
     // Activity Result Launchers
     val pickImageLauncher = rememberLauncherForActivityResult(
@@ -276,6 +304,24 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val hasAudioPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.RECORD_AUDIO
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (hasAudioPermission) {
+                            viewModel.startCall()
+                        } else {
+                            recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Voice Call",
+                            tint = RoseAccent
+                        )
+                    }
+
                     if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
                         IconButton(onClick = { onNavigateToShowQr(activeRoomId) }) {
                             Icon(
@@ -344,88 +390,257 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            // Message Input Bar
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(SurfaceElevated)
                     .imePadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
-                // Attachments button
-                IconButton(
-                    onClick = { showAttachmentSheet = true },
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceCard)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Attach",
-                        tint = RosePrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Text Input Field
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(SurfaceCard)
-                        .border(1.dp, SurfaceBorder, RoundedCornerShape(24.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    if (inputText.isEmpty()) {
-                        Text(
-                            text = "Message $partnerName...",
-                            fontSize = 14.sp,
-                            color = TextMuted
+                // Reply Preview Bar
+                if (replyingToMessage != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF1F1B2B))
+                            .border(1.dp, SurfaceBorder)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(32.dp)
+                                .background(RoseAccent)
                         )
-                    }
-                    BasicTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        textStyle = TextStyle(
-                            fontSize = 14.sp,
-                            color = TextPrimary
-                        ),
-                        cursorBrush = SolidColor(RosePrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Send Button
-                val isSendEnabled = inputText.trim().isNotEmpty()
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSendEnabled) {
-                                Brush.linearGradient(listOf(RosePrimary, RoseDark))
-                            } else {
-                                Brush.linearGradient(listOf(SurfaceCard, SurfaceCard))
-                            }
-                        )
-                        .clickable(enabled = isSendEnabled) {
-                            viewModel.sendTextMessage(inputText)
-                            inputText = ""
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Replying to ${replyingToMessage?.senderName ?: "Peer"}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = RoseAccent
+                            )
+                            Text(
+                                text = replyingToMessage?.text?.ifBlank { replyingToMessage?.attachmentName ?: "Attachment" } ?: "",
+                                fontSize = 12.sp,
+                                color = TextPrimary.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
+                        IconButton(
+                            onClick = { viewModel.setReplyingTo(null) },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel reply",
+                                tint = TextMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Message Input Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (isSendEnabled) Color.White else TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (isRecordingVoice) {
+                        // Voice Note Recording Mode
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFF2A1C25))
+                                .border(1.dp, RoseAccent.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "recDot")
+                            val dotAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.2f,
+                                targetValue = 1.0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(500),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "dot"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red.copy(alpha = dotAlpha))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            val sec = voiceRecordDurationMs / 1000
+                            Text(
+                                text = String.format(Locale.getDefault(), "%d:%02d", sec / 60, sec % 60),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(16.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val barCount = 12
+                                    for (i in 0 until barCount) {
+                                        val factor = ((voiceAmplitude * 1.5f + (i * 0.05f)) % 1f).coerceIn(0.2f, 1f)
+                                        Box(
+                                            modifier = Modifier
+                                                .width(3.dp)
+                                                .height((factor * 16).dp)
+                                                .clip(RoundedCornerShape(1.5.dp))
+                                                .background(RoseAccent)
+                                        )
+                                    }
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.cancelVoiceRecording() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Cancel recording",
+                                    tint = OfflineRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
+                                .clickable {
+                                    viewModel.stopAndSendVoiceRecording()
+                                }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send Voice Note",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        // Attachments button
+                        IconButton(
+                            onClick = { showAttachmentSheet = true },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(SurfaceCard)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Attach",
+                                tint = RosePrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Text Input Field
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(SurfaceCard)
+                                .border(1.dp, SurfaceBorder, RoundedCornerShape(24.dp))
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            if (inputText.isEmpty()) {
+                                Text(
+                                    text = "Message $partnerName...",
+                                    fontSize = 14.sp,
+                                    color = TextMuted
+                                )
+                            }
+                            BasicTextField(
+                                value = inputText,
+                                onValueChange = { inputText = it },
+                                textStyle = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = TextPrimary
+                                ),
+                                cursorBrush = SolidColor(RosePrimary),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        val isSendEnabled = inputText.trim().isNotEmpty()
+                        if (isSendEnabled) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
+                                    .clickable {
+                                        viewModel.sendTextMessage(inputText)
+                                        inputText = ""
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = "Send",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(SurfaceCard)
+                                    .clickable {
+                                        val hasAudioPermission = ContextCompat.checkSelfPermission(
+                                            context,
+                                            android.Manifest.permission.RECORD_AUDIO
+                                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                        if (hasAudioPermission) {
+                                            viewModel.startVoiceRecording()
+                                        } else {
+                                            recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                                        }
+                                    }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Mic,
+                                    contentDescription = "Record Voice Note",
+                                    tint = RosePrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -519,7 +734,14 @@ fun ChatScreen(
                                     },
                                     onRetryClick = {
                                         viewModel.retryMessage(it.id)
-                                    }
+                                    },
+                                    onReplyClick = {
+                                        viewModel.setReplyingTo(it)
+                                    },
+                                    onReactionClick = { msgId, emoji ->
+                                        viewModel.sendReaction(msgId, emoji)
+                                    },
+                                    audioPlayerHelper = viewModel.audioPlayerHelper
                                 )
                             }
                         }
@@ -602,6 +824,211 @@ fun ChatScreen(
             fileName = fileName,
             onDismiss = { activeViewerMedia = null }
         )
+    }
+
+    // Voice Call Overlay
+    if (callState != CallState.IDLE) {
+        VoiceCallOverlay(
+            callState = callState,
+            partnerName = partnerName,
+            callDurationSeconds = callDurationSeconds,
+            isMuted = isCallMuted,
+            isSpeakerOn = isCallSpeakerOn,
+            onAccept = { viewModel.acceptIncomingCall() },
+            onReject = { viewModel.rejectIncomingCall() },
+            onEnd = { viewModel.endCall() },
+            onToggleMute = { viewModel.toggleCallMute() },
+            onToggleSpeaker = { viewModel.toggleCallSpeaker() }
+        )
+    }
+}
+
+@Composable
+private fun VoiceCallOverlay(
+    callState: CallState,
+    partnerName: String,
+    callDurationSeconds: Int,
+    isMuted: Boolean,
+    isSpeakerOn: Boolean,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    onEnd: () -> Unit,
+    onToggleMute: () -> Unit,
+    onToggleSpeaker: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xE60D0B14))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp)
+        ) {
+            val infiniteTransition = rememberInfiniteTransition(label = "callPulse")
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 0.95f,
+                targetValue = 1.08f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulse"
+            )
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(110.dp)
+                    .scale(if (callState != CallState.CONNECTED) pulseScale else 1.0f)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
+                    .border(2.dp, RoseAccent.copy(alpha = 0.6f), CircleShape)
+            ) {
+                Text(
+                    text = partnerName.take(1).uppercase(),
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = partnerName,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (callState) {
+                CallState.OUTGOING -> {
+                    Text(
+                        text = "Calling...",
+                        fontSize = 15.sp,
+                        color = RoseAccent
+                    )
+                }
+                CallState.INCOMING -> {
+                    Text(
+                        text = "Incoming Voice Call...",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandLight
+                    )
+                }
+                CallState.CONNECTED -> {
+                    val minutes = callDurationSeconds / 60
+                    val seconds = callDurationSeconds % 60
+                    Text(
+                        text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF69F0AE)
+                    )
+                }
+                CallState.IDLE -> {}
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            if (callState == CallState.INCOMING) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onReject,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE53935))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CallEnd,
+                            contentDescription = "Decline",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onAccept,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF43A047))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Accept",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onToggleMute,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(if (isMuted) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
+                    ) {
+                        Icon(
+                            imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = "Mute",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onEnd,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE53935))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CallEnd,
+                            contentDescription = "End Call",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onToggleSpeaker,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(if (isSpeakerOn) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
+                    ) {
+                        Icon(
+                            imageVector = if (isSpeakerOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                            contentDescription = "Speaker",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

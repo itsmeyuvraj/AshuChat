@@ -3,7 +3,7 @@ package com.ashuchat.app
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -11,13 +11,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ashuchat.app.service.ChatSyncService
+import com.ashuchat.app.ui.components.BiometricLockOverlay
 import com.ashuchat.app.ui.screens.AboutScreen
 import com.ashuchat.app.ui.screens.ChatScreen
 import com.ashuchat.app.ui.screens.ChatSettingsScreen
@@ -30,10 +35,12 @@ import com.ashuchat.app.ui.screens.RoomsScreen
 import com.ashuchat.app.ui.theme.AshuChatTheme
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
+import com.ashuchat.app.utils.BiometricHelper
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val chatViewModel: ChatViewModel by viewModels()
+    private var isAppUnlocked by mutableStateOf(true)
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -42,6 +49,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Apply FLAG_SECURE if enabled in privacy settings
+        updateFlagSecure()
+
+        // Check Biometric lock
+        if (chatViewModel.prefs.isBiometricEnabled && BiometricHelper.isBiometricAvailable(this)) {
+            isAppUnlocked = false
+            triggerBiometricAuth()
+        }
 
         // Request POST_NOTIFICATIONS permission for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -57,10 +73,42 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MidnightBg
                 ) {
-                    AppNavigation(chatViewModel = chatViewModel)
+                    if (isAppUnlocked) {
+                        AppNavigation(chatViewModel = chatViewModel)
+                    } else {
+                        BiometricLockOverlay(
+                            onUnlockClick = { triggerBiometricAuth() }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateFlagSecure()
+        if (chatViewModel.prefs.isBiometricEnabled && !isAppUnlocked && BiometricHelper.isBiometricAvailable(this)) {
+            triggerBiometricAuth()
+        }
+    }
+
+    private fun updateFlagSecure() {
+        if (chatViewModel.prefs.isFlagSecureEnabled) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
+    private fun triggerBiometricAuth() {
+        BiometricHelper.authenticate(
+            activity = this,
+            title = "Unlock AshuChat",
+            subtitle = "Verify identity to access private chats",
+            onSuccess = { isAppUnlocked = true },
+            onError = { /* Keep locked */ }
+        )
     }
 }
 

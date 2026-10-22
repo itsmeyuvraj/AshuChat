@@ -129,6 +129,9 @@ dependencies {
     // Accompanist Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
+    // Biometrics
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

@@ -111,22 +111,134 @@ fun ChatSettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Privacy & Encryption",
+                        text = "Privacy & App Protection",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Biometric Lock Switch
+                var biometricEnabled by remember { mutableStateOf(viewModel.prefs.isBiometricEnabled) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Biometric App Lock",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Require fingerprint or face unlock on open",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = biometricEnabled,
+                        onCheckedChange = { checked ->
+                            biometricEnabled = checked
+                            viewModel.prefs.isBiometricEnabled = checked
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 2. Anti-Screenshot / FLAG_SECURE Switch
+                var flagSecureEnabled by remember { mutableStateOf(viewModel.prefs.isFlagSecureEnabled) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Anti-Screenshot Protection",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Block screenshots & hide preview in recent apps",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = flagSecureEnabled,
+                        onCheckedChange = { checked ->
+                            flagSecureEnabled = checked
+                            viewModel.prefs.isFlagSecureEnabled = checked
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3. Disappearing Messages Selector
+                var disappearingDuration by remember { mutableStateOf(viewModel.prefs.disappearingDurationSeconds) }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Disappearing Messages",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Automatically delete messages and media after timer",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val options = listOf(
+                        0L to "Off",
+                        30L to "30 sec",
+                        300L to "5 min",
+                        3600L to "1 hour",
+                        86400L to "24 hours"
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        options.forEach { (duration, label) ->
+                            val isSelected = disappearingDuration == duration
+                            androidx.compose.material3.FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    disappearingDuration = duration
+                                    viewModel.prefs.disappearingDurationSeconds = duration
+                                },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
                     text = "• WebRTC DataChannel DTLS-SRTP 256-bit encryption protects all your messages and file transfers.\n\n" +
-                            "• Zero Cloud Storage: AshuChat has no central chat database. Your messages never pass through or rest in the cloud.\n\n" +
-                            "• Peer-to-Peer Transmission: When you send a message, image, or audio recording, it streams straight to your partner's phone.",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    lineHeight = 18.sp
+                            "• Zero Cloud Storage: AshuChat has no central chat database. Your messages never pass through or rest in the cloud.",
+                    fontSize = 11.sp,
+                    color = TextSecondary.copy(alpha = 0.8f),
+                    lineHeight = 16.sp
                 )
             }
 

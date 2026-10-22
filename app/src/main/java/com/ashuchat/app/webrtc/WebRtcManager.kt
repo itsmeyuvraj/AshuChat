@@ -17,11 +17,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.webrtc.AudioSource
+import org.webrtc.AudioTrack
 import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
+import org.webrtc.MediaStream
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
+import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import java.nio.ByteBuffer
@@ -81,6 +85,10 @@ class WebRtcManager(
 
     private var heartbeatJob: Job? = null
     private var lastPongTimestamp: Long = 0L
+
+    private var audioSource: AudioSource? = null
+    private var localAudioTrack: AudioTrack? = null
+    private var audioManager: android.media.AudioManager? = null
 
     private val _peerNameFlow = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val peerNameFlow: SharedFlow<String> = _peerNameFlow.asSharedFlow()
@@ -195,6 +203,15 @@ class WebRtcManager(
                 override fun onDataChannel(dataChannel: DataChannel?) {
                     Log.d(TAG, "Remote DataChannel received: ${dataChannel?.label()}")
                     dataChannel?.let { setupDataChannel(it) }
+                }
+
+                override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {
+                    super.onAddTrack(receiver, mediaStreams)
+                    val track = receiver?.track()
+                    if (track is AudioTrack) {
+                        track.setEnabled(true)
+                        Log.d(TAG, "Incoming WebRTC audio track enabled")
+                    }
                 }
             }
         )
@@ -600,8 +617,120 @@ class WebRtcManager(
         sendPacket(packet)
     }
 
+    fun startAudioCall(): Boolean {
+        return try {
+            val factory = peerConnectionFactory ?: return false
+            val audioConstraints = MediaConstraints().apply {
+                mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+            }
+            audioSource = factory.createAudioSource(audioConstraints)
+            val track = factory.createAudioTrack("ARDAMSa0", audioSource)
+            track.setEnabled(true)
+            localAudioTrack = track
+            peerConnection?.addTrack(track, listOf("ARDAMS"))
+
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            audioManager = am
+            am?.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+            am?.isSpeakerphoneOn = false
+
+            sendRenegotiationOffer()
+            Log.d(TAG, "WebRTC audio call started with local audio track")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting audio call: ${e.localizedMessage}", e)
+            false
+        }
+    }
+
+    private fun sendRenegotiationOffer() {
+        val constraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+        }
+        peerConnection?.createOffer(object : SdpObserver {
+            override fun onCreateSuccess(desc: SessionDescription?) {
+                desc?.let { sdp ->
+                    peerConnection?.setLocalDescription(object : SdpObserver {
+                        override fun onCreateSuccess(d: SessionDescription?) {}
+                        override fun onSetSuccess() {
+                            Log.d(TAG, "Local description set successfully for renegotiation. Sending offer.")
+                            signalingClient.sendOffer(sdp.description)
+                        }
+                        override fun onCreateFailure(err: String?) {}
+                        override fun onSetFailure(err: String?) {
+                            Log.e(TAG, "Failed to set local description: $err")
+                        }
+                    }, sdp)
+                }
+            }
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(error: String?) {
+                Log.e(TAG, "Failed to create renegotiation offer: $error")
+            }
+            override fun onSetFailure(error: String?) {}
+        }, constraints)
+    }
+
+    fun acceptAudioCall(): Boolean {
+        return try {
+            val factory = peerConnectionFactory ?: return false
+            if (localAudioTrack == null) {
+                val audioConstraints = MediaConstraints().apply {
+                    mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+                }
+                audioSource = factory.createAudioSource(audioConstraints)
+                val track = factory.createAudioTrack("ARDAMSa0", audioSource)
+                track.setEnabled(true)
+                localAudioTrack = track
+                peerConnection?.addTrack(track, listOf("ARDAMS"))
+            }
+
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            audioManager = am
+            am?.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+            am?.isSpeakerphoneOn = false
+
+            Log.d(TAG, "WebRTC audio call accepted with local audio track")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error accepting audio call: ${e.localizedMessage}", e)
+            false
+        }
+    }
+
+    fun endAudioCall() {
+        try {
+            localAudioTrack?.setEnabled(false)
+            localAudioTrack?.dispose()
+            localAudioTrack = null
+            audioSource?.dispose()
+            audioSource = null
+            audioManager?.mode = android.media.AudioManager.MODE_NORMAL
+            audioManager?.isSpeakerphoneOn = false
+            Log.d(TAG, "WebRTC audio call ended")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error ending audio call: ${e.localizedMessage}")
+        }
+    }
+
+    fun toggleMute(muted: Boolean) {
+        localAudioTrack?.setEnabled(!muted)
+    }
+
+    fun toggleSpeaker(speakerOn: Boolean) {
+        audioManager?.isSpeakerphoneOn = speakerOn
+    }
+
     private fun cleanupPeerConnection() {
         stopHeartbeat()
+        endAudioCall()
         try {
             fileTransferManager.cancelAll()
             dataChannel?.close()

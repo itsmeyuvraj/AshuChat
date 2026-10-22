@@ -107,6 +107,20 @@ class ChatRepository(
         messageDao.updateAttachmentPath(id, path)
     }
 
+    suspend fun updateMessageReaction(id: String, reaction: String?) {
+        messageDao.updateMessageReaction(id, reaction)
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    suspend fun deleteExpiredMessages(context: Context? = null) {
+        val now = System.currentTimeMillis()
+        val expired = messageDao.getExpiredMessages(now)
+        for (msg in expired) {
+            FileUtils.deleteFile(msg.attachmentPath)
+            messageDao.deleteMessage(msg.id)
+        }
+    }
+
     suspend fun deleteMessage(id: String) {
         messageDao.deleteMessage(id)
     }

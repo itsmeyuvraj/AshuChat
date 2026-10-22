@@ -49,5 +49,26 @@ data class DataChannelPacket(
 
     // Base64 payload for direct image and file transfer (mailbox & instant P2P)
     @SerializedName("dataBase64")
-    val dataBase64: String? = null
+    val dataBase64: String? = null,
+
+    // Reactions & Reply Quotes
+    @SerializedName("reaction")
+    val reaction: String? = null,
+
+    @SerializedName("replyToId")
+    val replyToId: String? = null,
+
+    @SerializedName("replyToText")
+    val replyToText: String? = null,
+
+    @SerializedName("replyToSender")
+    val replyToSender: String? = null,
+
+    // Disappearing message expiration
+    @SerializedName("expiresAt")
+    val expiresAt: Long? = null,
+
+    // Audio Voice Note duration in ms
+    @SerializedName("audioDurationMs")
+    val audioDurationMs: Long? = null
 )

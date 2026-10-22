@@ -15,6 +15,9 @@ class PreferencesRepository(context: Context) {
         private const val KEY_ROOM_ID = "room_id"
         private const val KEY_SIGNALING_URL = "signaling_url"
         private const val KEY_CLIENT_ID = "client_id"
+        private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
+        private const val KEY_FLAG_SECURE_ENABLED = "flag_secure_enabled"
+        private const val KEY_DISAPPEARING_DURATION = "disappearing_duration"
 
         // Default Serverless Firebase Realtime Database URL (Singapore asia-southeast1)
         const val DEFAULT_SIGNALING_URL = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -47,6 +50,18 @@ class PreferencesRepository(context: Context) {
             return saved
         }
         set(value) = prefs.edit().putString(KEY_SIGNALING_URL, value.trim()).apply()
+
+    var isBiometricEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, value).apply()
+
+    var isFlagSecureEnabled: Boolean
+        get() = prefs.getBoolean(KEY_FLAG_SECURE_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_FLAG_SECURE_ENABLED, value).apply()
+
+    var disappearingDurationSeconds: Long
+        get() = prefs.getLong(KEY_DISAPPEARING_DURATION, 0L)
+        set(value) = prefs.edit().putLong(KEY_DISAPPEARING_DURATION, value).apply()
 
     val clientId: String
         get() {

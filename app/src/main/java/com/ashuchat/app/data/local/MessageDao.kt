@@ -37,6 +37,15 @@ interface MessageDao {
     @Query("UPDATE messages SET attachmentPath = :path WHERE id = :id")
     suspend fun updateAttachmentPath(id: String, path: String)
 
+    @Query("UPDATE messages SET reaction = :reaction WHERE id = :id")
+    suspend fun updateMessageReaction(id: String, reaction: String?)
+
+    @Query("SELECT * FROM messages WHERE expiresAt IS NOT NULL AND expiresAt <= :currentTime")
+    suspend fun getExpiredMessages(currentTime: Long): List<MessageEntity>
+
+    @Query("DELETE FROM messages WHERE expiresAt IS NOT NULL AND expiresAt <= :currentTime")
+    suspend fun deleteExpiredMessages(currentTime: Long): Int
+
     @Query("SELECT * FROM messages WHERE roomId = :roomId AND isFromMe = 1 AND (status = 'SENDING' OR status = 'FAILED') ORDER BY timestamp ASC")
     suspend fun getPendingOutgoingMessagesForRoom(roomId: String): List<MessageEntity>
 

@@ -20,7 +20,12 @@ data class MessageEntity(
     val attachmentPath: String?,
     val attachmentName: String?,
     val attachmentSize: Long,
-    val mimeType: String?
+    val mimeType: String?,
+    val reaction: String? = null,
+    val replyToId: String? = null,
+    val replyToText: String? = null,
+    val replyToSender: String? = null,
+    val expiresAt: Long? = null
 ) {
     fun toChatMessage(progress: Float = 1.0f): ChatMessage {
         val parsedType = try {
@@ -49,7 +54,12 @@ data class MessageEntity(
             attachmentName = attachmentName,
             attachmentSize = attachmentSize,
             mimeType = mimeType,
-            transferProgress = progress
+            transferProgress = progress,
+            reaction = reaction,
+            replyToId = replyToId,
+            replyToText = replyToText,
+            replyToSender = replyToSender,
+            expiresAt = expiresAt
         )
     }
 
@@ -67,7 +77,12 @@ data class MessageEntity(
                 attachmentPath = msg.attachmentPath,
                 attachmentName = msg.attachmentName,
                 attachmentSize = msg.attachmentSize,
-                mimeType = msg.mimeType
+                mimeType = msg.mimeType,
+                reaction = msg.reaction,
+                replyToId = msg.replyToId,
+                replyToText = msg.replyToText,
+                replyToSender = msg.replyToSender,
+                expiresAt = msg.expiresAt
             )
         }
     }
