@@ -68,6 +68,7 @@ fun PairingScreen(
     var roomId by remember {
         mutableStateOf(generateRandomRoomId())
     }
+    var partnerName by remember { mutableStateOf("") }
 
     Scaffold(
         containerColor = NeoBackground,
@@ -253,6 +254,51 @@ fun PairingScreen(
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Peer Name (Optional)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeoTextDark
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = partnerName,
+                        onValueChange = { partnerName = it },
+                        textStyle = TextStyle(
+                            color = NeoBlack,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        placeholder = {
+                            Text(
+                                "e.g. Ashu (can be changed later)",
+                                color = NeoBlack.copy(alpha = 0.5f),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                        },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeoBlack,
+                            unfocusedBorderColor = NeoBlack,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedTextColor = NeoBlack,
+                            unfocusedTextColor = NeoBlack,
+                            focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
+                            unfocusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
+                            cursorColor = NeoBlack
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
+                    )
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // QR action buttons
@@ -263,8 +309,9 @@ fun PairingScreen(
                         NeoBrutalButton(
                             onClick = {
                                 val clean = roomId.trim().uppercase()
+                                val cleanPartner = partnerName.trim().ifEmpty { "Peer" }
                                 if (clean.isNotBlank()) {
-                                    viewModel.createOrJoinRoom(clean)
+                                    viewModel.createOrJoinRoom(clean, cleanPartner)
                                     onNavigateToShowQr(clean)
                                 }
                             },
@@ -317,8 +364,9 @@ fun PairingScreen(
                 onClick = {
                     val cleanName = myName.trim().ifEmpty { "You" }
                     val cleanRoom = roomId.trim().uppercase()
+                    val cleanPartner = partnerName.trim().ifEmpty { "Peer" }
                     prefs.myName = cleanName
-                    viewModel.createOrJoinRoom(cleanRoom)
+                    viewModel.createOrJoinRoom(cleanRoom, cleanPartner)
                     viewModel.openRoom(cleanRoom)
                     onNavigateToChat()
                 },

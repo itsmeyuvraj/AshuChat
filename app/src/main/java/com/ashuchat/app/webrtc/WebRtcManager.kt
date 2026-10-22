@@ -237,6 +237,7 @@ class WebRtcManager(
                             sendPacket(
                                 DataChannelPacket(
                                     type = "name_sync",
+                                    roomId = currentRoomId,
                                     senderName = currentClientName
                                 )
                             )

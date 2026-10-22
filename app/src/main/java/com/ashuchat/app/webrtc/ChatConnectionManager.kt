@@ -214,17 +214,25 @@ object ChatConnectionManager {
         val context = applicationContext ?: return
         val currentRoom = packet.roomId?.takeIf { it.isNotBlank() }
             ?: _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+
+        packet.senderName?.let { sender ->
+            val clean = sender.trim()
+            if (clean.isNotBlank() && clean != "Peer") {
+                if (currentRoom == _activeRoomId.value || _partnerName.value == "Peer") {
+                    _partnerName.value = clean
+                }
+                if (currentRoom.isNotBlank()) {
+                    scope.launch {
+                        chatRepository.updateRoomPartnerName(currentRoom, clean)
+                    }
+                }
+            }
+        }
+
         val currentPartner = packet.senderName ?: _partnerName.value
         when (packet.type) {
             "name_sync" -> {
-                packet.senderName?.let { name ->
-                    if (name.isNotBlank()) {
-                        _partnerName.value = name
-                        scope.launch {
-                            chatRepository.updateRoomPartnerName(currentRoom, name)
-                        }
-                    }
-                }
+                // Handled above via senderName sync
             }
 
             "text" -> {

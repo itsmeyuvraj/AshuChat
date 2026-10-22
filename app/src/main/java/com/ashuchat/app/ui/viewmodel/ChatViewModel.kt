@@ -202,6 +202,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createOrJoinRoom(roomId: String, partnerName: String = "Peer"): String {
         val clean = roomId.trim().uppercase()
+        val cleanPartner = partnerName.trim().ifEmpty { "Peer" }
         if (clean.isNotBlank()) {
             viewModelScope.launch(Dispatchers.IO) {
                 val existing = chatRepository.getRoom(clean)
@@ -209,15 +210,30 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     chatRepository.insertOrUpdateRoom(
                         RoomEntity(
                             roomId = clean,
-                            partnerName = partnerName,
+                            partnerName = cleanPartner,
                             lastMessage = "Room created",
                             lastTimestamp = System.currentTimeMillis()
                         )
                     )
+                } else if (cleanPartner != "Peer" && existing.partnerName != cleanPartner) {
+                    chatRepository.updateRoomPartnerName(clean, cleanPartner)
                 }
             }
         }
         return clean
+    }
+
+    fun updateRoomPartnerName(roomId: String, partnerName: String) {
+        val clean = roomId.trim().uppercase()
+        val cleanPartner = partnerName.trim()
+        if (clean.isNotBlank() && cleanPartner.isNotBlank()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                chatRepository.updateRoomPartnerName(clean, cleanPartner)
+                if (activeRoomId.value == clean) {
+                    ChatConnectionManager.updatePartnerName(cleanPartner)
+                }
+            }
+        }
     }
 
     fun leaveActiveRoom() {

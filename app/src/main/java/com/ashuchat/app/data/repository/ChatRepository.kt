@@ -87,11 +87,14 @@ class ChatRepository(
         val existingRoom = roomDao.getRoomById(message.roomId)
         if (existingRoom != null) {
             roomDao.updateLastMessage(message.roomId, snippet, message.timestamp)
+            if (!message.isFromMe && message.senderName.isNotBlank() && message.senderName != "Peer" && existingRoom.partnerName != message.senderName) {
+                roomDao.updatePartnerName(message.roomId, message.senderName)
+            }
         } else if (message.roomId.isNotBlank()) {
             roomDao.insertOrUpdateRoom(
                 RoomEntity(
                     roomId = message.roomId,
-                    partnerName = if (!message.isFromMe) message.senderName else "Peer",
+                    partnerName = if (!message.isFromMe && message.senderName.isNotBlank()) message.senderName else "Peer",
                     lastMessage = snippet,
                     lastTimestamp = message.timestamp
                 )

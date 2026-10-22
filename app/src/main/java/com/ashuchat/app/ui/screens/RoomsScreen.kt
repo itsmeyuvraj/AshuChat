@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
@@ -141,9 +142,9 @@ fun RoomsScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
-    var showQuickActionDialog by remember { mutableStateOf(false) }
 
     var roomToDelete by remember { mutableStateOf<RoomEntity?>(null) }
+    var roomToRename by remember { mutableStateOf<RoomEntity?>(null) }
 
     val filteredRooms = remember(rooms, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -446,6 +447,9 @@ fun RoomsScreen(
                                 onClick = {
                                     onRoomClick(room.roomId)
                                 },
+                                onRenameClick = {
+                                    roomToRename = room
+                                },
                                 onDeleteClick = {
                                     roomToDelete = room
                                 }
@@ -519,6 +523,78 @@ fun RoomsScreen(
         )
     }
 
+    // Rename Peer Dialog (Neo-brutalist style)
+    roomToRename?.let { room ->
+        var newPeerName by remember(room) {
+            mutableStateOf(if (room.partnerName.isNotBlank() && room.partnerName != "Peer") room.partnerName else "")
+        }
+
+        AlertDialog(
+            onDismissRequest = { roomToRename = null },
+            title = {
+                Text(
+                    text = "Rename Peer",
+                    color = NeoBlack,
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter a name or nickname for your peer in room \"${room.roomId}\":",
+                        color = NeoTextMuted,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = newPeerName,
+                        onValueChange = { newPeerName = it },
+                        singleLine = true,
+                        placeholder = {
+                            Text("e.g. Ashu", color = NeoBlack.copy(alpha = 0.5f))
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeoBlack,
+                            unfocusedBorderColor = NeoBlack,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedTextColor = NeoBlack,
+                            unfocusedTextColor = NeoBlack,
+                            cursorColor = NeoBlack
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clean = newPeerName.trim().ifEmpty { "Peer" }
+                        viewModel.updateRoomPartnerName(room.roomId, clean)
+                        roomToRename = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeoBtnMint
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                ) {
+                    Text("Save", color = NeoBlack, fontWeight = FontWeight.Black)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { roomToRename = null }) {
+                    Text("Cancel", color = NeoBlack, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = NeoBackground,
+            modifier = Modifier.border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
+        )
+    }
+
     // In-App Update Dialog when downloading or confirmed
     if (updateInfo != null && updateInfo!!.isUpdateAvailable && isDownloadingUpdate) {
         UpdateDialog(
@@ -544,14 +620,15 @@ private fun NeoRoomCardItem(
     backgroundColor: Color,
     isActive: Boolean,
     onClick: () -> Unit,
+    onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    val displayTitle = if (room.partnerName.isNotBlank() && room.partnerName != "Peer") {
+    val peerDisplayName = if (room.partnerName.isNotBlank() && room.partnerName != "Peer") {
         room.partnerName
     } else {
-        room.roomId
+        "Peer"
     }
 
     val emoji = remember(room.roomId, room.partnerName) {
@@ -611,7 +688,7 @@ private fun NeoRoomCardItem(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = displayTitle,
+                        text = peerDisplayName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         color = NeoTextDark,
@@ -681,6 +758,27 @@ private fun NeoRoomCardItem(
                                 .background(NeoBackground)
                                 .border(2.dp, NeoBlack, RoundedCornerShape(16.dp))
                         ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Rename Peer",
+                                        color = NeoBlack,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onRenameClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = null,
+                                        tint = NeoBlack
+                                    )
+                                }
+                            )
+
                             DropdownMenuItem(
                                 text = {
                                     Text(
