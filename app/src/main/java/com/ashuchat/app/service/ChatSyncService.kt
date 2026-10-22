@@ -1,8 +1,7 @@
 package com.ashuchat.app.service
 
+import android.app.AlarmManager
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -11,19 +10,22 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.ashuchat.app.MainActivity
+import com.ashuchat.app.utils.NotificationHelper
+import com.ashuchat.app.webrtc.ChatConnectionManager
 
 /**
  * P3: Background Foreground Service
- * Keeps the P2P connection and signaling listeners alive when the app is
- * in the background or the screen is locked, preventing Android Doze Mode from
- * killing the sockets.
+ * Keeps the P2P connection, signaling listeners, and incoming call listeners alive
+ * when the app is in the background, swiped away, or the screen is locked.
  */
 class ChatSyncService : Service() {
 
     companion object {
-        private const val CHANNEL_ID = "ashuchat_background_sync"
+        private const val TAG = "ChatSyncService"
         private const val NOTIFICATION_ID = 2001
 
         fun startService(context: Context) {
@@ -34,7 +36,9 @@ class ChatSyncService : Service() {
                 } else {
                     context.startService(intent)
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed starting ChatSyncService: ${e.localizedMessage}")
+            }
         }
 
         fun stopService(context: Context) {
@@ -49,7 +53,7 @@ class ChatSyncService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        NotificationHelper.initNotificationChannels(this)
 
         val notification = buildForegroundNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -63,10 +67,42 @@ class ChatSyncService : Service() {
         }
 
         acquireWakeLock()
+
+        // Ensure persistent connection coordinator is active
+        ChatConnectionManager.init(applicationContext)
+        ChatConnectionManager.start()
+        Log.d(TAG, "ChatSyncService started and connected in foreground mode")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        acquireWakeLock()
+        ChatConnectionManager.init(applicationContext)
+        ChatConnectionManager.start()
         return START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "Task removed by user. Re-scheduling background sync service...")
+        try {
+            val restartIntent = Intent(applicationContext, ChatSyncService::class.java).also {
+                it.setPackage(packageName)
+            }
+            val restartPendingIntent = PendingIntent.getService(
+                applicationContext,
+                101,
+                restartIntent,
+                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            alarmManager?.set(
+                AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 1000L,
+                restartPendingIntent
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed re-scheduling after task removal: ${e.localizedMessage}")
+        }
     }
 
     override fun onDestroy() {
@@ -87,37 +123,28 @@ class ChatSyncService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, NotificationHelper.CHANNEL_SYNC)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("AshuChat Active")
-            .setContentText("Private connection maintained in background")
+            .setContentText("Connected & listening for calls & messages")
             .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
+            .setShowWhen(false)
             .setContentIntent(pendingIntent)
             .build()
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "AshuChat Connection Service",
-                NotificationManager.IMPORTANCE_MIN
-            ).apply {
-                description = "Maintains private chat connection in the background"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
-    }
-
     private fun acquireWakeLock() {
         try {
-            val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
-            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AshuChat:SyncWakeLock")?.apply {
-                setReferenceCounted(false)
-                acquire(30 * 60 * 1000L) // 30 mins safety timeout
+            if (wakeLock == null) {
+                val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AshuChat:SyncWakeLock")?.apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wakeLock?.isHeld == false) {
+                wakeLock?.acquire(60 * 60 * 1000L) // 1 hour safety acquisition
             }
         } catch (_: Exception) {}
     }

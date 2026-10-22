@@ -37,6 +37,14 @@ import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import com.ashuchat.app.utils.BiometricHelper
 
+import android.content.Intent
+import androidx.compose.foundation.layout.Box
+import com.ashuchat.app.data.model.CallState
+import com.ashuchat.app.ui.components.VoiceCallOverlay
+import com.ashuchat.app.utils.CallNotificationHelper
+import com.ashuchat.app.utils.NotificationHelper
+import com.ashuchat.app.webrtc.ChatConnectionManager
+
 class MainActivity : FragmentActivity() {
 
     private val chatViewModel: ChatViewModel by viewModels()
@@ -67,6 +75,8 @@ class MainActivity : FragmentActivity() {
         // Start P3 Background Sync Service (foreground service to survive Doze mode)
         ChatSyncService.startService(this)
 
+        handleIntent(intent)
+
         setContent {
             AshuChatTheme {
                 Surface(
@@ -82,6 +92,27 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val action = intent?.action
+        val roomId = intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_ROOM_ID)
+            ?: intent?.getStringExtra(CallNotificationHelper.EXTRA_CALL_ROOM_ID)
+
+        if (action == CallNotificationHelper.ACTION_ANSWER_CALL) {
+            ChatConnectionManager.acceptCall()
+            if (!roomId.isNullOrBlank()) {
+                chatViewModel.openRoom(roomId)
+            }
+        } else if (!roomId.isNullOrBlank()) {
+            chatViewModel.openRoom(roomId)
         }
     }
 
@@ -116,12 +147,17 @@ class MainActivity : FragmentActivity() {
 fun AppNavigation(chatViewModel: ChatViewModel) {
     val navController = rememberNavController()
     val prefs = chatViewModel.prefs
+    val callState by chatViewModel.callState.collectAsState()
+    val partnerName by chatViewModel.partnerName.collectAsState()
+    val callDurationSeconds by chatViewModel.callDurationSeconds.collectAsState()
+    val isCallMuted by chatViewModel.isCallMuted.collectAsState()
+    val isCallSpeakerOn by chatViewModel.isCallSpeakerOn.collectAsState()
 
-    // Main destination is WhatsApp-style Rooms list screen
-    NavHost(
-        navController = navController,
-        startDestination = "rooms"
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = "rooms"
+        ) {
         composable("rooms") {
             RoomsScreen(
                 viewModel = chatViewModel,
@@ -281,4 +317,20 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
             )
         }
     }
+
+    if (callState != CallState.IDLE) {
+        VoiceCallOverlay(
+            callState = callState,
+            partnerName = partnerName,
+            callDurationSeconds = callDurationSeconds,
+            isMuted = isCallMuted,
+            isSpeakerOn = isCallSpeakerOn,
+            onAccept = { chatViewModel.acceptIncomingCall() },
+            onReject = { chatViewModel.rejectIncomingCall() },
+            onEnd = { chatViewModel.endCall() },
+            onToggleMute = { chatViewModel.toggleCallMute() },
+            onToggleSpeaker = { chatViewModel.toggleCallSpeaker() }
+        )
+    }
+}
 }

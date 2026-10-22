@@ -21,6 +21,9 @@ data class DataChannelPacket(
     @SerializedName("timestamp")
     val timestamp: Long = System.currentTimeMillis(),
 
+    @SerializedName("roomId")
+    val roomId: String? = null,
+
     // File transfer metadata
     @SerializedName("fileId")
     val fileId: String? = null,

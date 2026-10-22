@@ -17,9 +17,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,17 +42,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
+import com.ashuchat.app.ui.theme.ConnectingYellow
 import com.ashuchat.app.ui.theme.MidnightBg
 import com.ashuchat.app.ui.theme.OfflineRed
+import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
+import com.ashuchat.app.utils.BatteryOptimizationHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,6 +244,123 @@ fun ChatSettingsScreen(
                 Text(
                     text = "• WebRTC DataChannel DTLS-SRTP 256-bit encryption protects all your messages and file transfers.\n\n" +
                             "• Zero Cloud Storage: AshuChat has no central chat database. Your messages never pass through or rest in the cloud.",
+                    fontSize = 11.sp,
+                    color = TextSecondary.copy(alpha = 0.8f),
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Background Operation & Battery Optimization Card
+            val context = LocalContext.current
+            var isBatteryIgnored by remember {
+                mutableStateOf(BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context))
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = null,
+                        tint = if (isBatteryIgnored) OnlineGreen else ConnectingYellow,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "24/7 Background Sync & Calls",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "AshuChat runs a persistent foreground sync service so you can receive incoming voice calls and encrypted messages even when the app is closed or the screen is locked.",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isBatteryIgnored) OnlineGreen.copy(alpha = 0.12f)
+                            else ConnectingYellow.copy(alpha = 0.12f)
+                        )
+                        .border(
+                            1.dp,
+                            if (isBatteryIgnored) OnlineGreen.copy(alpha = 0.35f)
+                            else ConnectingYellow.copy(alpha = 0.35f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isBatteryIgnored) Icons.Default.CheckCircle else Icons.Default.WarningAmber,
+                        contentDescription = null,
+                        tint = if (isBatteryIgnored) OnlineGreen else ConnectingYellow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isBatteryIgnored) "Unrestricted Background Active" else "Battery Optimization Active",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (isBatteryIgnored)
+                                "Android will not terminate incoming call signaling when idle"
+                            else
+                                "OEM power savers may delay or terminate calls when app is closed",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                if (!isBatteryIgnored) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(context)
+                            isBatteryIgnored = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                    ) {
+                        Text(
+                            text = "Allow Unrestricted Background",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "• Auto-starts when device boots\n• Full-screen wake lock on incoming calls\n• Zero Google Play Services dependency",
                     fontSize = 11.sp,
                     color = TextSecondary.copy(alpha = 0.8f),
                     lineHeight = 16.sp

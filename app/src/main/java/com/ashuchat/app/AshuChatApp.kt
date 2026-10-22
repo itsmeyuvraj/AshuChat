@@ -15,7 +15,9 @@ class AshuChatApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        NotificationHelper.initNotificationChannel(this)
+        NotificationHelper.initNotificationChannels(this)
+        com.ashuchat.app.webrtc.ChatConnectionManager.init(this)
+        com.ashuchat.app.service.ChatSyncService.startService(this)
 
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var resumedActivities = 0

@@ -33,6 +33,12 @@ Designed with love for couples to chat, make encrypted crystal-clear voice calls
 - **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
 - **In-App Call Overlay**: Full-screen calling screen with partner avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeOff`) toggles.
 
+### 🔔 24/7 Background Operation & Call Ringing
+- **Always-On Background Listener**: Runs a persistent low-power foreground synchronization service (`ChatSyncService`) and global connection manager (`ChatConnectionManager`) that survives app exit and Android Doze mode.
+- **Rings While App Is Closed**: Incoming calls trigger high-priority lockscreen wake-ups (`USE_FULL_SCREEN_INTENT`), looping device ringtones, vibration patterns, and notification action buttons (**Answer** / **Decline**) directly from the lock screen.
+- **Boot Auto-Start**: Automatically boots connection listeners when your phone restarts (`RECEIVE_BOOT_COMPLETED`).
+- **Battery Optimization Exemption Helper**: One-tap toggle inside Chat Settings to prevent OEM battery-savers (MIUI, OneUI, ColorOS) from killing background signaling.
+
 ### 🎙️ Push-to-Talk Voice Notes
 - **High-Fidelity Audio Recording**: AAC encoding in MPEG-4 (`.m4a`) at 44.1kHz / 96kbps with real-time waveform amplitude bars and duration counter.
 - **Inline Audio Player**: Play/pause toggle, scrubbable progress indicator, elapsed/total duration, and variable playback speed selector (`1.0x`, `1.5x`, `2.0x`).

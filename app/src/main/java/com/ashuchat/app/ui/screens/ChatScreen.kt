@@ -1,6 +1,7 @@
 package com.ashuchat.app.ui.screens
 
 import android.net.Uri
+import com.ashuchat.app.ui.components.VoiceCallOverlay
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,7 +70,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.ContextCompat
-import com.ashuchat.app.ui.viewmodel.CallState
+import com.ashuchat.app.data.model.CallState
 import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -843,194 +844,6 @@ fun ChatScreen(
     }
 }
 
-@Composable
-private fun VoiceCallOverlay(
-    callState: CallState,
-    partnerName: String,
-    callDurationSeconds: Int,
-    isMuted: Boolean,
-    isSpeakerOn: Boolean,
-    onAccept: () -> Unit,
-    onReject: () -> Unit,
-    onEnd: () -> Unit,
-    onToggleMute: () -> Unit,
-    onToggleSpeaker: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xE60D0B14))
-            .clickable(enabled = false) {},
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp)
-        ) {
-            val infiniteTransition = rememberInfiniteTransition(label = "callPulse")
-            val pulseScale by infiniteTransition.animateFloat(
-                initialValue = 0.95f,
-                targetValue = 1.08f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1000),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "pulse"
-            )
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(110.dp)
-                    .scale(if (callState != CallState.CONNECTED) pulseScale else 1.0f)
-                    .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(RosePrimary, RoseDark)))
-                    .border(2.dp, RoseAccent.copy(alpha = 0.6f), CircleShape)
-            ) {
-                Text(
-                    text = partnerName.take(1).uppercase(),
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = partnerName,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when (callState) {
-                CallState.OUTGOING -> {
-                    Text(
-                        text = "Calling...",
-                        fontSize = 15.sp,
-                        color = RoseAccent
-                    )
-                }
-                CallState.INCOMING -> {
-                    Text(
-                        text = "Incoming Voice Call...",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = BrandLight
-                    )
-                }
-                CallState.CONNECTED -> {
-                    val minutes = callDurationSeconds / 60
-                    val seconds = callDurationSeconds % 60
-                    Text(
-                        text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF69F0AE)
-                    )
-                }
-                CallState.IDLE -> {}
-            }
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            if (callState == CallState.INCOMING) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onReject,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE53935))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CallEnd,
-                            contentDescription = "Decline",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onAccept,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF43A047))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Phone,
-                            contentDescription = "Accept",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onToggleMute,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(if (isMuted) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Mute",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onEnd,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE53935))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CallEnd,
-                            contentDescription = "End Call",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onToggleSpeaker,
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(if (isSpeakerOn) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            imageVector = if (isSpeakerOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                            contentDescription = "Speaker",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun PingAlertBanner(partnerName: String) {
