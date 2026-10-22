@@ -46,10 +46,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +56,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,9 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.data.local.RoomEntity
-import com.ashuchat.app.ui.components.NeoBrutalButton
 import com.ashuchat.app.ui.components.NeoBrutalCard
-import com.ashuchat.app.utils.PermissionHelper
 import com.ashuchat.app.ui.components.NeoBrutalIconButton
 import com.ashuchat.app.ui.components.NeoChatBubbleIcon
 import com.ashuchat.app.ui.components.NeoEmojiAvatar
@@ -151,20 +145,6 @@ fun RoomsScreen(
 
     var roomToDelete by remember { mutableStateOf<RoomEntity?>(null) }
     var roomToRename by remember { mutableStateOf<RoomEntity?>(null) }
-
-    val context = LocalContext.current
-    var missingPermissions by remember {
-        mutableStateOf(PermissionHelper.getMissingPermissions(context))
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        missingPermissions = PermissionHelper.getMissingPermissions(context)
-    }
-
-    LaunchedEffect(Unit) {
-        missingPermissions = PermissionHelper.getMissingPermissions(context)
-    }
 
     val filteredRooms = remember(rooms, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -437,74 +417,6 @@ fun RoomsScreen(
                     }
                 }
 
-                // Permissions Warning Banner (if any permissions are missing or revoked)
-                AnimatedVisibility(
-                    visible = missingPermissions.isNotEmpty(),
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 6.dp)
-                    ) {
-                        NeoBrutalCard(
-                            backgroundColor = NeoCardYellow,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color.White)
-                                            .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
-                                    ) {
-                                        Text(text = "🛡️", fontSize = 18.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "Permissions Required",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = NeoBlack
-                                        )
-                                        Text(
-                                            text = "Camera, audio & alert access needed",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = NeoTextMuted
-                                        )
-                                    }
-                                }
-
-                                NeoBrutalButton(
-                                    onClick = { permissionLauncher.launch(missingPermissions) },
-                                    backgroundColor = NeoBtnMint
-                                ) {
-                                    Text(
-                                        text = "Grant",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = NeoBlack
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
 
                 // Rooms List or Empty State
                 if (filteredRooms.isEmpty()) {
