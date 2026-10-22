@@ -1,8 +1,14 @@
 # AshuChat ❤️ (100% Serverless P2P)
 
-A private, modern, **serverless peer-to-peer (P2P)** messaging and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
+[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://developer.android.com)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-purple.svg)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.11-blue.svg)](https://developer.android.com/jetpack/compose)
+[![WebRTC](https://img.shields.io/badge/WebRTC-DTLS--SRTP%20256--bit-orange.svg)](https://webrtc.org)
+[![License](https://img.shields.io/badge/License-Private-red.svg)](#)
 
-Designed with love for couples to chat, exchange high-res photos, share files, and send heartbeat "Love Pings" directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
+A private, modern, **serverless peer-to-peer (P2P)** messaging, encrypted voice calling, and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
+
+Designed with love for couples to chat, make encrypted crystal-clear voice calls, exchange high-res photos, record push-to-talk voice notes, and send heartbeat "Love Pings" directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
 
 ---
 
@@ -10,28 +16,47 @@ Designed with love for couples to chat, exchange high-res photos, share files, a
 
 - **No Backend to Host or Run**: You do **NOT** need a VPS, Docker container, Node.js server, or local Python script.
 - **Serverless Cloud Handshake**: Initial peer discovery uses serverless cloud channels (Google Firebase Realtime Database REST SSE / Public cloud broker) solely to exchange the 2-second WebRTC handshake.
-- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, attachments, photos, and Love Pings stream directly between your phone and your girlfriend's phone over **WebRTC DataChannels (DTLS-SRTP 256-bit encryption)**.
-- **Zero Cloud Storage of Chats**: No server ever touches, reads, or stores your messages or pictures.
+- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, voice calls, voice notes, attachments, and Love Pings stream directly between devices over **WebRTC (DTLS-SRTP 256-bit encryption)**.
+- **Offline Mailbox Fallback**: If your partner is offline or backgrounded, messages and voice notes automatically queue in a serverless encrypted cloud mailbox and deliver immediately once they open the app.
+- **Zero Cloud Storage of Chats**: No server ever touches, reads, or permanently stores your messages or pictures.
 
 ---
 
 ## ✨ Features
 
-- 🔒 **Direct Peer-to-Peer Encryption**: DTLS-SRTP 256-bit encryption for all peer traffic.
-- 📸 **High-Speed Attachment Sharing**:
-  - Send camera photos, gallery pictures, videos, and documents of any format.
-  - Chunked binary transmission over WebRTC with backpressure control.
-  - Real-time transfer progress bars.
-- 🔍 **Full-Screen Media Viewer**: Tap any photo in the conversation to open a high-res viewer with pinch-to-zoom and save options.
-- 📱 **Instant Pairing**:
-  - **QR Code Handshake**: Show your pairing QR code or scan your girlfriend's screen using CameraX + ML Kit.
-  - **6-Digit Room Code**: Or enter the matching room code (e.g. `ASHU-882`).
-- 💖 **Romantic Couples Touch**:
-  - **Love Ping**: Send an instant heartbeat pulse. Vibrates the receiver's phone with a heartbeat rhythm and triggers a floating heart burst across the screen.
-  - **Typing Indicator**: Real-time "typing..." notification.
-  - **Delivery Receipts**: Message status ticks (*Sending* 🕒, *Sent* ✓, *Delivered* ✓✓).
-- 💾 **Local Offline History**: Chat history is persisted safely on device storage using Android Room (SQLite). Old messages remain available even when offline.
-- 🎨 **Modern Dark Aesthetic**: Intimate, romantic dark theme with rose gradients, frosted surfaces, and fluid micro-animations.
+### 🔒 Biometric App Lock & Privacy Suite
+- **Biometric Authentication (`BiometricPrompt`)**: Secure the app with Fingerprint or Face Unlock upon startup and when resuming from the background.
+- **Anti-Screenshot & Screen Guard (`FLAG_SECURE`)**: Prevent screenshots and screen recording, and obscure chat previews in Android's recent apps switcher.
+- **Disappearing Messages**: Set self-destruct timers (**Off**, **30s**, **5m**, **1h**, **24h**) with automated background deletion of messages and cached attachment files.
+
+### 📞 Direct P2P Encrypted Voice Calls
+- **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
+- **In-App Call Overlay**: Full-screen calling screen with partner avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeOff`) toggles.
+
+### 🎙️ Push-to-Talk Voice Notes
+- **High-Fidelity Audio Recording**: AAC encoding in MPEG-4 (`.m4a`) at 44.1kHz / 96kbps with real-time waveform amplitude bars and duration counter.
+- **Inline Audio Player**: Play/pause toggle, scrubbable progress indicator, elapsed/total duration, and variable playback speed selector (`1.0x`, `1.5x`, `2.0x`).
+
+### ❤️ Message Reactions & Quote Reply
+- **Emoji Reactions**: Long-press any message bubble to open the reaction picker (❤️, 😂, 😮, 😢, 👍, ⚡) with pinned reaction badges on bubbles.
+- **Quote-to-Reply**: Reply to specific messages with a quote banner above the input field and styled quotation blocks inside chat bubbles.
+
+### 📸 High-Speed Attachment & Media Sharing
+- **Full-Resolution Photos & Files**: Share camera captures, gallery photos, videos, and documents without compression degradation.
+- **Full-Screen Media Viewer**: Zoomable image viewer with pinch-to-zoom and save actions.
+- **Chunked Transfer**: WebRTC binary streaming with real-time transfer progress bars.
+
+### 💖 Romantic Couples Touch
+- **Love Ping ⚡**: Send an instant heartbeat pulse. Triggers a rhythmic vibration and an animated glowing banner on the receiver's phone.
+- **Real-Time Indicators**: Live "typing..." indicator and delivery receipts (*Sending* 🕒, *Sent* ✓, *Delivered* ✓✓).
+
+### 📱 Instant Pairing & Rooms
+- **QR Code Handshake**: Show a pairing QR code or scan with CameraX + ML Kit barcode reader.
+- **Room Code**: Enter matching room codes (e.g., `ASHU-882`).
+- **Multi-Room Chat**: Manage multiple chat rooms with persistent histories and custom nicknames.
+
+### 🔄 In-App Auto-Updates
+- Built-in GitHub Releases update checker with direct background download and installation prompts without needing Google Play Store.
 
 ---
 
@@ -43,29 +68,39 @@ graph TD
         UI_A["Jetpack Compose UI"]
         VM_A["ChatViewModel"]
         ROOM_A[("Room SQLite DB")]
-        RTC_A["WebRTC DataChannel"]
+        RTC_A["WebRTC Audio & DataChannel"]
+        AUDIO_A["Audio Recorder / Player"]
+        BIO_A["Biometric Lock"]
         UI_A --> VM_A
         VM_A --> ROOM_A
         VM_A --> RTC_A
+        VM_A --> AUDIO_A
+        UI_A --> BIO_A
     end
 
-    subgraph Serverless ["Serverless Cloud Handshake (Zero Hosting)"]
-        RTDB["Serverless Cloud Broker\n(Firebase Realtime DB REST SSE / Public Broker)\n[SDP & ICE Handshake only]"]
+    subgraph Serverless ["Serverless Cloud Handshake & Offline Relay"]
+        RTDB["Serverless Cloud Broker\n(Firebase Realtime DB REST SSE / Public Broker)\n[SDP Handshake & Offline Mailbox Fallback]"]
     end
 
-    subgraph Device B ["Girlfriend's Phone (Ashu)"]
+    subgraph Device B ["Partner's Phone (Ashu)"]
         UI_B["Jetpack Compose UI"]
         VM_B["ChatViewModel"]
         ROOM_B[("Room SQLite DB")]
-        RTC_B["WebRTC DataChannel"]
+        RTC_B["WebRTC Audio & DataChannel"]
+        AUDIO_B["Audio Recorder / Player"]
+        BIO_B["Biometric Lock"]
         UI_B --> VM_B
         VM_B --> ROOM_B
         VM_B --> RTC_B
+        VM_B --> AUDIO_B
+        UI_B --> BIO_B
     end
 
     RTC_A -. "1. Serverless SDP & ICE Token Exchange (2 seconds)" .-> RTDB
     RTDB -. "1. Serverless SDP & ICE Token Exchange (2 seconds)" .-> RTC_B
-    RTC_A == "2. Direct P2P DTLS-SRTP Encrypted Stream (Text & Media)" ==> RTC_B
+    RTC_A == "2. Direct P2P DTLS-SRTP Encrypted Stream (Text, Audio Calls, Media)" ==> RTC_B
+    RTC_A -. "3. Offline Fallback Encrypted Relay Mailbox" .-> RTDB
+    RTDB -. "3. Offline Fallback Encrypted Relay Mailbox" .-> RTC_B
 ```
 
 ---
@@ -76,56 +111,76 @@ graph TD
 AshuChat/
 ├── app/
 │   ├── build.gradle.kts                   # Dependencies & plugins
+│   ├── proguard-rules.pro                 # R8 / ProGuard rules for WebRTC & Biometrics
 │   └── src/main/
-│       ├── AndroidManifest.xml            # Permissions & FileProvider
+│       ├── AndroidManifest.xml            # Permissions, FileProvider & Activities
 │       └── java/com/ashuchat/app/
-│           ├── AshuChatApp.kt             # Application init
-│           ├── MainActivity.kt            # Compose Navigation
+│           ├── AshuChatApp.kt             # Application lifecycle
+│           ├── MainActivity.kt            # FragmentActivity, Biometric & Navigation
 │           ├── data/
 │           │   ├── local/                 # Room DB, Entity & DAO
-│           │   ├── model/                 # Message, Signaling, Packets
+│           │   ├── model/                 # Message, Packets, CallState
 │           │   └── repository/            # Chat & Preferences Repositories
 │           ├── webrtc/
-│           │   ├── WebRtcManager.kt       # PeerConnection, STUN & DataChannel
-│           │   ├── SignalingClient.kt     # Serverless & WebSocket Signaling client
-│           │   └── FileTransferManager.kt # Binary chunking & stream backpressure
+│           │   ├── WebRtcManager.kt       # WebRTC Audio Tracks, DataChannel & ICE
+│           │   ├── SignalingClient.kt     # Serverless SSE & WebSocket client
+│           │   └── FileTransferManager.kt # Chunking & stream backpressure
 │           ├── ui/
-│           │   ├── theme/                 # Romantic color palette & typography
-│           │   ├── components/            # ChatBubble, Badges, QR Views
-│           │   ├── screens/               # PairingScreen, ChatScreen, Settings
+│           │   ├── theme/                 # Dark midnight & rose color palette
+│           │   ├── components/            # ChatBubble, Badges, BiometricLock, Overlays
+│           │   ├── screens/               # ChatScreen, PairingScreen, SettingsScreen
 │           │   └── viewmodel/             # ChatViewModel
-│           └── utils/                     # FileUtils, QrUtils, NotificationHelper
+│           └── utils/                     # AudioRecorder, AudioPlayer, Biometrics, Updates
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```
 
 ---
 
-## 🚀 Getting Started (Zero Server Setup!)
+## 🚀 Getting Started
 
-### Step 1: Open in Android Studio
+### Prerequisites
+- Android Studio Hedgehog (2023.1.1) or newer
+- JDK 17
+- Android Device or Emulator running Android 8.0+ (API level 26+)
+
+### Step 1: Open and Build
 1. Open **Android Studio**.
 2. Select **Open** and choose `/Users/yuvraj/Documents/Projects/AshuChat`.
-3. Android Studio will automatically resolve Gradle dependencies.
-4. Plug in your Android device (or launch an emulator) and click **Run (▶)**.
+3. Let Gradle sync dependencies.
+4. Build the project:
+   ```bash
+   ./gradlew assembleDebug
+   ```
 
----
-
-### Step 2: Pairing with Your Girlfriend
-
-1. Install and launch **AshuChat** on both Android devices.
-2. Enter your nicknames (*Yuvraj* on your phone, *Ashu* on her phone).
+### Step 2: Pairing Up
+1. Install **AshuChat** on both Android devices.
+2. Enter your nicknames.
 3. **Pair Up**:
-   - **Method A (QR Code)**: One phone displays the pairing QR code; the other phone taps **"Scan Girlfriend's QR Code"** and points the camera.
-   - **Method B (Room Code)**: Enter the matching 6-character room code (e.g. `ASHU-882`) on both phones.
+   - **Method A (QR Code)**: One phone displays the pairing QR code; the other phone taps **Scan QR Code**.
+   - **Method B (Room Code)**: Enter the matching 6-character room code (e.g., `ASHU-882`) on both phones.
 4. Tap **Connect & Open Chat**.
 5. The badge will switch to 🟢 **Direct P2P Active**!
-6. You can now chat, share photos, exchange files, and send Love Pings with **zero server infrastructure**!
 
 ---
 
-## 🔒 Security & Privacy
+## 🔒 Security & Privacy Architecture
 
-- **Transport Encryption**: WebRTC DataChannels are encrypted end-to-end via DTLS-SRTP 256-bit encryption.
-- **Zero Intermediary Storage**: No cloud server receives or saves your chat messages or pictures.
-- **Local SQLite Storage**: Your conversations are stored only on your local devices in an encrypted app-private sandbox.
+- **Transport Encryption**: WebRTC audio and DataChannels are encrypted end-to-end with DTLS-SRTP 256-bit encryption.
+- **Zero Intermediary Storage**: No central server logs or stores your chats, calls, or media.
+- **Biometric Hardware Isolation**: Leverages Android's `KeyStore` and `BiometricPrompt` framework with StrongBox / TEE support.
+- **Screen Protection**: `FLAG_SECURE` blocks external recording, screen mirroring, and screenshots.
+- **Ephemeral Cleanup**: Disappearing messages automatically purge local SQLite records and delete cached files from disk.
+
+---
+
+## 🛠️ Technology Stack
+
+- **UI**: Jetpack Compose, Material 3, Accompanist
+- **Language**: Kotlin, Coroutines, Flow
+- **Real-Time P2P**: Google WebRTC (`stream-webrtc-android`), DTLS-SRTP
+- **Database**: Android Jetpack Room (SQLite)
+- **Audio**: Android `MediaRecorder` (AAC), `MediaPlayer` with playback pitch/speed control
+- **Biometrics**: `androidx.biometric:biometric`
+- **Networking**: OkHttp, Firebase Realtime Database REST SSE
+- **Computer Vision**: CameraX, Google ML Kit Barcode Scanning, ZXing Core
