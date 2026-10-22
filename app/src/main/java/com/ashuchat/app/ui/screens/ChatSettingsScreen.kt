@@ -50,15 +50,19 @@ import androidx.compose.ui.unit.sp
 import com.ashuchat.app.ui.components.NeoBrutalButton
 import com.ashuchat.app.ui.components.NeoBrutalCard
 import com.ashuchat.app.ui.components.NeoTopAppBar
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoBtnPeach
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoTextDark
+import com.ashuchat.app.ui.theme.NeoSurface
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
 import com.ashuchat.app.ui.theme.NeoTextMuted
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
@@ -93,7 +97,7 @@ fun ChatSettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // Privacy & Security Card (Pastel Yellow NeoBrutalCard)
+            // Privacy & Security Card (Dark Tinted NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardYellow,
                 modifier = Modifier.fillMaxWidth()
@@ -110,7 +114,7 @@ fun ChatSettingsScreen(
                             text = "Privacy & App Protection",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -128,7 +132,7 @@ fun ChatSettingsScreen(
                                 text = "Biometric App Lock",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                             Text(
                                 text = "Require fingerprint or face unlock on open",
@@ -146,9 +150,9 @@ fun ChatSettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = NeoBlack,
-                                uncheckedThumbColor = NeoBlack,
-                                uncheckedTrackColor = Color.White
+                                checkedTrackColor = NeoAccentYellow,
+                                uncheckedThumbColor = NeoTextSecondary,
+                                uncheckedTrackColor = NeoSurfaceElevated
                             )
                         )
                     }
@@ -167,7 +171,7 @@ fun ChatSettingsScreen(
                                 text = "Anti-Screenshot Protection",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                             Text(
                                 text = "Block screenshots & hide preview in recent apps",
@@ -185,9 +189,9 @@ fun ChatSettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = NeoBlack,
-                                uncheckedThumbColor = NeoBlack,
-                                uncheckedTrackColor = Color.White
+                                checkedTrackColor = NeoAccentYellow,
+                                uncheckedThumbColor = NeoTextSecondary,
+                                uncheckedTrackColor = NeoSurfaceElevated
                             )
                         )
                     }
@@ -201,7 +205,7 @@ fun ChatSettingsScreen(
                             text = "Disappearing Messages",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NeoBlack
+                            color = NeoTextPrimary
                         )
                         Text(
                             text = "Messages disappear after timer, only once viewed by partner",
@@ -232,8 +236,8 @@ fun ChatSettingsScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isSelected) NeoBlack else Color.White)
-                                        .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) NeoAccentYellow else NeoSurfaceElevated)
+                                        .border(2.dp, if (isSelected) NeoAccentYellow else NeoCardBorder, RoundedCornerShape(10.dp))
                                         .clickable {
                                             HapticHelper.playClick(context, view)
                                             disappearingDuration = duration
@@ -245,7 +249,7 @@ fun ChatSettingsScreen(
                                         text = label,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Black,
-                                        color = if (isSelected) Color.White else NeoBlack
+                                        color = if (isSelected) NeoBackground else NeoTextPrimary
                                     )
                                 }
                             }
@@ -256,7 +260,7 @@ fun ChatSettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Background Operation & Battery Optimization Card (Pastel Mint NeoBrutalCard)
+            // Background Operation & Battery Optimization Card (Dark Tinted NeoBrutalCard)
             var isBatteryIgnored by remember {
                 mutableStateOf(BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context))
             }
@@ -277,7 +281,7 @@ fun ChatSettingsScreen(
                             text = "24/7 Background Sync & Calls",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -287,7 +291,7 @@ fun ChatSettingsScreen(
                         text = "AshuChat runs a persistent foreground sync service so you can receive incoming voice calls and encrypted messages even when the app is closed or the screen is locked.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextDark.copy(alpha = 0.85f),
+                        color = NeoTextSecondary,
                         lineHeight = 17.sp
                     )
 
@@ -298,8 +302,8 @@ fun ChatSettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White)
-                            .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
+                            .background(NeoSurfaceElevated)
+                            .border(2.dp, NeoCardBorder, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {
                         Icon(
@@ -314,7 +318,7 @@ fun ChatSettingsScreen(
                                 text = if (isBatteryIgnored) "Unrestricted Background Active" else "Battery Optimization Active",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                             Text(
                                 text = if (isBatteryIgnored)
@@ -335,14 +339,14 @@ fun ChatSettingsScreen(
                                 BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(context)
                                 isBatteryIgnored = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
                             },
-                            backgroundColor = NeoBtnMint,
+                            backgroundColor = NeoAccentYellow,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = "Allow Unrestricted Background",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Black,
-                                color = NeoBlack
+                                color = NeoBackground
                             )
                         }
                     }
@@ -351,7 +355,7 @@ fun ChatSettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Data Management Card (Pastel Peach NeoBrutalCard)
+            // Data Management Card (Dark Tinted NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardPeach,
                 modifier = Modifier.fillMaxWidth()
@@ -368,7 +372,7 @@ fun ChatSettingsScreen(
                             text = "Local Storage & History",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -378,7 +382,7 @@ fun ChatSettingsScreen(
                         text = "Messages, media, and room histories are stored securely in your phone's private Room database. You can wipe all local chat records at any time.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextDark.copy(alpha = 0.85f),
+                        color = NeoTextSecondary,
                         lineHeight = 17.sp
                     )
 
@@ -386,19 +390,19 @@ fun ChatSettingsScreen(
 
                     NeoBrutalButton(
                         onClick = { showClearConfirmDialog = true },
-                        backgroundColor = Color(0xFFFCA5A5),
+                        backgroundColor = Color(0xFF7F1D1D),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
                             contentDescription = null,
-                            tint = NeoBlack,
+                            tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Clear All Local Data",
-                            color = NeoBlack,
+                            color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -412,12 +416,12 @@ fun ChatSettingsScreen(
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
             title = {
-                Text(text = "Clear All Local Data?", color = NeoBlack, fontWeight = FontWeight.Black)
+                Text(text = "Clear All Local Data?", color = NeoTextPrimary, fontWeight = FontWeight.Black)
             },
             text = {
                 Text(
                     text = "This will permanently remove all chat rooms, message histories, and downloaded media files saved on this device.",
-                    color = NeoTextMuted,
+                    color = NeoTextSecondary,
                     fontSize = 13.sp
                 )
             },
@@ -434,11 +438,11 @@ fun ChatSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel", color = NeoBlack, fontWeight = FontWeight.Bold)
+                    Text("Cancel", color = NeoTextSecondary, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = NeoBackground,
-            modifier = Modifier.border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
+            containerColor = NeoSurface,
+            modifier = Modifier.border(2.dp, NeoCardBorder, RoundedCornerShape(20.dp))
         )
     }
 }

@@ -41,34 +41,48 @@ val RoseAccent = BrandAccent
 val VioletAccent = AccentIndigo
 val VioletLight = Color(0xFF8290A4)
 
-// Neo-Brutalism & Playful Pop Palette
-val NeoBackground = Color(0xFFFEFDF5)
-val NeoHeaderYellow = Color(0xFFFFDE59)
-val NeoBlack = Color(0xFF18181B)
-val NeoCardBorder = Color(0xFF18181B)
-val NeoCardShadow = Color(0xFF18181B)
+// Neo-Brutalism Dark Palette (Eye-Friendly, Matte, Zero Harsh Glare)
+val NeoBackground = Color(0xFF121316)          // Deep matte dark background (#121316 requested)
+val NeoSurface = Color(0xFF1A1D24)             // Elevated dark card surface
+val NeoSurfaceElevated = Color(0xFF222631)     // High-elevation surface / inputs
+val NeoHeaderBg = Color(0xFF161920)            // Matte dark header container
 
-// Neo Card Pastel Themes
-val NeoCardYellow = Color(0xFFFFE785)
-val NeoCardMint = Color(0xFF88E7BC)
-val NeoCardLavender = Color(0xFFD7BCF5)
-val NeoCardPeach = Color(0xFFFEB988)
-val NeoCardPink = Color(0xFFFFBDD0)
-val NeoCardSky = Color(0xFFB2E7FF)
+// Borders & Hard Shadows
+val NeoCardBorder = Color(0xFF2D3442)          // Crisp dark slate border for neo-brutalist structure
+val NeoCardShadow = Color(0xFF07080B)          // Deep drop shadow behind cards
+val NeoBlack = Color(0xFF2D3442)               // Default border color token
 
-// Header Action Buttons
-val NeoBtnBlue = Color(0xFFCBE5FE)
-val NeoBtnMint = Color(0xFF90F0C4)
-val NeoBtnPeach = Color(0xFFFFC6B3)
+// Typography / Text Tokens (Soft, Glare-Free, High-Legibility)
+val NeoTextDark = Color(0xFFF1F5F9)            // Crisp off-white primary text
+val NeoTextPrimary = Color(0xFFF1F5F9)         // Alias for primary text
+val NeoTextSecondary = Color(0xFF94A3B8)       // Muted slate secondary text
+val NeoTextMuted = Color(0xFF64748B)           // Muted caption / helper text
+
+// Neo Card Dark Themed Surfaces (Muted, Rich, Eye-Friendly Tints)
+val NeoCardYellow = Color(0xFF252116)          // Deep warm amber surface
+val NeoCardMint = Color(0xFF14241E)            // Deep forest mint surface
+val NeoCardLavender = Color(0xFF201B2E)        // Deep midnight lavender surface
+val NeoCardPeach = Color(0xFF271C17)           // Deep warm terracotta surface
+val NeoCardPink = Color(0xFF271720)            // Deep wine berry surface
+val NeoCardSky = Color(0xFF15222E)             // Deep navy sky surface
+
+// Accent Colors for interactive punch & indicators
+val NeoAccentYellow = Color(0xFFF59E0B)        // Vibrant Amber/Gold (FABs, highlights)
+val NeoHeaderYellow = NeoHeaderBg              // Header background is dark!
+val NeoAccentMint = Color(0xFF10B981)          // Mint accent
+val NeoAccentPeach = Color(0xFFFB923C)         // Peach accent
+val NeoAccentBlue = Color(0xFF38BDF8)          // Sky blue accent
+val NeoAccentLavender = Color(0xFFA855F7)      // Lavender accent
+val NeoBadgeRed = Color(0xFFEF4444)            // Badge red
+
+// Header Action Buttons / Pill Buttons
+val NeoBtnBlue = Color(0xFF1E2D3D)             // Navy button container
+val NeoBtnMint = Color(0xFF183328)             // Forest button container
+val NeoBtnPeach = Color(0xFF33231D)            // Terracotta button container
+val NeoPillDark = Color(0xFF252B37)            // Pill badge background
 
 // Top Window Controls
 val NeoWindowRed = Color(0xFFFF5F56)
 val NeoWindowYellow = Color(0xFFFFBD2E)
 val NeoWindowGreen = Color(0xFF27C93F)
-
-// Badges & Accents
-val NeoBadgeRed = Color(0xFFEF4444)
-val NeoPillDark = Color(0xFF18181B)
-val NeoTextDark = Color(0xFF18181B)
-val NeoTextMuted = Color(0xFF4B5563)
 

@@ -34,12 +34,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ashuchat.app.ui.components.NeoBrutalCard
 import com.ashuchat.app.ui.components.NeoTopAppBar
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoTextDark
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
 import com.ashuchat.app.ui.theme.NeoTextMuted
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 
 @Composable
@@ -78,19 +81,19 @@ fun ProfileScreen(
                     .size(96.dp)
                     .clip(RoundedCornerShape(26.dp))
                     .background(NeoCardYellow)
-                    .border(2.5.dp, NeoBlack, RoundedCornerShape(26.dp))
+                    .border(2.5.dp, NeoCardBorder, RoundedCornerShape(26.dp))
             ) {
                 Text(
                     text = myName.take(1).uppercase().ifEmpty { "Y" },
                     fontSize = 42.sp,
                     fontWeight = FontWeight.Black,
-                    color = NeoBlack
+                    color = NeoAccentYellow
                 )
             }
 
             Spacer(modifier = Modifier.height(26.dp))
 
-            // Name Field Card (Pastel Mint NeoBrutalCard)
+            // Name Field Card (Dark Tinted NeoBrutalCard)
             NeoBrutalCard(
                 backgroundColor = NeoCardMint,
                 modifier = Modifier.fillMaxWidth()
@@ -107,7 +110,7 @@ fun ProfileScreen(
                             text = "Display Name",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -116,7 +119,7 @@ fun ProfileScreen(
                         text = "This is the name your partner or peer sees in all chat rooms.",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextDark.copy(alpha = 0.8f)
+                        color = NeoTextSecondary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -128,34 +131,34 @@ fun ProfileScreen(
                             viewModel.updateMyName(it)
                         },
                         textStyle = TextStyle(
-                            color = NeoBlack,
+                            color = NeoTextPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         ),
                         placeholder = {
                             Text(
                                 "Enter your name",
-                                color = NeoBlack.copy(alpha = 0.5f),
+                                color = NeoTextMuted,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp
                             )
                         },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeoBlack,
-                            unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedTextColor = NeoBlack,
-                            unfocusedTextColor = NeoBlack,
-                            focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                            unfocusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                            cursorColor = NeoBlack
+                            focusedBorderColor = NeoAccentYellow,
+                            unfocusedBorderColor = NeoCardBorder,
+                            focusedContainerColor = NeoSurfaceElevated,
+                            unfocusedContainerColor = NeoSurfaceElevated,
+                            focusedTextColor = NeoTextPrimary,
+                            unfocusedTextColor = NeoTextPrimary,
+                            focusedPlaceholderColor = NeoTextMuted,
+                            unfocusedPlaceholderColor = NeoTextMuted,
+                            cursorColor = NeoAccentYellow
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
+                            .border(2.dp, NeoCardBorder, RoundedCornerShape(12.dp))
                     )
                 }
             }

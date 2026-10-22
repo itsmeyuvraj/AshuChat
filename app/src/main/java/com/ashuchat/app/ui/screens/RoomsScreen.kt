@@ -70,20 +70,28 @@ import com.ashuchat.app.ui.components.NeoPillBadge
 import com.ashuchat.app.ui.components.NeoUnreadBadge
 import com.ashuchat.app.ui.components.SettingsMenuButton
 import com.ashuchat.app.ui.components.UpdateDialog
+import com.ashuchat.app.ui.theme.NeoAccentBlue
+import com.ashuchat.app.ui.theme.NeoAccentPeach
+import com.ashuchat.app.ui.theme.NeoAccentLavender
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnBlue
 import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoBtnPeach
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardLavender
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardPink
+import com.ashuchat.app.ui.theme.NeoCardShadow
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoHeaderYellow
-import com.ashuchat.app.ui.theme.NeoTextDark
+import com.ashuchat.app.ui.theme.NeoHeaderBg
+import com.ashuchat.app.ui.theme.NeoSurface
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
 import com.ashuchat.app.ui.theme.NeoTextMuted
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import com.ashuchat.app.utils.TimeUtils
@@ -163,7 +171,7 @@ fun RoomsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(NeoHeaderYellow)
+                    .background(NeoHeaderBg)
             ) {
                 // System Status Bar spacing
                 Box(
@@ -172,15 +180,15 @@ fun RoomsScreen(
                         .statusBarsPadding()
                 )
 
-                // Main Sunshine Yellow Header
+                // Main Dark Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
-                            width = 2.5.dp,
-                            color = NeoBlack
+                            width = 2.dp,
+                            color = NeoCardBorder
                         )
-                        .background(NeoHeaderYellow)
+                        .background(NeoHeaderBg)
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -197,7 +205,7 @@ fun RoomsScreen(
                                 text = "AshuChat",
                                 fontSize = 23.sp,
                                 fontWeight = FontWeight.Black,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                         }
 
@@ -206,7 +214,7 @@ fun RoomsScreen(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 0.8.sp,
-                            color = NeoBlack.copy(alpha = 0.9f)
+                            color = NeoTextSecondary
                         )
                     }
 
@@ -224,7 +232,7 @@ fun RoomsScreen(
                             Icon(
                                 imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = Color(0xFF2B7CD3),
+                                tint = NeoAccentBlue,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -244,7 +252,7 @@ fun RoomsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Settings,
                                         contentDescription = "Settings",
-                                        tint = Color(0xFF4A90E2),
+                                        tint = NeoAccentPeach,
                                         modifier = Modifier.size(21.dp)
                                     )
                                 }
@@ -276,21 +284,21 @@ fun RoomsScreen(
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         NeoBrutalCard(
-                            backgroundColor = Color.White,
+                            backgroundColor = NeoSurfaceElevated,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
                                 textStyle = TextStyle(
-                                    color = NeoBlack,
+                                    color = NeoTextPrimary,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
                                 placeholder = {
                                     Text(
                                         "Search by code or name...",
-                                        color = NeoBlack.copy(alpha = 0.55f),
+                                        color = NeoTextSecondary,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 15.sp
                                     )
@@ -299,11 +307,11 @@ fun RoomsScreen(
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = Color.Transparent,
                                     unfocusedBorderColor = Color.Transparent,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    focusedTextColor = NeoBlack,
-                                    unfocusedTextColor = NeoBlack,
-                                    cursorColor = NeoBlack
+                                    focusedContainerColor = NeoSurfaceElevated,
+                                    unfocusedContainerColor = NeoSurfaceElevated,
+                                    focusedTextColor = NeoTextPrimary,
+                                    unfocusedTextColor = NeoTextPrimary,
+                                    cursorColor = NeoAccentYellow
                                 ),
                                 trailingIcon = {
                                     if (searchQuery.isNotBlank()) {
@@ -311,7 +319,7 @@ fun RoomsScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "Clear",
-                                                tint = NeoBlack
+                                                tint = NeoTextSecondary
                                             )
                                         }
                                     }
@@ -354,13 +362,13 @@ fun RoomsScreen(
                                             modifier = Modifier
                                                 .size(38.dp)
                                                 .clip(RoundedCornerShape(10.dp))
-                                                .background(Color.White)
-                                                .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                                                .background(NeoSurfaceElevated)
+                                                .border(2.dp, NeoCardBorder, RoundedCornerShape(10.dp))
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.SystemUpdate,
                                                 contentDescription = null,
-                                                tint = NeoBlack,
+                                                tint = NeoAccentLavender,
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }
@@ -370,13 +378,13 @@ fun RoomsScreen(
                                                 text = "Update Available: ${info.latestVersionName}",
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = NeoBlack
+                                                color = NeoTextPrimary
                                             )
                                             Text(
                                                 text = "Tap to update AshuChat",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Medium,
-                                                color = NeoTextMuted
+                                                color = NeoTextSecondary
                                             )
                                         }
                                     }
@@ -394,7 +402,7 @@ fun RoomsScreen(
                                                 text = "Update",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Black,
-                                                color = NeoBlack
+                                                color = NeoTextPrimary
                                             )
                                         }
 
@@ -405,7 +413,7 @@ fun RoomsScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "Dismiss",
-                                                tint = NeoBlack,
+                                                tint = NeoTextSecondary,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }
@@ -463,14 +471,20 @@ fun RoomsScreen(
             ) {
                 NeoBrutalIconButton(
                     onClick = onNavigateToPairing,
-                    backgroundColor = NeoHeaderYellow,
+                    backgroundColor = NeoAccentYellow,
                     size = 64.dp,
-                    borderColor = NeoBlack,
-                    borderWidth = 2.5.dp,
-                    shadowOffset = 4.5.dp,
+                    borderColor = NeoCardBorder,
+                    borderWidth = 2.dp,
+                    shadowColor = NeoCardShadow,
+                    shadowOffset = 4.dp,
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    NeoChatBubbleIcon(size = 34.dp)
+                    NeoChatBubbleIcon(
+                        size = 34.dp,
+                        fillColor = NeoAccentYellow,
+                        strokeColor = Color(0xFF18181B),
+                        dotColor = Color(0xFF18181B)
+                    )
                 }
             }
         }
@@ -483,14 +497,14 @@ fun RoomsScreen(
             title = {
                 Text(
                     text = "Delete Chat Room?",
-                    color = NeoBlack,
+                    color = NeoTextPrimary,
                     fontWeight = FontWeight.Black
                 )
             },
             text = {
                 Text(
                     text = "Are you sure you want to delete room \"${room.roomId}\"? All messages in this room will be permanently removed.",
-                    color = NeoTextMuted,
+                    color = NeoTextSecondary,
                     fontSize = 13.sp
                 )
             },
@@ -504,18 +518,18 @@ fun RoomsScreen(
                         containerColor = Color(0xFFEF4444)
                     ),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
+                    modifier = Modifier.border(2.dp, NeoCardBorder, RoundedCornerShape(10.dp))
                 ) {
                     Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { roomToDelete = null }) {
-                    Text("Cancel", color = NeoBlack, fontWeight = FontWeight.Bold)
+                    Text("Cancel", color = NeoTextSecondary, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = NeoBackground,
-            modifier = Modifier.border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
+            containerColor = NeoSurface,
+            modifier = Modifier.border(2.dp, NeoCardBorder, RoundedCornerShape(20.dp))
         )
     }
 
@@ -594,7 +608,7 @@ private fun NeoRoomCardItem(
                             .size(13.dp)
                             .clip(CircleShape)
                             .background(OnlineGreen)
-                            .border(2.dp, NeoBlack, CircleShape)
+                            .border(2.dp, NeoCardBorder, CircleShape)
                             .align(Alignment.BottomEnd)
                     )
                 }
@@ -614,7 +628,7 @@ private fun NeoRoomCardItem(
                         text = displayTitle,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
-                        color = NeoTextDark,
+                        color = NeoTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -633,7 +647,7 @@ private fun NeoRoomCardItem(
                     text = lastMessageSnippet,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = NeoBlack.copy(alpha = 0.85f),
+                    color = NeoTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -651,7 +665,7 @@ private fun NeoRoomCardItem(
                         text = timeStr,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NeoBlack.copy(alpha = 0.8f)
+                        color = NeoTextMuted
                     )
                 }
 
@@ -668,7 +682,7 @@ private fun NeoRoomCardItem(
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "Options",
-                                tint = NeoBlack,
+                                tint = NeoTextSecondary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -678,8 +692,8 @@ private fun NeoRoomCardItem(
                             onDismissRequest = { showMenu = false },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(NeoBackground)
-                                .border(2.dp, NeoBlack, RoundedCornerShape(16.dp))
+                                .background(NeoSurfaceElevated)
+                                .border(1.5.dp, NeoCardBorder, RoundedCornerShape(16.dp))
                         ) {
                             DropdownMenuItem(
                                 text = {
@@ -738,8 +752,8 @@ private fun EmptyNeoRoomsView(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
-                        .border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
+                        .background(NeoSurfaceElevated)
+                        .border(2.dp, NeoCardBorder, RoundedCornerShape(20.dp))
                 ) {
                     Text(
                         text = if (isSearch) "🔍" else "💬",
@@ -753,7 +767,7 @@ private fun EmptyNeoRoomsView(
                     text = if (isSearch) "No Matching Rooms" else "No Chats Yet!",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = NeoBlack
+                    color = NeoTextPrimary
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -766,7 +780,7 @@ private fun EmptyNeoRoomsView(
                     },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = NeoBlack.copy(alpha = 0.8f),
+                    color = NeoTextSecondary,
                     textAlign = TextAlign.Center
                 )
 
@@ -786,13 +800,13 @@ private fun EmptyNeoRoomsView(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = null,
-                                tint = NeoBlack,
+                                tint = Color(0xFF34D399),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Join or Create Room",
-                                color = NeoBlack,
+                                color = NeoTextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Black
                             )

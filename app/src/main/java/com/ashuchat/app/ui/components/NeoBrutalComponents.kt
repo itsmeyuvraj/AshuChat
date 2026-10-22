@@ -42,16 +42,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBadgeRed
-import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardShadow
-import com.ashuchat.app.ui.theme.NeoHeaderYellow
+import com.ashuchat.app.ui.theme.NeoHeaderBg
 import com.ashuchat.app.ui.theme.NeoPillDark
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.utils.HapticHelper
 
 /**
- * Neo-Brutalist card with solid hard offset shadow and crisp black border.
+ * Neo-Brutalist card with solid hard offset shadow and crisp slate border.
  * Features physical press-down animation and haptic vibration when clicked.
  */
 @Composable
@@ -59,7 +62,7 @@ fun NeoBrutalCard(
     modifier: Modifier = Modifier,
     backgroundColor: Color,
     borderColor: Color = NeoCardBorder,
-    borderWidth: Dp = 2.5.dp,
+    borderWidth: Dp = 2.dp,
     shadowColor: Color = NeoCardShadow,
     shadowOffset: Dp = 4.dp,
     shadowOffsetX: Dp = shadowOffset,
@@ -129,8 +132,9 @@ fun NeoBrutalIconButton(
     modifier: Modifier = Modifier,
     backgroundColor: Color,
     size: Dp = 44.dp,
-    borderColor: Color = NeoBlack,
+    borderColor: Color = NeoCardBorder,
     borderWidth: Dp = 2.dp,
+    shadowColor: Color = NeoCardShadow,
     shadowOffset: Dp = 3.5.dp,
     shape: RoundedCornerShape = RoundedCornerShape(14.dp),
     content: @Composable BoxScope.() -> Unit
@@ -156,7 +160,7 @@ fun NeoBrutalIconButton(
             modifier = Modifier
                 .matchParentSize()
                 .offset(x = shadowOffset, y = shadowOffset)
-                .background(NeoBlack, shape)
+                .background(shadowColor, shape)
         )
 
         // Button Surface (shifts down on press)
@@ -192,9 +196,10 @@ fun NeoBrutalIconButton(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
     iconSize: Dp = 22.dp,
-    tint: Color = NeoBlack,
-    borderColor: Color = NeoBlack,
+    tint: Color = NeoTextPrimary,
+    borderColor: Color = NeoCardBorder,
     borderWidth: Dp = 2.dp,
+    shadowColor: Color = NeoCardShadow,
     shadowOffset: Dp = 3.5.dp,
     shape: RoundedCornerShape = RoundedCornerShape(14.dp),
     onClick: () -> Unit
@@ -206,6 +211,7 @@ fun NeoBrutalIconButton(
         size = size,
         borderColor = borderColor,
         borderWidth = borderWidth,
+        shadowColor = shadowColor,
         shadowOffset = shadowOffset,
         shape = shape
     ) {
@@ -226,8 +232,9 @@ fun NeoBrutalButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     backgroundColor: Color,
-    borderColor: Color = NeoBlack,
-    borderWidth: Dp = 2.5.dp,
+    borderColor: Color = NeoCardBorder,
+    borderWidth: Dp = 2.dp,
+    shadowColor: Color = NeoCardShadow,
     shadowOffset: Dp = 4.dp,
     shape: RoundedCornerShape = RoundedCornerShape(14.dp),
     enabled: Boolean = true,
@@ -252,7 +259,7 @@ fun NeoBrutalButton(
             modifier = Modifier
                 .matchParentSize()
                 .offset(x = shadowOffset, y = shadowOffset)
-                .background(if (enabled) NeoBlack else NeoBlack.copy(alpha = 0.3f), shape)
+                .background(if (enabled) shadowColor else shadowColor.copy(alpha = 0.3f), shape)
         )
 
         // Surface
@@ -263,7 +270,7 @@ fun NeoBrutalButton(
                 .fillMaxWidth()
                 .offset(x = currentOffset, y = currentOffset)
                 .background(if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f), shape)
-                .border(borderWidth, NeoBlack, shape)
+                .border(borderWidth, borderColor, shape)
                 .clip(shape)
                 .then(
                     if (enabled) {
@@ -292,9 +299,10 @@ fun NeoBrutalButton(
     backgroundColor: Color,
     modifier: Modifier = Modifier,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    textColor: Color = NeoBlack,
-    borderColor: Color = NeoBlack,
-    borderWidth: Dp = 2.5.dp,
+    textColor: Color = NeoTextPrimary,
+    borderColor: Color = NeoCardBorder,
+    shadowColor: Color = NeoCardShadow,
+    borderWidth: Dp = 2.dp,
     shadowOffset: Dp = 4.dp,
     shape: RoundedCornerShape = RoundedCornerShape(14.dp),
     enabled: Boolean = true,
@@ -305,6 +313,7 @@ fun NeoBrutalButton(
         modifier = modifier,
         backgroundColor = backgroundColor,
         borderColor = borderColor,
+        shadowColor = shadowColor,
         borderWidth = borderWidth,
         shadowOffset = shadowOffset,
         shape = shape,
@@ -330,8 +339,8 @@ fun NeoBrutalButton(
 }
 
 /**
- * Universal Neo-Brutalist Top App Bar with sunshine yellow background,
- * solid black border bottom, and optional back navigation button.
+ * Universal Neo-Brutalist Top App Bar with dark matte background,
+ * solid slate border bottom, and optional back navigation button.
  */
 @Composable
 fun NeoTopAppBar(
@@ -344,7 +353,7 @@ fun NeoTopAppBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(NeoHeaderYellow)
+            .background(NeoHeaderBg)
     ) {
         Box(
             modifier = Modifier
@@ -355,8 +364,8 @@ fun NeoTopAppBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(width = 2.5.dp, color = NeoBlack)
-                .background(NeoHeaderYellow)
+                .border(width = 2.dp, color = NeoCardBorder)
+                .background(NeoHeaderBg)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -368,13 +377,13 @@ fun NeoTopAppBar(
                 if (onNavigateBack != null) {
                     NeoBrutalIconButton(
                         onClick = onNavigateBack,
-                        backgroundColor = Color.White,
+                        backgroundColor = NeoSurfaceElevated,
                         size = 38.dp
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = NeoBlack,
+                            tint = NeoTextPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -386,7 +395,7 @@ fun NeoTopAppBar(
                         text = title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
-                        color = NeoBlack
+                        color = NeoTextPrimary
                     )
                     if (!subtitle.isNullOrBlank()) {
                         Text(
@@ -394,7 +403,7 @@ fun NeoTopAppBar(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 0.8.sp,
-                            color = NeoBlack.copy(alpha = 0.85f)
+                            color = NeoTextSecondary
                         )
                     }
                 }
@@ -419,8 +428,10 @@ fun NeoPillBadge(
     text: String,
     modifier: Modifier = Modifier,
     backgroundColor: Color = NeoPillDark,
-    textColor: Color = if (backgroundColor == NeoPillDark) Color.White else NeoBlack,
-    borderWidth: Dp = if (backgroundColor == NeoPillDark) 0.dp else 1.5.dp,
+    textColor: Color = NeoTextPrimary,
+    borderColor: Color = NeoCardBorder,
+    borderWidth: Dp = 1.dp,
+    shadowColor: Color = NeoCardShadow,
     shadowOffsetX: Dp = 0.dp,
     shadowOffsetY: Dp = 0.dp
 ) {
@@ -436,7 +447,7 @@ fun NeoPillBadge(
                 modifier = Modifier
                     .matchParentSize()
                     .offset(x = shadowOffsetX, y = shadowOffsetY)
-                    .background(NeoBlack, RoundedCornerShape(8.dp))
+                    .background(shadowColor, RoundedCornerShape(8.dp))
             )
         }
 
@@ -446,7 +457,7 @@ fun NeoPillBadge(
                 .clip(RoundedCornerShape(8.dp))
                 .background(backgroundColor)
                 .then(
-                    if (borderWidth > 0.dp) Modifier.border(borderWidth, NeoBlack, RoundedCornerShape(8.dp)) else Modifier
+                    if (borderWidth > 0.dp) Modifier.border(borderWidth, borderColor, RoundedCornerShape(8.dp)) else Modifier
                 )
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
@@ -462,7 +473,7 @@ fun NeoPillBadge(
 }
 
 /**
- * Avatar with white background, black border and centered emoji or initial.
+ * Avatar with dark elevated background, slate border and centered emoji or initial.
  */
 @Composable
 fun NeoEmojiAvatar(
@@ -470,6 +481,8 @@ fun NeoEmojiAvatar(
     emoji: String = "",
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
+    backgroundColor: Color = NeoSurfaceElevated,
+    borderColor: Color = NeoCardBorder,
     shape: RoundedCornerShape = RoundedCornerShape(14.dp)
 ) {
     val emojiList = listOf("🐻", "🦊", "🐼", "🐨", "🦁", "🐯", "🐶", "🐱", "🐰", "🐸", "🐵", "🦄", "🐙", "🐧", "🦉")
@@ -486,8 +499,8 @@ fun NeoEmojiAvatar(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
-            .background(Color.White, shape)
-            .border(2.dp, NeoBlack, shape)
+            .background(backgroundColor, shape)
+            .border(2.dp, borderColor, shape)
             .clip(shape)
     ) {
         Text(
@@ -498,7 +511,7 @@ fun NeoEmojiAvatar(
 }
 
 /**
- * Neo Unread circular badge with red fill, black border and white number.
+ * Neo Unread circular badge with red fill, slate border and white number.
  */
 @Composable
 fun NeoUnreadBadge(
@@ -512,7 +525,7 @@ fun NeoUnreadBadge(
             .size(size)
             .clip(CircleShape)
             .background(NeoBadgeRed)
-            .border(2.dp, NeoBlack, CircleShape)
+            .border(2.dp, NeoCardBorder, CircleShape)
     ) {
         Text(
             text = if (count > 99) "99+" else count.toString(),
@@ -524,12 +537,15 @@ fun NeoUnreadBadge(
 }
 
 /**
- * Neo-brutalist comic speech bubble icon with tail, white fill, black border and 3 dots.
+ * Neo-brutalist comic speech bubble icon with tail, dark accent fill and dots.
  */
 @Composable
 fun NeoChatBubbleIcon(
     modifier: Modifier = Modifier,
-    size: Dp = 34.dp
+    size: Dp = 34.dp,
+    fillColor: Color = NeoAccentYellow,
+    strokeColor: Color = Color(0xFF18181B),
+    dotColor: Color = Color(0xFF18181B)
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier.size(size)) {
         val w = this.size.width
@@ -554,12 +570,12 @@ fun NeoChatBubbleIcon(
             close()
         }
 
-        drawPath(path = bubblePath, color = Color.White)
+        drawPath(path = bubblePath, color = fillColor)
         drawPath(
             path = bubblePath,
-            color = NeoBlack,
+            color = strokeColor,
             style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = 2.5.dp.toPx(),
+                width = 2.dp.toPx(),
                 join = androidx.compose.ui.graphics.StrokeJoin.Round
             )
         )
@@ -569,8 +585,8 @@ fun NeoChatBubbleIcon(
         val cx = w / 2f + 1.dp.toPx()
         val spacing = 5.dp.toPx()
 
-        drawCircle(color = NeoBlack, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx - spacing, dotY))
-        drawCircle(color = NeoBlack, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx, dotY))
-        drawCircle(color = NeoBlack, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx + spacing, dotY))
+        drawCircle(color = dotColor, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx - spacing, dotY))
+        drawCircle(color = dotColor, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx, dotY))
+        drawCircle(color = dotColor, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(cx + spacing, dotY))
     }
 }

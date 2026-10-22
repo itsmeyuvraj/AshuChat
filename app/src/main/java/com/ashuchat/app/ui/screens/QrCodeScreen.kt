@@ -41,10 +41,15 @@ import com.ashuchat.app.ui.components.NeoBrutalIconButton
 import com.ashuchat.app.ui.components.NeoPillBadge
 import com.ashuchat.app.ui.components.NeoTopAppBar
 import com.ashuchat.app.ui.components.QrCodeView
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnMint
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
+import com.ashuchat.app.ui.theme.NeoTextMuted
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.utils.HapticHelper
 
 @Composable
@@ -88,7 +93,7 @@ fun QrCodeScreen(
                 ) {
                     NeoPillBadge(
                         text = "SCAN TO CONNECT",
-                        backgroundColor = Color.White
+                        backgroundColor = NeoSurfaceElevated
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -97,18 +102,18 @@ fun QrCodeScreen(
                         text = "Point camera at this screen to instantly connect",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoBlack.copy(alpha = 0.75f),
+                        color = NeoTextSecondary,
                         textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // QR code framed in crisp white Neo container
+                    // QR code framed in high-contrast scanning container (white background for scanner optics)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(Color.White)
-                            .border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
+                            .border(2.5.dp, NeoCardBorder, RoundedCornerShape(20.dp))
                             .padding(14.dp)
                     ) {
                         QrCodeView(
@@ -124,8 +129,8 @@ fun QrCodeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White)
-                            .border(2.dp, NeoBlack, RoundedCornerShape(16.dp))
+                            .background(NeoSurfaceElevated)
+                            .border(2.dp, NeoCardBorder, RoundedCornerShape(16.dp))
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -135,21 +140,22 @@ fun QrCodeScreen(
                                 text = "ROOM CODE",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
-                                color = NeoBlack.copy(alpha = 0.5f)
+                                color = NeoTextMuted
                             )
                             Text(
                                 text = roomId,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                         }
 
                         NeoBrutalIconButton(
                             icon = Icons.Default.ContentCopy,
                             contentDescription = "Copy Code",
-                            backgroundColor = NeoCardYellow,
+                            backgroundColor = NeoAccentYellow,
+                            tint = NeoBackground,
                             size = 40.dp,
                             onClick = {
                                 HapticHelper.playClick(context)
@@ -169,7 +175,8 @@ fun QrCodeScreen(
             NeoBrutalButton(
                 text = "OPEN CHAT",
                 icon = Icons.AutoMirrored.Filled.Chat,
-                backgroundColor = NeoBtnMint,
+                backgroundColor = NeoAccentYellow,
+                textColor = NeoBackground,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onNavigateToChat
             )
@@ -178,7 +185,7 @@ fun QrCodeScreen(
 
             NeoPillBadge(
                 text = "⚡ P2P ENCRYPTED • NO PHONE NUMBER NEEDED",
-                backgroundColor = Color.White
+                backgroundColor = NeoSurfaceElevated
             )
         }
     }

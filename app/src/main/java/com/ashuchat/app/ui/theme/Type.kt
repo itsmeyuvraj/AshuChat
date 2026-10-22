@@ -12,41 +12,41 @@ val Typography = Typography(
         fontWeight = FontWeight.Black,
         fontSize = 28.sp,
         lineHeight = 34.sp,
-        color = NeoBlack
+        color = NeoTextPrimary
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
-        color = NeoBlack
+        color = NeoTextPrimary
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
-        color = NeoBlack
+        color = NeoTextPrimary
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
         lineHeight = 22.sp,
-        color = NeoBlack
+        color = NeoTextPrimary
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        color = NeoBlack
+        color = NeoTextPrimary
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        color = NeoBlack.copy(alpha = 0.7f)
+        color = NeoTextSecondary
     )
 )

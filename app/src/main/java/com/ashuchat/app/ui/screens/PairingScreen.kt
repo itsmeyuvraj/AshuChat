@@ -43,15 +43,16 @@ import com.ashuchat.app.ui.components.NeoBrutalButton
 import com.ashuchat.app.ui.components.NeoBrutalCard
 import com.ashuchat.app.ui.components.NeoBrutalIconButton
 import com.ashuchat.app.ui.components.NeoTopAppBar
+import com.ashuchat.app.ui.theme.NeoAccentBlue
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoBtnBlue
-import com.ashuchat.app.ui.theme.NeoBtnMint
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardYellow
-import com.ashuchat.app.ui.theme.NeoHeaderYellow
-import com.ashuchat.app.ui.theme.NeoTextDark
-import com.ashuchat.app.ui.theme.NeoTextMuted
+import com.ashuchat.app.ui.theme.NeoSurfaceElevated
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
 import kotlin.random.Random
 
@@ -107,7 +108,7 @@ fun PairingScreen(
                             text = "Your Display Handle",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -116,7 +117,7 @@ fun PairingScreen(
                         text = "The alias visible to your peer in this direct room",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextDark.copy(alpha = 0.8f)
+                        color = NeoTextSecondary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -128,34 +129,34 @@ fun PairingScreen(
                             prefs.myName = it
                         },
                         textStyle = TextStyle(
-                            color = NeoBlack,
+                            color = NeoTextPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         ),
                         placeholder = {
                             Text(
                                 "Enter your name",
-                                color = NeoBlack.copy(alpha = 0.5f),
+                                color = NeoTextSecondary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp
                             )
                         },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeoBlack,
-                            unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedTextColor = NeoBlack,
-                            unfocusedTextColor = NeoBlack,
-                            focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                            unfocusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                            cursorColor = NeoBlack
+                            focusedBorderColor = NeoCardBorder,
+                            unfocusedBorderColor = NeoCardBorder,
+                            focusedContainerColor = NeoSurfaceElevated,
+                            unfocusedContainerColor = NeoSurfaceElevated,
+                            focusedTextColor = NeoTextPrimary,
+                            unfocusedTextColor = NeoTextPrimary,
+                            focusedPlaceholderColor = NeoTextSecondary,
+                            unfocusedPlaceholderColor = NeoTextSecondary,
+                            cursorColor = NeoAccentYellow
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
+                            .border(2.dp, NeoCardBorder, RoundedCornerShape(12.dp))
                     )
                 }
             }
@@ -179,7 +180,7 @@ fun PairingScreen(
                             text = "Room Secret Code",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = NeoTextDark
+                            color = NeoTextPrimary
                         )
                     }
 
@@ -188,7 +189,7 @@ fun PairingScreen(
                         text = "Share this code or enter partner's code to connect directly",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NeoTextDark.copy(alpha = 0.8f)
+                        color = NeoTextSecondary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -204,7 +205,7 @@ fun PairingScreen(
                                 roomId = it.uppercase()
                             },
                             textStyle = TextStyle(
-                                color = NeoBlack,
+                                color = NeoTextPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp
@@ -212,27 +213,27 @@ fun PairingScreen(
                             placeholder = {
                                 Text(
                                     "e.g. CHAT-123",
-                                    color = NeoBlack.copy(alpha = 0.5f),
+                                    color = NeoTextSecondary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
                             },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = NeoBlack,
-                                unfocusedBorderColor = NeoBlack,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedTextColor = NeoBlack,
-                                unfocusedTextColor = NeoBlack,
-                                focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                                unfocusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
-                                cursorColor = NeoBlack
+                                focusedBorderColor = NeoCardBorder,
+                                unfocusedBorderColor = NeoCardBorder,
+                                focusedContainerColor = NeoSurfaceElevated,
+                                unfocusedContainerColor = NeoSurfaceElevated,
+                                focusedTextColor = NeoTextPrimary,
+                                unfocusedTextColor = NeoTextPrimary,
+                                focusedPlaceholderColor = NeoTextSecondary,
+                                unfocusedPlaceholderColor = NeoTextSecondary,
+                                cursorColor = NeoAccentYellow
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
+                                .border(2.dp, NeoCardBorder, RoundedCornerShape(12.dp))
                         )
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -247,7 +248,7 @@ fun PairingScreen(
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Generate New Code",
-                                tint = NeoBlack,
+                                tint = NeoAccentBlue,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -269,13 +270,13 @@ fun PairingScreen(
                                 }
                             },
                             enabled = roomId.isNotBlank(),
-                            backgroundColor = Color.White,
+                            backgroundColor = NeoSurfaceElevated,
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.QrCode,
                                 contentDescription = null,
-                                tint = NeoBlack,
+                                tint = NeoTextPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -283,7 +284,7 @@ fun PairingScreen(
                                 text = "Show QR",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoBlack
+                                color = NeoTextPrimary
                             )
                         }
 
@@ -295,7 +296,7 @@ fun PairingScreen(
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
                                 contentDescription = null,
-                                tint = NeoBlack,
+                                tint = NeoAccentBlue,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -303,7 +304,7 @@ fun PairingScreen(
                                 text = "Scan QR",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NeoBlack
+                                color = NeoAccentBlue
                             )
                         }
                     }
@@ -323,19 +324,19 @@ fun PairingScreen(
                     onNavigateToChat()
                 },
                 enabled = roomId.isNotBlank(),
-                backgroundColor = NeoHeaderYellow,
+                backgroundColor = NeoAccentYellow,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Chat,
                     contentDescription = null,
-                    tint = NeoBlack,
+                    tint = Color.Black,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "Join & Start Chat",
-                    color = NeoBlack,
+                    color = Color.Black,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Black
                 )

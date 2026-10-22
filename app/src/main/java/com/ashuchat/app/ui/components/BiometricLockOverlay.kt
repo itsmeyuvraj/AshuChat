@@ -25,10 +25,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.NeoAccentYellow
 import com.ashuchat.app.ui.theme.NeoBackground
-import com.ashuchat.app.ui.theme.NeoBlack
-import com.ashuchat.app.ui.theme.NeoBtnMint
+import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoTextPrimary
+import com.ashuchat.app.ui.theme.NeoTextSecondary
 
 @Composable
 fun BiometricLockOverlay(
@@ -52,12 +54,12 @@ fun BiometricLockOverlay(
                     .size(96.dp)
                     .clip(CircleShape)
                     .background(NeoCardYellow)
-                    .border(3.dp, NeoBlack, CircleShape)
+                    .border(3.dp, NeoCardBorder, CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = "App Locked",
-                    tint = NeoBlack,
+                    tint = NeoAccentYellow,
                     modifier = Modifier.size(50.dp)
                 )
             }
@@ -69,7 +71,7 @@ fun BiometricLockOverlay(
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp,
-                color = NeoBlack
+                color = NeoTextPrimary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -78,7 +80,7 @@ fun BiometricLockOverlay(
                 text = "Biometric authentication is required to access your private conversations",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NeoBlack.copy(alpha = 0.7f),
+                color = NeoTextSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -88,7 +90,8 @@ fun BiometricLockOverlay(
             NeoBrutalButton(
                 text = "UNLOCK WITH BIOMETRICS",
                 icon = Icons.Default.Fingerprint,
-                backgroundColor = NeoBtnMint,
+                backgroundColor = NeoAccentYellow,
+                textColor = NeoBackground,
                 onClick = onUnlockClick
             )
         }
