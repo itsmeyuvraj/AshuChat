@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,8 +44,7 @@ class NetworkMonitor(context: Context) {
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             Log.d(TAG, "Network capabilities changed: hasInternet=$hasInternet")
             _isConnected.value = hasInternet
         }
@@ -52,10 +52,14 @@ class NetworkMonitor(context: Context) {
 
     init {
         try {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-            connectivityManager.registerNetworkCallback(request, networkCallback)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            } else {
+                val request = NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build()
+                connectivityManager.registerNetworkCallback(request, networkCallback)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed registering network callback: ${e.localizedMessage}")
         }

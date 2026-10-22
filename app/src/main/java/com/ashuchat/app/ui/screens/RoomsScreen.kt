@@ -316,7 +316,6 @@ fun RoomsScreen(
                             room = room,
                             isActive = room.roomId == activeRoomId && connectionState == P2PConnectionState.CONNECTED_P2P,
                             onClick = {
-                                viewModel.openRoom(room.roomId)
                                 onRoomClick(room.roomId)
                             },
                             onDeleteClick = {

@@ -82,11 +82,13 @@ class UpdateManager(private val context: Context) {
                 val jsonStr = fbResp.body?.string()
                 fbResp.close()
                 if (!jsonStr.isNullOrBlank() && jsonStr != "null") {
-                    val root = JsonParser.parseString(jsonStr).asJsonObject
-                    val remoteVersionCode = root.get("versionCode")?.asLong ?: 0L
-                    val remoteVersionName = root.get("versionName")?.asString ?: ""
-                    val downloadUrl = root.get("downloadUrl")?.asString ?: ""
-                    val releaseNotes = root.get("releaseNotes")?.asString ?: "Bug fixes and improvements"
+                    val parsed = JsonParser.parseString(jsonStr)
+                    if (parsed.isJsonObject) {
+                        val root = parsed.asJsonObject
+                        val remoteVersionCode = root.get("versionCode")?.asLong ?: 0L
+                        val remoteVersionName = root.get("versionName")?.asString ?: ""
+                        val downloadUrl = root.get("downloadUrl")?.asString ?: ""
+                        val releaseNotes = root.get("releaseNotes")?.asString ?: "Bug fixes and improvements"
 
                     val isNewer = if (remoteVersionCode > 0 && currentVersionCode > 0) {
                         remoteVersionCode > currentVersionCode
@@ -96,15 +98,16 @@ class UpdateManager(private val context: Context) {
                         false
                     }
 
-                    if (isNewer && downloadUrl.isNotBlank()) {
-                        Log.d(TAG, "Update found via Firebase: $remoteVersionName ($remoteVersionCode)")
-                        return@withContext AppUpdateInfo(
-                            isUpdateAvailable = true,
-                            latestVersionName = remoteVersionName.ifBlank { "v$remoteVersionCode" },
-                            latestVersionCode = remoteVersionCode,
-                            releaseNotes = releaseNotes,
-                            downloadUrl = downloadUrl
-                        )
+                        if (isNewer && downloadUrl.isNotBlank()) {
+                            Log.d(TAG, "Update found via Firebase: $remoteVersionName ($remoteVersionCode)")
+                            return@withContext AppUpdateInfo(
+                                isUpdateAvailable = true,
+                                latestVersionName = remoteVersionName.ifBlank { "v$remoteVersionCode" },
+                                latestVersionCode = remoteVersionCode,
+                                releaseNotes = releaseNotes,
+                                downloadUrl = downloadUrl
+                            )
+                        }
                     }
                 }
             } else {
@@ -126,9 +129,11 @@ class UpdateManager(private val context: Context) {
                 val jsonStr = ghResp.body?.string()
                 ghResp.close()
                 if (!jsonStr.isNullOrBlank()) {
-                    val root = JsonParser.parseString(jsonStr).asJsonObject
-                    val tagName = root.get("tag_name")?.asString ?: ""
-                    val body = root.get("body")?.asString ?: "What's new in this release"
+                    val parsed = JsonParser.parseString(jsonStr)
+                    if (parsed.isJsonObject) {
+                        val root = parsed.asJsonObject
+                        val tagName = root.get("tag_name")?.asString ?: ""
+                        val body = root.get("body")?.asString ?: "What's new in this release"
                     
                     var apkDownloadUrl = ""
                     val assets = root.getAsJsonArray("assets")
@@ -148,15 +153,16 @@ class UpdateManager(private val context: Context) {
                         apkDownloadUrl = "https://github.com/$GITHUB_REPO/releases/download/$tagName/AshuChat.apk"
                     }
 
-                    if (tagName.isNotBlank() && isNewerVersion(tagName, currentVersionName)) {
-                        Log.d(TAG, "Update found via GitHub Releases: $tagName")
-                        return@withContext AppUpdateInfo(
-                            isUpdateAvailable = true,
-                            latestVersionName = tagName,
-                            latestVersionCode = currentVersionCode + 1,
-                            releaseNotes = body,
-                            downloadUrl = apkDownloadUrl
-                        )
+                        if (tagName.isNotBlank() && isNewerVersion(tagName, currentVersionName)) {
+                            Log.d(TAG, "Update found via GitHub Releases: $tagName")
+                            return@withContext AppUpdateInfo(
+                                isUpdateAvailable = true,
+                                latestVersionName = tagName,
+                                latestVersionCode = currentVersionCode + 1,
+                                releaseNotes = body,
+                                downloadUrl = apkDownloadUrl
+                            )
+                        }
                     }
                 }
             } else {

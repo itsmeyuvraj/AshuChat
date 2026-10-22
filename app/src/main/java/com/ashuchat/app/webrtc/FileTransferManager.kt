@@ -28,9 +28,9 @@ class FileTransferManager(
     private val listener: Listener
 ) {
     interface Listener {
-        fun onFileTransferProgress(fileId: String, progress: Float)
+        fun onFileTransferProgress(messageId: String, progress: Float)
         fun onFileTransferComplete(messageId: String, fileId: String, localPath: String, isIncoming: Boolean)
-        fun onFileTransferFailed(fileId: String, error: String)
+        fun onFileTransferFailed(messageId: String, fileId: String, error: String)
         fun sendControlPacket(packet: DataChannelPacket)
     }
 
@@ -59,6 +59,22 @@ class FileTransferManager(
 
     private val incomingTransfers = ConcurrentHashMap<String, IncomingTransfer>()
     private val activeProgress = ConcurrentHashMap<String, Float>()
+
+    /**
+     * Cancel and clean up all active incoming file transfers and temporary files.
+     */
+    fun cancelAll() {
+        incomingTransfers.forEach { (_, transfer) ->
+            try {
+                transfer.randomAccessFile.close()
+            } catch (_: Exception) {}
+            try {
+                transfer.tempFile.delete()
+            } catch (_: Exception) {}
+        }
+        incomingTransfers.clear()
+        activeProgress.clear()
+    }
 
     /**
      * Called when a file_header control packet is received over DataChannel.
@@ -98,7 +114,7 @@ class FileTransferManager(
             listener.onFileTransferProgress(messageId, 0f)
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing incoming file transfer: ${e.localizedMessage}", e)
-            listener.onFileTransferFailed(fileId, e.localizedMessage ?: "File init failed")
+            listener.onFileTransferFailed(messageId, fileId, e.localizedMessage ?: "File init failed")
         }
     }
 
@@ -119,7 +135,7 @@ class FileTransferManager(
         val fileId = String(fileIdBytes, StandardCharsets.UTF_8)
 
         val chunkIndex = byteBuffer.getInt()
-        val totalChunks = byteBuffer.getInt()
+        byteBuffer.getInt() // totalChunks header field
 
         val transfer = incomingTransfers[fileId]
         if (transfer == null) {
@@ -149,7 +165,9 @@ class FileTransferManager(
 
                 if (transfer.receivedChunks >= transfer.totalChunks || transfer.receivedBytes >= transfer.fileSize) {
                     Log.d(TAG, "File transfer completed for fileId: $fileId")
-                    transfer.randomAccessFile.close()
+                    try {
+                        transfer.randomAccessFile.close()
+                    } catch (_: Exception) {}
 
                     // Move file to permanent app storage
                     val storageDir = FileUtils.getAttachmentsDir(context)
@@ -183,7 +201,15 @@ class FileTransferManager(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error writing binary chunk: ${e.localizedMessage}", e)
-            listener.onFileTransferFailed(fileId, e.localizedMessage ?: "Chunk write error")
+            try {
+                transfer.randomAccessFile.close()
+            } catch (_: Exception) {}
+            try {
+                transfer.tempFile.delete()
+            } catch (_: Exception) {}
+            incomingTransfers.remove(fileId)
+            activeProgress.remove(fileId)
+            listener.onFileTransferFailed(transfer.messageId, fileId, e.localizedMessage ?: "Chunk write error")
         }
     }
 
@@ -202,6 +228,10 @@ class FileTransferManager(
         scope.launch(Dispatchers.IO) {
             val fileId = UUID.randomUUID().toString()
             try {
+                if (dataChannel.state() != DataChannel.State.OPEN) {
+                    throw IllegalStateException("DataChannel is not open (state: ${dataChannel.state()})")
+                }
+
                 val totalChunks = ((fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt().coerceAtLeast(1)
 
                 // 1. Send file_header metadata control packet
@@ -221,13 +251,9 @@ class FileTransferManager(
                 // Small pause to allow peer to allocate file buffer
                 delay(100)
 
-                // 2. Open input stream from content resolver or local file
-                val inputStream = if (uri.scheme == "content") {
-                    context.contentResolver.openInputStream(uri)
-                } else {
-                    val filePath = if (uri.scheme == "file") uri.path ?: uri.toString().removePrefix("file://") else uri.toString()
-                    File(filePath).inputStream()
-                } ?: throw IllegalStateException("Could not open input stream for $uri")
+                // 2. Open input stream using safe open helper
+                val inputStream = FileUtils.openSafeInputStream(context, uri)
+                    ?: throw IllegalStateException("Could not open input stream for $uri")
 
                 val buffer = ByteArray(CHUNK_SIZE)
                 var chunkIndex = 0
@@ -238,7 +264,14 @@ class FileTransferManager(
                     while (stream.read(buffer).also { bytesRead = it } != -1) {
                         // Apply backpressure if DataChannel internal buffer is filling up
                         while (dataChannel.bufferedAmount() > MAX_BUFFERED_AMOUNT) {
+                            if (dataChannel.state() != DataChannel.State.OPEN) {
+                                throw IllegalStateException("DataChannel closed during transfer")
+                            }
                             delay(15)
+                        }
+
+                        if (dataChannel.state() != DataChannel.State.OPEN) {
+                            throw IllegalStateException("DataChannel disconnected during transfer")
                         }
 
                         // Prepare binary frame: [36 bytes fileId] + [4 bytes chunkIndex] + [4 bytes totalChunks] + [chunk payload]
@@ -258,7 +291,11 @@ class FileTransferManager(
                         bytesSent += bytesRead
                         chunkIndex++
 
-                        val progress = (bytesSent.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f)
+                        val progress = if (fileSize > 0) {
+                            (bytesSent.toFloat() / fileSize.toFloat()).coerceIn(0f, 1f)
+                        } else {
+                            1f
+                        }
                         listener.onFileTransferProgress(messageId, progress)
                     }
                 }
@@ -267,6 +304,9 @@ class FileTransferManager(
 
                 // Wait for final buffer drain
                 while (dataChannel.bufferedAmount() > 0) {
+                    if (dataChannel.state() != DataChannel.State.OPEN) {
+                        break
+                    }
                     delay(20)
                 }
 
@@ -278,7 +318,7 @@ class FileTransferManager(
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending file: ${e.localizedMessage}", e)
-                listener.onFileTransferFailed(fileId, e.localizedMessage ?: "Send file failed")
+                listener.onFileTransferFailed(messageId, fileId, e.localizedMessage ?: "Send file failed")
             }
         }
     }

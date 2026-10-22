@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +93,17 @@ fun QrScannerScreen(
     }
 
     var scannedCode by remember { mutableStateOf<String?>(null) }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            try {
+                val cameraProvider = ProcessCameraProvider.getInstance(context).get()
+                cameraProvider.unbindAll()
+            } catch (_: Exception) {}
+            cameraExecutor.shutdown()
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scannerLaser")
     val laserY by infiniteTransition.animateFloat(
@@ -114,7 +126,6 @@ fun QrScannerScreen(
                 factory = { ctx ->
                     val previewView = PreviewView(ctx)
                     val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                    val cameraExecutor = Executors.newSingleThreadExecutor()
                     val barcodeScanner = BarcodeScanning.getClient()
 
                     cameraProviderFuture.addListener({

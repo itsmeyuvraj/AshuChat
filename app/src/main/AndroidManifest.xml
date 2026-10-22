@@ -41,7 +41,7 @@
     <application
         android:name=".AshuChatApp"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/file_paths"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

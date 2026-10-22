@@ -232,26 +232,35 @@ class SignalingClient(
                         )
                     )
 
-                    val reader = BufferedReader(response.body?.charStream())
-                    var line: String? = null
-                    var currentEvent: String? = null
-                    val dataBuffer = StringBuilder()
+                    val body = response.body
+                    val stream = body?.charStream()
+                    if (stream == null) {
+                        response.close()
+                        delay(2000)
+                        continue
+                    }
 
-                    while (isActive && reader.readLine().also { line = it } != null) {
-                        val l = line ?: break
-                        if (l.startsWith("event:")) {
-                            currentEvent = l.substring(6).trim()
-                        } else if (l.startsWith("data:")) {
-                            dataBuffer.append(l.substring(5).trim())
-                        } else if (l.isEmpty()) {
-                            if (currentEvent == "message" && dataBuffer.isNotEmpty()) {
-                                handleNtfyEvent(dataBuffer.toString(), publishUrl)
+                    response.use {
+                        val reader = BufferedReader(stream)
+                        var line: String? = null
+                        var currentEvent: String? = null
+                        val dataBuffer = StringBuilder()
+
+                        while (isActive && reader.readLine().also { line = it } != null) {
+                            val l = line ?: break
+                            if (l.startsWith("event:")) {
+                                currentEvent = l.substring(6).trim()
+                            } else if (l.startsWith("data:")) {
+                                dataBuffer.append(l.substring(5).trim())
+                            } else if (l.isEmpty()) {
+                                if (currentEvent == "message" && dataBuffer.isNotEmpty()) {
+                                    handleNtfyEvent(dataBuffer.toString(), publishUrl)
+                                }
+                                currentEvent = null
+                                dataBuffer.setLength(0)
                             }
-                            currentEvent = null
-                            dataBuffer.setLength(0)
                         }
                     }
-                    response.close()
                 } catch (e: Exception) {
                     if (isActive) {
                         Log.w(TAG, "Relay SSE stream interrupted: ${e.localizedMessage}. Reconnecting in 2s...")
@@ -438,9 +447,13 @@ class SignalingClient(
                 "answer" -> payload.sdp?.let { listener.onAnswerReceived(it) }
                 "ice_candidate" -> {
                     if (payload.sdp != null && payload.sdpMid != null && payload.sdpMLineIndex != null) {
-                        listener.onIceCandidateReceived(
-                            IceCandidate(payload.sdpMid, payload.sdpMLineIndex, payload.sdp)
-                        )
+                        val key = "${payload.sdpMid}_${payload.sdpMLineIndex}_${payload.sdp.hashCode()}"
+                        if (!processedCandidateKeys.contains(key)) {
+                            processedCandidateKeys.add(key)
+                            listener.onIceCandidateReceived(
+                                IceCandidate(payload.sdpMid, payload.sdpMLineIndex, payload.sdp)
+                            )
+                        }
                     }
                 }
                 "error" -> listener.onError(payload.message ?: "Signaling error")
@@ -520,29 +533,38 @@ class SignalingClient(
 
                     listener.onSignalingConnected()
 
-                    val reader = BufferedReader(response.body?.charStream())
-                    var line: String? = null
-                    var currentEvent: String? = null
-                    val dataBuffer = StringBuilder()
+                    val body = response.body
+                    val stream = body?.charStream()
+                    if (stream == null) {
+                        response.close()
+                        delay(2000)
+                        continue
+                    }
 
-                    while (isActive && reader.readLine().also { line = it } != null) {
-                        val l = line ?: break
-                        if (l.startsWith("event:")) {
-                            currentEvent = l.substring(6).trim()
-                        } else if (l.startsWith("data:")) {
-                            dataBuffer.append(l.substring(5).trim())
-                        } else if (l.isEmpty()) {
-                            if (currentEvent != null && dataBuffer.isNotEmpty()) {
-                                val dataStr = dataBuffer.toString()
-                                if (currentEvent == "put" || currentEvent == "patch") {
-                                    handleFirebaseSseData(dataStr)
+                    response.use {
+                        val reader = BufferedReader(stream)
+                        var line: String? = null
+                        var currentEvent: String? = null
+                        val dataBuffer = StringBuilder()
+
+                        while (isActive && reader.readLine().also { line = it } != null) {
+                            val l = line ?: break
+                            if (l.startsWith("event:")) {
+                                currentEvent = l.substring(6).trim()
+                            } else if (l.startsWith("data:")) {
+                                dataBuffer.append(l.substring(5).trim())
+                            } else if (l.isEmpty()) {
+                                if (currentEvent != null && dataBuffer.isNotEmpty()) {
+                                    val dataStr = dataBuffer.toString()
+                                    if (currentEvent == "put" || currentEvent == "patch") {
+                                        handleFirebaseSseData(dataStr)
+                                    }
                                 }
+                                currentEvent = null
+                                dataBuffer.setLength(0)
                             }
-                            currentEvent = null
-                            dataBuffer.setLength(0)
                         }
                     }
-                    response.close()
                 } catch (e: Exception) {
                     if (isActive) {
                         Log.w(TAG, "Firebase SSE error: ${e.localizedMessage}. Reconnecting in 2s...")
@@ -714,9 +736,10 @@ class SignalingClient(
     }
 
     private fun parseFirebaseCandidateObject(candObj: JsonObject, key: String) {
+        val candKey = key.substringAfterLast('/')
         val sender = candObj.get("senderId")?.asString
-        if (sender != currentClientId && !processedCandidateKeys.contains(key)) {
-            processedCandidateKeys.add(key)
+        if (sender != currentClientId && !processedCandidateKeys.contains(candKey)) {
+            processedCandidateKeys.add(candKey)
             val timestamp = if (candObj.has("timestamp")) candObj.get("timestamp").asLong else 0L
             val isFresh = timestamp == 0L || (System.currentTimeMillis() - timestamp) < 90_000L
             if (!isFresh) return
@@ -912,12 +935,6 @@ class SignalingClient(
                     .delete()
                     .build()
                 client.newCall(req).enqueue(NoOpCallback)
-
-                val cleanOfferReq = Request.Builder()
-                    .url("$baseUrl/rooms/$roomId/offer.json")
-                    .delete()
-                    .build()
-                client.newCall(cleanOfferReq).enqueue(NoOpCallback)
             }
 
             webSocket?.close(1000, "Normal Closure")

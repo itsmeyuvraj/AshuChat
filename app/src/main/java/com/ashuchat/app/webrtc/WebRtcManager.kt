@@ -64,6 +64,9 @@ class WebRtcManager(
     private val _fileCompleteFlow = MutableSharedFlow<Triple<String, String, Boolean>>(extraBufferCapacity = 64)
     val fileCompleteFlow: SharedFlow<Triple<String, String, Boolean>> = _fileCompleteFlow.asSharedFlow()
 
+    private val _fileFailedFlow = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 64)
+    val fileFailedFlow: SharedFlow<Pair<String, String>> = _fileFailedFlow.asSharedFlow()
+
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var dataChannel: DataChannel? = null
@@ -242,12 +245,12 @@ class WebRtcManager(
         try {
             val packet = gson.fromJson(text, DataChannelPacket::class.java) ?: return
 
-            // P1: Handle NAT keep-alive heartbeats internally (never clutter chat UI)
-            if (packet.type == "ping") {
-                sendPacket(DataChannelPacket(type = "pong", timestamp = System.currentTimeMillis()))
+            // P1: Handle NAT keep-alive heartbeats internally (never clutter chat UI or collide with user pings)
+            if (packet.type == "heartbeat_ping") {
+                sendPacket(DataChannelPacket(type = "heartbeat_pong", timestamp = System.currentTimeMillis()))
                 return
             }
-            if (packet.type == "pong") {
+            if (packet.type == "heartbeat_pong" || packet.type == "pong") {
                 lastPongTimestamp = System.currentTimeMillis()
                 return
             }
@@ -294,7 +297,7 @@ class WebRtcManager(
                     break
                 }
 
-                sendPacket(DataChannelPacket(type = "ping", timestamp = now))
+                sendPacket(DataChannelPacket(type = "heartbeat_ping", timestamp = now))
             }
         }
     }
@@ -467,7 +470,7 @@ class WebRtcManager(
         isInitiator = false
         _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
 
-        if (peerConnection == null) {
+        if (peerConnection == null || peerConnection?.signalingState() != PeerConnection.SignalingState.STABLE) {
             setupPeerConnection()
         }
 
@@ -574,9 +577,9 @@ class WebRtcManager(
     }
 
     // FileTransferManager.Listener Callbacks
-    override fun onFileTransferProgress(fileId: String, progress: Float) {
+    override fun onFileTransferProgress(messageId: String, progress: Float) {
         scope.launch {
-            _fileProgressFlow.emit(Pair(fileId, progress))
+            _fileProgressFlow.emit(Pair(messageId, progress))
         }
     }
 
@@ -586,8 +589,11 @@ class WebRtcManager(
         }
     }
 
-    override fun onFileTransferFailed(fileId: String, error: String) {
-        Log.e(TAG, "File transfer failed for $fileId: $error")
+    override fun onFileTransferFailed(messageId: String, fileId: String, error: String) {
+        Log.e(TAG, "File transfer failed for message $messageId (file $fileId): $error")
+        scope.launch {
+            _fileFailedFlow.emit(Pair(messageId, error))
+        }
     }
 
     override fun sendControlPacket(packet: DataChannelPacket) {
@@ -597,6 +603,7 @@ class WebRtcManager(
     private fun cleanupPeerConnection() {
         stopHeartbeat()
         try {
+            fileTransferManager.cancelAll()
             dataChannel?.close()
             dataChannel = null
             peerConnection?.close()

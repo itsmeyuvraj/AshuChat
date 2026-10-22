@@ -58,9 +58,11 @@ object NotificationHelper {
             .setContentIntent(pendingIntent)
             .build()
 
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notificationId = (System.currentTimeMillis() % 10000).toInt() + 1000
-        manager.notify(notificationId, notification)
+        try {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val notificationId = (System.currentTimeMillis() % 10000).toInt() + 1000
+            manager?.notify(notificationId, notification)
+        } catch (_: Exception) {}
     }
 
     @Suppress("DEPRECATION")

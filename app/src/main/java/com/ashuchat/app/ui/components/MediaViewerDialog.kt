@@ -45,6 +45,7 @@ fun MediaViewerDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.95f))
+                .clickable(onClick = onDismiss)
         ) {
             // Close Button
             IconButton(

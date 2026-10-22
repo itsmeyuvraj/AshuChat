@@ -168,7 +168,7 @@ private fun ImageBubbleContent(
     onImageClick: (String, String?) -> Unit
 ) {
     val path = message.attachmentPath
-    val isTransferring = message.transferProgress < 1.0f
+    val isTransferring = message.status == MessageStatus.SENDING && message.transferProgress < 1.0f
 
     val fileExists = remember(path) {
         if (path.isNullOrBlank()) false
@@ -260,7 +260,7 @@ private fun ImageBubbleContent(
 
 @Composable
 private fun FileBubbleContent(message: ChatMessage) {
-    val isTransferring = message.transferProgress < 1.0f
+    val isTransferring = message.status == MessageStatus.SENDING && message.transferProgress < 1.0f
 
     Column {
         Row(

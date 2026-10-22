@@ -57,11 +57,15 @@ object FileUtils {
     fun getMimeType(context: Context, uri: Uri): String {
         var mimeType: String? = null
         if (uri.scheme == "content") {
-            mimeType = context.contentResolver.getType(uri)
-        } else {
-            val extension = MimeTypeMap.getFileExtensionFromUrl(uri.toString())
-            if (extension != null) {
-                mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase(Locale.ROOT))
+            try {
+                mimeType = context.contentResolver.getType(uri)
+            } catch (_: Exception) {}
+        }
+        if (mimeType.isNullOrBlank() || mimeType == "application/octet-stream") {
+            val name = getFileName(context, uri)
+            val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
+            if (ext.isNotBlank()) {
+                mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
             }
         }
         return mimeType ?: "application/octet-stream"
@@ -81,7 +85,15 @@ object FileUtils {
     }
 
     fun isImageMimeType(mimeType: String?): Boolean {
-        return mimeType?.startsWith("image/") == true
+        return mimeType?.startsWith("image/", ignoreCase = true) == true
+    }
+
+    fun isImage(fileName: String?, mimeType: String?): Boolean {
+        if (isImageMimeType(mimeType)) return true
+        val name = fileName?.lowercase(Locale.ROOT) ?: return false
+        return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") ||
+               name.endsWith(".webp") || name.endsWith(".gif") || name.endsWith(".heic") ||
+               name.endsWith(".heif") || name.endsWith(".bmp")
     }
 
     fun getAttachmentsDir(context: Context): File {
@@ -92,14 +104,33 @@ object FileUtils {
         return dir
     }
 
+    fun openSafeInputStream(context: Context, uri: Uri): java.io.InputStream? {
+        return try {
+            if (uri.scheme == "file" || uri.scheme.isNullOrBlank()) {
+                val path = uri.path ?: uri.toString().removePrefix("file://")
+                File(path).inputStream()
+            } else {
+                context.contentResolver.openInputStream(uri)
+            }
+        } catch (_: Exception) {
+            try {
+                uri.path?.let { File(it).inputStream() }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     fun copyUriToAppStorage(context: Context, uri: Uri, preferredName: String? = null): String {
         val fileName = sanitizeFileName(preferredName ?: getFileName(context, uri))
         val destFile = File(getAttachmentsDir(context), "${System.currentTimeMillis()}_$fileName")
-        context.contentResolver.openInputStream(uri)?.use { input ->
+        val stream = openSafeInputStream(context, uri)
+            ?: throw IllegalStateException("Could not read URI: $uri")
+        stream.use { input ->
             destFile.outputStream().use { output ->
                 input.copyTo(output)
             }
-        } ?: throw IllegalStateException("Could not read URI: $uri")
+        }
         return destFile.absolutePath
     }
 
@@ -131,13 +162,11 @@ object FileUtils {
         quality: Int = 80
     ): ByteArray? {
         return try {
-            val contentResolver = context.contentResolver
-
             // 1. Determine bounds
             val options = android.graphics.BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
-            contentResolver.openInputStream(uri)?.use { input ->
+            openSafeInputStream(context, uri)?.use { input ->
                 android.graphics.BitmapFactory.decodeStream(input, null, options)
             } ?: return null
 
@@ -158,14 +187,14 @@ object FileUtils {
                 this.inSampleSize = inSampleSize
                 inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
             }
-            val sampledBitmap = contentResolver.openInputStream(uri)?.use { input ->
+            val sampledBitmap = openSafeInputStream(context, uri)?.use { input ->
                 android.graphics.BitmapFactory.decodeStream(input, null, decodeOptions)
             } ?: return null
 
             // 4. Handle EXIF rotation
             var rotationDegrees = 0
             try {
-                contentResolver.openInputStream(uri)?.use { input ->
+                openSafeInputStream(context, uri)?.use { input ->
                     val exif = android.media.ExifInterface(input)
                     val orientation = exif.getAttributeInt(
                         android.media.ExifInterface.TAG_ORIENTATION,

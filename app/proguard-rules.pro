@@ -9,4 +9,8 @@
 
 # Room Proguard Rules
 -keep class * extends androidx.room.RoomDatabase
+-keep class com.ashuchat.app.data.local.** { *; }
 -dontwarn androidx.room.paging.**
+
+# App Update Models
+-keep class com.ashuchat.app.utils.AppUpdateInfo { *; }

@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.utils.QrUtils
@@ -48,6 +49,12 @@ fun QrCodeView(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = "Room QR Code",
                 modifier = Modifier.size((sizeDp - 32).dp)
+            )
+        } else if (content.isBlank()) {
+            androidx.compose.material3.Text(
+                text = "No Code",
+                fontSize = 14.sp,
+                color = Color.Gray
             )
         } else {
             CircularProgressIndicator(
