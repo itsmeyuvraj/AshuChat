@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MessageEntity::class, RoomEntity::class], version = 2, exportSchema = false)
+@Database(entities = [MessageEntity::class, RoomEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun messageDao(): MessageDao
@@ -15,6 +17,45 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `rooms` (
+                        `roomId` TEXT NOT NULL,
+                        `partnerName` TEXT NOT NULL,
+                        `lastMessage` TEXT NOT NULL,
+                        `lastTimestamp` INTEGER NOT NULL,
+                        `unreadCount` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`roomId`)
+                    )
+                """.trimIndent())
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN roomId TEXT NOT NULL DEFAULT ''")
+                } catch (_: Exception) {}
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN reaction TEXT DEFAULT NULL")
+                } catch (_: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN replyToId TEXT DEFAULT NULL")
+                } catch (_: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN replyToText TEXT DEFAULT NULL")
+                } catch (_: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN replyToSender TEXT DEFAULT NULL")
+                } catch (_: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE messages ADD COLUMN expiresAt INTEGER DEFAULT NULL")
+                } catch (_: Exception) {}
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -22,6 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ashuchat_database"
                 )
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
