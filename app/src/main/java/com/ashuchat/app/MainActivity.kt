@@ -83,10 +83,15 @@ class MainActivity : FragmentActivity() {
         handleIntent(intent)
 
         setContent {
-            AshuChatTheme {
+            val appTheme by chatViewModel.appTheme.collectAsState()
+            AshuChatTheme(appTheme = appTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = com.ashuchat.app.ui.theme.NeoBackground
+                    color = if (appTheme == com.ashuchat.app.ui.theme.AppTheme.PAPER) {
+                        com.ashuchat.app.ui.theme.NeoBackground
+                    } else {
+                        com.ashuchat.app.ui.theme.MidnightBg
+                    }
                 ) {
                     if (isAppUnlocked) {
                         AppNavigation(chatViewModel = chatViewModel)

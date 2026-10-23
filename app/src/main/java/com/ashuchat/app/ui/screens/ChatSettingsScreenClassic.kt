@@ -1,0 +1,590 @@
+package com.ashuchat.app.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.AppTheme
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.BrandPrimary
+import com.ashuchat.app.ui.theme.ConnectingYellow
+import com.ashuchat.app.ui.theme.MidnightBg
+import com.ashuchat.app.ui.theme.OfflineRed
+import com.ashuchat.app.ui.theme.OnlineGreen
+import com.ashuchat.app.ui.theme.RoseAccent
+import com.ashuchat.app.ui.theme.RosePrimary
+import com.ashuchat.app.ui.theme.SurfaceBorder
+import com.ashuchat.app.ui.theme.SurfaceCard
+import com.ashuchat.app.ui.theme.SurfaceElevated
+import com.ashuchat.app.ui.theme.TextPrimary
+import com.ashuchat.app.ui.theme.TextSecondary
+import com.ashuchat.app.ui.viewmodel.ChatViewModel
+import com.ashuchat.app.utils.BatteryOptimizationHelper
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatSettingsScreenClassic(
+    viewModel: ChatViewModel,
+    onNavigateBack: () -> Unit
+) {
+    val currentTheme by viewModel.appTheme.collectAsState()
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        containerColor = MidnightBg,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = SurfaceElevated
+                ),
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextPrimary
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "Chat Settings",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp)
+        ) {
+            // Theme / Appearance Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = BrandLight,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Appearance & Theme",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Choose your preferred visual styling and aesthetic",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Classic Dark Option
+                    val isClassic = currentTheme == AppTheme.CLASSIC
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isClassic) BrandPrimary.copy(alpha = 0.4f) else SurfaceCard)
+                            .border(
+                                width = if (isClassic) 1.5.dp else 1.dp,
+                                color = if (isClassic) RoseAccent else SurfaceBorder,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                viewModel.setAppTheme(AppTheme.CLASSIC)
+                            }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "🌙 Classic Dark",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isClassic) Color.White else TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Sleek & minimal",
+                                fontSize = 10.sp,
+                                color = if (isClassic) RoseAccent else TextSecondary
+                            )
+                        }
+                    }
+
+                    // Paper UI Option
+                    val isPaper = currentTheme == AppTheme.PAPER
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isPaper) BrandPrimary.copy(alpha = 0.4f) else SurfaceCard)
+                            .border(
+                                width = if (isPaper) 1.5.dp else 1.dp,
+                                color = if (isPaper) RoseAccent else SurfaceBorder,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                viewModel.setAppTheme(AppTheme.PAPER)
+                            }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "📄 Paper UI",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isPaper) Color.White else TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Neo-Brutalist Pop",
+                                fontSize = 10.sp,
+                                color = if (isPaper) RoseAccent else TextSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Privacy & Security Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = BrandLight,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Privacy & App Protection",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Biometric Lock Switch
+                var biometricEnabled by remember { mutableStateOf(viewModel.prefs.isBiometricEnabled) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Biometric App Lock",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Require fingerprint or face unlock on open",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = biometricEnabled,
+                        onCheckedChange = { checked ->
+                            biometricEnabled = checked
+                            viewModel.prefs.isBiometricEnabled = checked
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 2. Anti-Screenshot / FLAG_SECURE Switch
+                var flagSecureEnabled by remember { mutableStateOf(viewModel.prefs.isFlagSecureEnabled) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Anti-Screenshot Protection",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Block screenshots & hide preview in recent apps",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = flagSecureEnabled,
+                        onCheckedChange = { checked ->
+                            flagSecureEnabled = checked
+                            viewModel.prefs.isFlagSecureEnabled = checked
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3. Disappearing Messages Selector
+                var disappearingDuration by remember { mutableStateOf(viewModel.prefs.disappearingDurationSeconds) }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Disappearing Messages",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Messages disappear after timer, only once viewed by partner",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val options = listOf(
+                        0L to "Off",
+                        10L to "View Once",
+                        30L to "30 sec",
+                        300L to "5 min",
+                        3600L to "1 hour",
+                        86400L to "24 hours"
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        options.forEach { (duration, label) ->
+                            val isSelected = disappearingDuration == duration
+                            androidx.compose.material3.FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    disappearingDuration = duration
+                                    viewModel.prefs.disappearingDurationSeconds = duration
+                                },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "• WebRTC DataChannel DTLS-SRTP 256-bit encryption protects all your messages and file transfers.\n\n" +
+                            "• Zero Cloud Storage: AshuChat has no central chat database. Your messages never pass through or rest in the cloud.",
+                    fontSize = 11.sp,
+                    color = TextSecondary.copy(alpha = 0.8f),
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Background Operation & Battery Optimization Card
+            val context = LocalContext.current
+            var isBatteryIgnored by remember {
+                mutableStateOf(BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context))
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = null,
+                        tint = if (isBatteryIgnored) OnlineGreen else ConnectingYellow,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "24/7 Background Sync & Calls",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "AshuChat runs a persistent foreground sync service so you can receive incoming voice calls and encrypted messages even when the app is closed or the screen is locked.",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isBatteryIgnored) OnlineGreen.copy(alpha = 0.12f)
+                            else ConnectingYellow.copy(alpha = 0.12f)
+                        )
+                        .border(
+                            1.dp,
+                            if (isBatteryIgnored) OnlineGreen.copy(alpha = 0.35f)
+                            else ConnectingYellow.copy(alpha = 0.35f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isBatteryIgnored) Icons.Default.CheckCircle else Icons.Default.WarningAmber,
+                        contentDescription = null,
+                        tint = if (isBatteryIgnored) OnlineGreen else ConnectingYellow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isBatteryIgnored) "Unrestricted Background Active" else "Battery Optimization Active",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (isBatteryIgnored)
+                                "Android will not terminate incoming call signaling when idle"
+                            else
+                                "OEM power savers may delay or terminate calls when app is closed",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                if (!isBatteryIgnored) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(context)
+                            isBatteryIgnored = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                    ) {
+                        Text(
+                            text = "Allow Unrestricted Background",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "• Auto-starts when device boots\n• Full-screen wake lock on incoming calls\n• Zero Google Play Services dependency",
+                    fontSize = 11.sp,
+                    color = TextSecondary.copy(alpha = 0.8f),
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Data Management Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = OfflineRed,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Local Storage & History",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Messages, media, and room histories are stored securely in your phone's private Room database and local app storage. You can wipe all local chat records at any time.",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Button(
+                    onClick = { showClearConfirmDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = OfflineRed.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .border(1.dp, OfflineRed.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteOutline,
+                        contentDescription = null,
+                        tint = OfflineRed,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Clear All Local Data",
+                        color = OfflineRed,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = {
+                Text(text = "Clear All Local Data?", color = TextPrimary)
+            },
+            text = {
+                Text(
+                    text = "This will permanently remove all chat rooms, message histories, and downloaded media files saved on this device.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearConfirmDialog = false
+                        viewModel.clearAllData()
+                    }
+                ) {
+                    Text("Clear All Data", color = OfflineRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel", color = TextPrimary)
+                }
+            },
+            containerColor = SurfaceElevated
+        )
+    }
+}

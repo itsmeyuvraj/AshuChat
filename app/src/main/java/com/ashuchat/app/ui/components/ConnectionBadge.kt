@@ -19,7 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.AppTheme
+import com.ashuchat.app.ui.theme.LocalAppTheme
 import com.ashuchat.app.ui.theme.NeoBlack
+import com.ashuchat.app.ui.theme.OfflineRed
 import com.ashuchat.app.ui.theme.OnlineGreen
 import com.ashuchat.app.webrtc.P2PConnectionState
 
@@ -28,31 +31,61 @@ fun ConnectionBadge(
     state: P2PConnectionState,
     modifier: Modifier = Modifier
 ) {
+    val isPaper = LocalAppTheme.current == AppTheme.PAPER
     val isOnline = state == P2PConnectionState.CONNECTED_P2P
-    val dotColor = if (isOnline) Color(0xFF2E7D32) else Color(0xFFE53935)
-    val label = if (isOnline) "ONLINE" else "OFFLINE"
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White)
-            .border(1.5.dp, NeoBlack, RoundedCornerShape(8.dp))
-            .padding(horizontal = 7.dp, vertical = 2.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(dotColor)
-        )
-        Spacer(modifier = Modifier.width(5.dp))
-        Text(
-            text = label,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.5.sp,
-            color = NeoBlack
-        )
+    if (isPaper) {
+        val dotColor = if (isOnline) Color(0xFF2E7D32) else Color(0xFFE53935)
+        val label = if (isOnline) "ONLINE" else "OFFLINE"
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White)
+                .border(1.5.dp, NeoBlack, RoundedCornerShape(8.dp))
+                .padding(horizontal = 7.dp, vertical = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.5.sp,
+                color = NeoBlack
+            )
+        }
+    } else {
+        val dotColor = if (isOnline) OnlineGreen else OfflineRed
+        val label = if (isOnline) "Online" else "Offline"
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF151B26).copy(alpha = 0.9f))
+                .border(1.dp, dotColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 8.dp, vertical = 3.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isOnline) OnlineGreen else Color.White.copy(alpha = 0.75f)
+            )
+        }
     }
 }

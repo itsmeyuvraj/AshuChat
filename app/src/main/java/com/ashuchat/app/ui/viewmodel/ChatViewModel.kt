@@ -70,6 +70,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateCheckMessage = MutableStateFlow<String?>(null)
     val updateCheckMessage: StateFlow<String?> = _updateCheckMessage.asStateFlow()
 
+    private val _appTheme = MutableStateFlow(
+        com.ashuchat.app.ui.theme.AppTheme.fromId(prefs.appTheme)
+    )
+    val appTheme: StateFlow<com.ashuchat.app.ui.theme.AppTheme> = _appTheme.asStateFlow()
+
+    fun setAppTheme(theme: com.ashuchat.app.ui.theme.AppTheme) {
+        prefs.appTheme = theme.id
+        _appTheme.value = theme
+    }
+
     // WhatsApp-style Room List
     val rooms: StateFlow<List<RoomEntity>> = chatRepository.getAllRooms()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

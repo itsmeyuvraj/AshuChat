@@ -20,6 +20,7 @@ class PreferencesRepository(context: Context) {
         private const val KEY_DISAPPEARING_DURATION = "disappearing_duration"
         private const val KEY_LAST_RUN_VERSION_CODE = "last_run_version_code"
         private const val KEY_LAST_RUN_VERSION_NAME = "last_run_version_name"
+        private const val KEY_APP_THEME = "app_theme"
 
         // Default Serverless Firebase Realtime Database URL (Singapore asia-southeast1)
         const val DEFAULT_SIGNALING_URL = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -72,6 +73,10 @@ class PreferencesRepository(context: Context) {
     var lastRunVersionName: String
         get() = prefs.getString(KEY_LAST_RUN_VERSION_NAME, "") ?: ""
         set(value) = prefs.edit().putString(KEY_LAST_RUN_VERSION_NAME, value).apply()
+
+    var appTheme: String
+        get() = prefs.getString(KEY_APP_THEME, "classic") ?: "classic"
+        set(value) = prefs.edit().putString(KEY_APP_THEME, value).apply()
 
     val clientId: String
         get() {

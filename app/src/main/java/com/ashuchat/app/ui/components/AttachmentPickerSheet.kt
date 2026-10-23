@@ -41,12 +41,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.AppTheme
+import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.LocalAppTheme
 import com.ashuchat.app.ui.theme.NeoBackground
 import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.SurfaceElevated
+import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.utils.HapticHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,28 +59,39 @@ import com.ashuchat.app.utils.HapticHelper
 fun AttachmentPickerSheet(
     onDismiss: () -> Unit,
     onPickImage: () -> Unit,
-    onPickFile: () -> Unit,
     onTakePhoto: () -> Unit,
+    onPickFile: () -> Unit,
     onSendPing: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val isPaper = LocalAppTheme.current == AppTheme.PAPER
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = NeoBackground,
+        containerColor = if (isPaper) NeoBackground else SurfaceElevated,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp)
+                .padding(horizontal = 24.dp, vertical = if (isPaper) 12.dp else 16.dp)
         ) {
-            NeoPillBadge(
-                text = "SHARE CONTENT",
-                backgroundColor = NeoCardYellow,
-                modifier = Modifier.padding(bottom = 20.dp)
-            )
+            if (isPaper) {
+                NeoPillBadge(
+                    text = "SHARE CONTENT",
+                    backgroundColor = NeoCardYellow,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+            } else {
+                Text(
+                    text = "Share Content",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -84,7 +100,8 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.Image,
                     label = "Photos",
-                    color = NeoCardSky,
+                    color = if (isPaper) NeoCardSky else BrandLight,
+                    isPaper = isPaper,
                     onClick = {
                         onDismiss()
                         onPickImage()
@@ -93,7 +110,8 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.CameraAlt,
                     label = "Camera",
-                    color = NeoCardMint,
+                    color = if (isPaper) NeoCardMint else BrandLight,
+                    isPaper = isPaper,
                     onClick = {
                         onDismiss()
                         onTakePhoto()
@@ -102,7 +120,8 @@ fun AttachmentPickerSheet(
                 PickerOptionItem(
                     icon = Icons.Default.Description,
                     label = "File",
-                    color = NeoCardPeach,
+                    color = if (isPaper) NeoCardPeach else BrandLight,
+                    isPaper = isPaper,
                     onClick = {
                         onDismiss()
                         onPickFile()
@@ -110,8 +129,9 @@ fun AttachmentPickerSheet(
                 )
                 PickerOptionItem(
                     icon = Icons.Default.NotificationsActive,
-                    label = "Ping ⚡",
-                    color = NeoCardYellow,
+                    label = if (isPaper) "Ping ⚡" else "Ping",
+                    color = if (isPaper) NeoCardYellow else BrandLight,
+                    isPaper = isPaper,
                     onClick = {
                         onDismiss()
                         onSendPing()
@@ -119,7 +139,7 @@ fun AttachmentPickerSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(if (isPaper) 32.dp else 28.dp))
         }
     }
 }
@@ -129,6 +149,7 @@ private fun PickerOptionItem(
     icon: ImageVector,
     label: String,
     color: Color,
+    isPaper: Boolean,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -144,54 +165,72 @@ private fun PickerOptionItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
             .clickable(
-                interactionSource = interactionSource,
+                interactionSource = if (isPaper) interactionSource else remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {
-                    HapticHelper.playClick(context)
+                    if (isPaper) HapticHelper.playClick(context)
                     onClick()
                 }
             )
-            .padding(6.dp)
+            .padding(if (isPaper) 6.dp else 8.dp)
     ) {
-        Box(
-            modifier = Modifier.size(58.dp)
-        ) {
-            // Shadow
+        if (isPaper) {
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .offset(x = 3.dp, y = 3.dp)
-                    .clip(CircleShape)
-                    .background(NeoBlack)
-            )
+                modifier = Modifier.size(58.dp)
+            ) {
+                // Shadow
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .offset(x = 3.dp, y = 3.dp)
+                        .clip(CircleShape)
+                        .background(NeoBlack)
+                )
 
-            // Front button
+                // Front button
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .offset(x = translationOffset, y = translationOffset)
+                        .clip(CircleShape)
+                        .background(color)
+                        .border(2.dp, NeoBlack, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = NeoBlack,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+        } else {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .matchParentSize()
-                    .offset(x = translationOffset, y = translationOffset)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(color)
-                    .border(2.dp, NeoBlack, CircleShape)
+                    .background(color.copy(alpha = 0.18f))
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    tint = NeoBlack,
-                    modifier = Modifier.size(26.dp)
+                    tint = color,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(if (isPaper) 10.dp else 8.dp))
 
         Text(
             text = label,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Black,
-            color = NeoBlack
+            fontWeight = if (isPaper) FontWeight.Black else FontWeight.Medium,
+            color = if (isPaper) NeoBlack else TextPrimary
         )
     }
 }

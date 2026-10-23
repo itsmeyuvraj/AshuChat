@@ -48,18 +48,37 @@ fun MediaViewerDialog(
                 .clickable(onClick = onDismiss)
         ) {
             // Close Button
-            Box(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .align(Alignment.TopEnd)
-            ) {
-                NeoBrutalIconButton(
-                    icon = Icons.Default.Close,
-                    contentDescription = "Close",
-                    backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
-                    size = 44.dp,
-                    onClick = onDismiss
-                )
+            val isPaper = com.ashuchat.app.ui.theme.LocalAppTheme.current == com.ashuchat.app.ui.theme.AppTheme.PAPER
+            if (isPaper) {
+                Box(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    NeoBrutalIconButton(
+                        icon = Icons.Default.Close,
+                        contentDescription = "Close",
+                        backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
+                        size = 44.dp,
+                        onClick = onDismiss
+                    )
+                }
+            } else {
+                androidx.compose.material3.IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .size(44.dp)
+                        .align(Alignment.TopEnd)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.15f))
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
             }
 
             // Image display

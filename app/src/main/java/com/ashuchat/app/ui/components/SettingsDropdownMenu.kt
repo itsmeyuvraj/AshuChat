@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
@@ -29,7 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ashuchat.app.ui.theme.AppTheme
 import com.ashuchat.app.ui.theme.BrandLight
+import com.ashuchat.app.ui.theme.LocalAppTheme
+import com.ashuchat.app.ui.theme.NeoBackground
+import com.ashuchat.app.ui.theme.NeoBlack
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.ui.theme.SurfaceElevated
 import com.ashuchat.app.ui.theme.TextPrimary
@@ -44,9 +50,20 @@ fun SettingsMenuButton(
     modifier: Modifier = Modifier,
     iconModifier: Modifier = Modifier,
     iconTint: Color = TextSecondary,
+    onToggleTheme: (() -> Unit)? = null,
     trigger: (@Composable (onClick: () -> Unit) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val currentTheme = LocalAppTheme.current
+    val isPaper = currentTheme == AppTheme.PAPER
+
+    val menuBg = if (isPaper) NeoBackground else SurfaceElevated
+    val menuBorder = if (isPaper) 2.dp else 1.dp
+    val menuBorderColor = if (isPaper) NeoBlack else SurfaceBorder
+    val textColor = if (isPaper) NeoBlack else TextPrimary
+    val iconColor = if (isPaper) NeoBlack else BrandLight
+    val textWeight = if (isPaper) FontWeight.Bold else FontWeight.Medium
+    val dividerColor = if (isPaper) NeoBlack.copy(alpha = 0.2f) else SurfaceBorder
 
     Box(modifier = modifier) {
         if (trigger != null) {
@@ -69,23 +86,23 @@ fun SettingsMenuButton(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFFEFDF5))
-                .border(2.dp, Color(0xFF18181B), RoundedCornerShape(16.dp))
+                .background(menuBg)
+                .border(menuBorder, menuBorderColor, RoundedCornerShape(16.dp))
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = "Profile",
-                        color = Color(0xFF18181B),
+                        color = textColor,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = textWeight
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Profile",
-                        tint = Color(0xFF18181B),
+                        tint = iconColor,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -99,16 +116,16 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "Relay",
-                        color = Color(0xFF18181B),
+                        color = textColor,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = textWeight
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Dns,
                         contentDescription = "Relay",
-                        tint = Color(0xFF18181B),
+                        tint = iconColor,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -122,16 +139,16 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "Chat Settings",
-                        color = Color(0xFF18181B),
+                        color = textColor,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = textWeight
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Chat,
                         contentDescription = "Chat",
-                        tint = Color(0xFF18181B),
+                        tint = iconColor,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -141,9 +158,34 @@ fun SettingsMenuButton(
                 }
             )
 
+            if (onToggleTheme != null) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = if (isPaper) "Classic Dark Theme" else "Paper UI Theme",
+                            color = textColor,
+                            fontSize = 14.sp,
+                            fontWeight = textWeight
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (isPaper) Icons.Default.DarkMode else Icons.Default.Palette,
+                            contentDescription = "Toggle Theme",
+                            tint = iconColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onToggleTheme()
+                    }
+                )
+            }
+
             HorizontalDivider(
-                color = Color(0xFF18181B).copy(alpha = 0.2f),
-                thickness = 1.dp,
+                color = dividerColor,
+                thickness = if (isPaper) 1.dp else 0.5.dp,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             )
 
@@ -151,16 +193,16 @@ fun SettingsMenuButton(
                 text = {
                     Text(
                         text = "About",
-                        color = Color(0xFF18181B),
+                        color = textColor,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = textWeight
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = "About",
-                        tint = Color(0xFF18181B),
+                        tint = iconColor,
                         modifier = Modifier.size(20.dp)
                     )
                 },
