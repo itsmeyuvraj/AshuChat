@@ -1,4 +1,4 @@
-# AshuChat ❤️ (100% Serverless P2P)
+# AshuChat (100% Serverless P2P)
 
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-purple.svg)](https://kotlinlang.org)
@@ -8,7 +8,7 @@
 
 A private, modern, **serverless peer-to-peer (P2P)** messaging, encrypted voice & video calling, and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
 
-Designed with love for couples to chat, make encrypted crystal-clear voice and HD video calls, exchange high-res photos, record push-to-talk voice notes, and send heartbeat "Love Pings" directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
+Designed for private, direct device-to-device communication — chat, make encrypted crystal-clear voice and HD video calls, exchange high-res photos, record push-to-talk voice notes, and send instant nudge alerts directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
 
 ---
 
@@ -16,8 +16,8 @@ Designed with love for couples to chat, make encrypted crystal-clear voice and H
 
 - **No Backend to Host or Run**: You do **NOT** need a VPS, Docker container, Node.js server, or local Python script.
 - **Serverless Cloud Handshake**: Initial peer discovery uses serverless cloud channels (Google Firebase Realtime Database REST SSE / Public cloud broker) solely to exchange the 2-second WebRTC handshake.
-- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, voice calls, video calls, voice notes, attachments, and Love Pings stream directly between devices over **WebRTC (DTLS-SRTP 256-bit encryption)**.
-- **Offline Mailbox Fallback**: If your partner is offline or backgrounded, messages and voice notes automatically queue in a serverless encrypted cloud mailbox and deliver immediately once they open the app.
+- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, voice calls, video calls, voice notes, attachments, and nudge alerts stream directly between devices over **WebRTC (DTLS-SRTP 256-bit encryption)**.
+- **Offline Mailbox Fallback**: If the recipient is offline or backgrounded, messages and voice notes automatically queue in a serverless encrypted cloud mailbox and deliver immediately once they open the app.
 - **Zero Cloud Storage of Chats**: No server ever touches, reads, or permanently stores your messages or pictures.
 
 ---
@@ -27,14 +27,14 @@ Designed with love for couples to chat, make encrypted crystal-clear voice and H
 ### 📹 Direct P2P Encrypted Video Calls
 - **Full-Screen HD Video Stream**: Full-duplex WebRTC video streaming directly peer-to-peer with DTLS-SRTP encryption.
 - **Hardware-Accelerated Codecs**: Uses `DefaultVideoEncoderFactory` and `DefaultVideoDecoderFactory` with hardware MediaCodec (VP8, VP9, H.264) and software fallbacks.
-- **Floating Picture-in-Picture (PiP)**: View your own front/back camera feed in a draggable, rounded floating preview while the remote partner's feed renders full screen.
+- **Floating Picture-in-Picture (PiP)**: View your own front/back camera feed in a draggable, rounded floating preview while the remote peer's feed renders full screen.
 - **Dynamic Camera Switching**: Seamlessly toggle between front-facing and back-facing cameras on the fly during active calls.
 - **Camera-Less & Simulator Adaptive**: Dynamically configures video transceivers (`SEND_RECV` vs `RECV_ONLY`) so devices without a physical camera (e.g. desktop Android Studio emulators) receive and display incoming remote video seamlessly.
 - **In-Call Controls Dock**: Floating dock with Flip Camera, Toggle Video, Mic Mute, Speakerphone, and End Call actions.
 
 ### 📞 Direct P2P Encrypted Voice Calls
 - **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
-- **In-App Call Overlay**: Full-screen calling screen with partner avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeDown`) toggles.
+- **In-App Call Overlay**: Full-screen calling screen with peer avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeDown`) toggles.
 
 ### 🔒 Biometric App Lock & Privacy Suite
 - **Biometric Authentication (`BiometricPrompt`)**: Secure the app with Fingerprint or Face Unlock upon startup and when resuming from the background.
@@ -55,7 +55,7 @@ Designed with love for couples to chat, make encrypted crystal-clear voice and H
 - **High-Fidelity Audio Recording**: AAC encoding in MPEG-4 (`.m4a`) at 44.1kHz / 96kbps with real-time waveform amplitude bars and duration counter.
 - **Inline Audio Player**: Play/pause toggle, scrubbable progress indicator, elapsed/total duration, and variable playback speed selector (`1.0x`, `1.5x`, `2.0x`).
 
-### ❤️ Message Reactions & Quote Reply
+### 💬 Message Reactions & Quote Reply
 - **Emoji Reactions**: Long-press any message bubble to open the reaction picker (❤️, 😂, 😮, 😢, 👍, ⚡) with pinned reaction badges on bubbles.
 - **Quote-to-Reply**: Reply to specific messages with a quote banner above the input field and styled quotation blocks inside chat bubbles.
 
@@ -64,8 +64,8 @@ Designed with love for couples to chat, make encrypted crystal-clear voice and H
 - **Full-Screen Media Viewer**: Zoomable image viewer with pinch-to-zoom and save actions.
 - **Chunked Transfer**: WebRTC binary streaming with real-time transfer progress bars.
 
-### 💖 Romantic Couples Touch
-- **Love Ping ⚡**: Send an instant heartbeat pulse. Triggers a rhythmic vibration and an animated glowing banner on the receiver's phone.
+### ⚡ Real-Time Nudge & Status
+- **Nudge Alert ⚡**: Send an instant attention alert. Triggers a vibration pulse and an animated alert banner on the recipient's phone.
 - **Real-Time Indicators**: Live "typing..." indicator and delivery receipts (*Sending* 🕒, *Sent* ✓, *Delivered* ✓✓).
 
 ### 📱 Instant Pairing & Rooms
@@ -82,7 +82,7 @@ Designed with love for couples to chat, make encrypted crystal-clear voice and H
 
 ```mermaid
 graph TD
-    subgraph Device A ["Your Phone (Yuvraj)"]
+    subgraph Device A ["Device A (Initiator)"]
         UI_A["Jetpack Compose UI"]
         VM_A["ChatViewModel"]
         ROOM_A[("Room SQLite DB")]
@@ -100,7 +100,7 @@ graph TD
         RTDB["Serverless Cloud Broker\n(Firebase Realtime DB REST SSE / Public Broker)\n[SDP Handshake & Offline Mailbox Fallback]"]
     end
 
-    subgraph Device B ["Partner's Phone (Ashu)"]
+    subgraph Device B ["Device B (Peer)"]
         UI_B["Jetpack Compose UI"]
         VM_B["ChatViewModel"]
         ROOM_B[("Room SQLite DB")]
