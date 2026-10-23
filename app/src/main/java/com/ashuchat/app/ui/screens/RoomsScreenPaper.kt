@@ -236,9 +236,6 @@ fun RoomsScreenPaper(
                             onNavigateToRelay = onNavigateToRelay,
                             onNavigateToChat = onNavigateToChatSettings,
                             onNavigateToAbout = onNavigateToAbout,
-                            onToggleTheme = {
-                                viewModel.setAppTheme(com.ashuchat.app.ui.theme.AppTheme.CLASSIC)
-                            },
                             trigger = { openMenu ->
                                 NeoBrutalIconButton(
                                     onClick = openMenu,

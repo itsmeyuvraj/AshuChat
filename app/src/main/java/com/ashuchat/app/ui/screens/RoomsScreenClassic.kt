@@ -163,10 +163,7 @@ fun RoomsScreenClassic(
                         onNavigateToProfile = onNavigateToProfile,
                         onNavigateToRelay = onNavigateToRelay,
                         onNavigateToChat = onNavigateToChatSettings,
-                        onNavigateToAbout = onNavigateToAbout,
-                        onToggleTheme = {
-                            viewModel.setAppTheme(com.ashuchat.app.ui.theme.AppTheme.PAPER)
-                        }
+                        onNavigateToAbout = onNavigateToAbout
                     )
                 }
             )

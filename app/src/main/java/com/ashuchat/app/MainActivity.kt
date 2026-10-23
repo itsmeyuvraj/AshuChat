@@ -329,6 +329,16 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
         }
     }
 
+    val currentContext = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(callState) {
+        val activity = currentContext as? android.app.Activity
+        activity?.volumeControlStream = if (callState != CallState.IDLE) {
+            android.media.AudioManager.STREAM_VOICE_CALL
+        } else {
+            android.media.AudioManager.USE_DEFAULT_STREAM_TYPE
+        }
+    }
+
     if (callState != CallState.IDLE) {
         VoiceCallOverlay(
             callState = callState,

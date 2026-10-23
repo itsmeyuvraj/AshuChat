@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
 import org.webrtc.DataChannel
@@ -28,6 +33,7 @@ import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
+import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
@@ -95,7 +101,9 @@ class WebRtcManager(
 
     private var audioSource: AudioSource? = null
     private var localAudioTrack: AudioTrack? = null
-    private var audioManager: android.media.AudioManager? = null
+    private var remoteAudioTrack: AudioTrack? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     private val _peerNameFlow = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val peerNameFlow: SharedFlow<String> = _peerNameFlow.asSharedFlow()
@@ -110,8 +118,36 @@ class WebRtcManager(
             .createInitializationOptions()
         PeerConnectionFactory.initialize(options)
 
+        val adm = JavaAudioDeviceModule.builder(context)
+            .setUseHardwareAcousticEchoCanceler(true)
+            .setUseHardwareNoiseSuppressor(true)
+            .setAudioRecordErrorCallback(object : JavaAudioDeviceModule.AudioRecordErrorCallback {
+                override fun onWebRtcAudioRecordInitError(errorMessage: String?) {
+                    Log.e(TAG, "AudioRecord init error: $errorMessage")
+                }
+                override fun onWebRtcAudioRecordStartError(errorCode: JavaAudioDeviceModule.AudioRecordStartErrorCode?, errorMessage: String?) {
+                    Log.e(TAG, "AudioRecord start error: $errorCode, $errorMessage")
+                }
+                override fun onWebRtcAudioRecordError(errorMessage: String?) {
+                    Log.e(TAG, "AudioRecord error: $errorMessage")
+                }
+            })
+            .setAudioTrackErrorCallback(object : JavaAudioDeviceModule.AudioTrackErrorCallback {
+                override fun onWebRtcAudioTrackInitError(errorMessage: String?) {
+                    Log.e(TAG, "AudioTrack init error: $errorMessage")
+                }
+                override fun onWebRtcAudioTrackStartError(errorCode: JavaAudioDeviceModule.AudioTrackStartErrorCode?, errorMessage: String?) {
+                    Log.e(TAG, "AudioTrack start error: $errorCode, $errorMessage")
+                }
+                override fun onWebRtcAudioTrackError(errorMessage: String?) {
+                    Log.e(TAG, "AudioTrack error: $errorMessage")
+                }
+            })
+            .createAudioDeviceModule()
+
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setOptions(PeerConnectionFactory.Options())
+            .setAudioDeviceModule(adm)
             .createPeerConnectionFactory()
     }
 
@@ -216,8 +252,10 @@ class WebRtcManager(
                     super.onAddTrack(receiver, mediaStreams)
                     val track = receiver?.track()
                     if (track is AudioTrack) {
+                        remoteAudioTrack = track
                         track.setEnabled(true)
-                        Log.d(TAG, "Incoming WebRTC audio track enabled")
+                        track.setVolume(10.0)
+                        Log.d(TAG, "Incoming WebRTC audio track enabled with volume 10.0")
                     }
                 }
             }
@@ -494,9 +532,8 @@ class WebRtcManager(
     override fun onOfferReceived(sdp: String) {
         Log.d(TAG, "Offer received. Handling as callee...")
         isInitiator = false
-        _connectionState.value = P2PConnectionState.NEGOTIATING_WEBRTC
 
-        if (peerConnection == null || peerConnection?.signalingState() != PeerConnection.SignalingState.STABLE) {
+        if (peerConnection == null || peerConnection?.signalingState() == PeerConnection.SignalingState.CLOSED) {
             setupPeerConnection()
         }
 
@@ -508,7 +545,10 @@ class WebRtcManager(
                 drainPendingIceCandidates()
 
                 // Create Answer
-                val constraints = MediaConstraints()
+                val constraints = MediaConstraints().apply {
+                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+                }
                 peerConnection?.createAnswer(object : SdpObserver {
                     override fun onCreateSuccess(answerDesc: SessionDescription?) {
                         answerDesc?.let { answer ->
@@ -516,7 +556,16 @@ class WebRtcManager(
                                 override fun onCreateSuccess(d: SessionDescription?) {}
                                 override fun onSetSuccess() {
                                     Log.d(TAG, "Local description set for Answer. Sending answer.")
+                                    val packet = DataChannelPacket(
+                                        type = "sdp_answer",
+                                        text = answer.description,
+                                        roomId = currentRoomId
+                                    )
+                                    if (isP2pConnected()) {
+                                        sendPacket(packet)
+                                    }
                                     signalingClient.sendAnswer(answer.description)
+                                    _connectionState.value = P2PConnectionState.CONNECTED_P2P
                                 }
                                 override fun onCreateFailure(err: String?) {}
                                 override fun onSetFailure(err: String?) {}
@@ -543,6 +592,7 @@ class WebRtcManager(
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote description set for Answer. Draining pending ICE candidates.")
                 drainPendingIceCandidates()
+                _connectionState.value = P2PConnectionState.CONNECTED_P2P
             }
             override fun onCreateFailure(err: String?) {}
             override fun onSetFailure(err: String?) {
@@ -626,7 +676,8 @@ class WebRtcManager(
         sendPacket(packet)
     }
 
-    fun startAudioCall(): Boolean {
+    private fun ensureLocalAudioTrack(): Boolean {
+        if (localAudioTrack != null) return true
         return try {
             val factory = peerConnectionFactory ?: return false
             val audioConstraints = MediaConstraints().apply {
@@ -640,12 +691,56 @@ class WebRtcManager(
             track.setEnabled(true)
             localAudioTrack = track
             peerConnection?.addTrack(track, listOf("ARDAMS"))
+            Log.d(TAG, "Local audio track created and added to PeerConnection")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed creating local audio track: ${e.localizedMessage}", e)
+            false
+        }
+    }
 
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-            audioManager = am
-            am?.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
-            am?.isSpeakerphoneOn = false
+    private fun setupAudioRouting(speakerOn: Boolean) {
+        try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            audioManager = am ?: return
 
+            am.mode = AudioManager.MODE_IN_COMMUNICATION
+
+            // Request AudioFocus for voice communication
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val playbackAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener { /* maintain focus */ }
+                    .build()
+                audioFocusRequest = focusRequest
+                am.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(null, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN)
+            }
+
+            // Ensure voice call volume is at a clear audible level
+            val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
+            val curVol = am.getStreamVolume(AudioManager.STREAM_VOICE_CALL)
+            if (curVol < maxVol / 2) {
+                am.setStreamVolume(AudioManager.STREAM_VOICE_CALL, (maxVol * 0.85).toInt(), 0)
+            }
+
+            toggleSpeaker(speakerOn)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up audio routing: ${e.localizedMessage}")
+        }
+    }
+
+    fun startAudioCall(): Boolean {
+        return try {
+            ensureLocalAudioTrack()
+            setupAudioRouting(speakerOn = true)
             sendRenegotiationOffer()
             Log.d(TAG, "WebRTC audio call started with local audio track")
             true
@@ -655,7 +750,7 @@ class WebRtcManager(
         }
     }
 
-    private fun sendRenegotiationOffer() {
+    fun sendRenegotiationOffer() {
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
@@ -667,6 +762,14 @@ class WebRtcManager(
                         override fun onCreateSuccess(d: SessionDescription?) {}
                         override fun onSetSuccess() {
                             Log.d(TAG, "Local description set successfully for renegotiation. Sending offer.")
+                            val packet = DataChannelPacket(
+                                type = "sdp_offer",
+                                text = sdp.description,
+                                roomId = currentRoomId
+                            )
+                            if (isP2pConnected()) {
+                                sendPacket(packet)
+                            }
                             signalingClient.sendOffer(sdp.description)
                         }
                         override fun onCreateFailure(err: String?) {}
@@ -686,27 +789,10 @@ class WebRtcManager(
 
     fun acceptAudioCall(): Boolean {
         return try {
-            val factory = peerConnectionFactory ?: return false
-            if (localAudioTrack == null) {
-                val audioConstraints = MediaConstraints().apply {
-                    mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
-                }
-                audioSource = factory.createAudioSource(audioConstraints)
-                val track = factory.createAudioTrack("ARDAMSa0", audioSource)
-                track.setEnabled(true)
-                localAudioTrack = track
-                peerConnection?.addTrack(track, listOf("ARDAMS"))
-            }
-
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-            audioManager = am
-            am?.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
-            am?.isSpeakerphoneOn = false
-
-            Log.d(TAG, "WebRTC audio call accepted with local audio track")
+            ensureLocalAudioTrack()
+            setupAudioRouting(speakerOn = true)
+            sendRenegotiationOffer()
+            Log.d(TAG, "WebRTC audio call accepted with local audio track and renegotiation")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error accepting audio call: ${e.localizedMessage}", e)
@@ -721,9 +807,28 @@ class WebRtcManager(
             localAudioTrack = null
             audioSource?.dispose()
             audioSource = null
-            audioManager?.mode = android.media.AudioManager.MODE_NORMAL
-            audioManager?.isSpeakerphoneOn = false
-            Log.d(TAG, "WebRTC audio call ended")
+
+            remoteAudioTrack?.setEnabled(false)
+            remoteAudioTrack = null
+
+            val am = audioManager
+            if (am != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    am.clearCommunicationDevice()
+                }
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = false
+                am.mode = AudioManager.MODE_NORMAL
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+                    audioFocusRequest = null
+                } else {
+                    @Suppress("DEPRECATION")
+                    am.abandonAudioFocus(null)
+                }
+            }
+            Log.d(TAG, "WebRTC audio call ended and audio hardware reset")
         } catch (e: Exception) {
             Log.w(TAG, "Error ending audio call: ${e.localizedMessage}")
         }
@@ -734,7 +839,33 @@ class WebRtcManager(
     }
 
     fun toggleSpeaker(speakerOn: Boolean) {
-        audioManager?.isSpeakerphoneOn = speakerOn
+        val am = audioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (speakerOn) {
+                    val speakerDevice = am.availableCommunicationDevices.firstOrNull {
+                        it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                    }
+                    if (speakerDevice != null) {
+                        am.setCommunicationDevice(speakerDevice)
+                    }
+                } else {
+                    val earpieceDevice = am.availableCommunicationDevices.firstOrNull {
+                        it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                    }
+                    if (earpieceDevice != null) {
+                        am.setCommunicationDevice(earpieceDevice)
+                    } else {
+                        am.clearCommunicationDevice()
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = speakerOn
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error toggling speaker: ${e.localizedMessage}")
+        }
     }
 
     private fun cleanupPeerConnection() {

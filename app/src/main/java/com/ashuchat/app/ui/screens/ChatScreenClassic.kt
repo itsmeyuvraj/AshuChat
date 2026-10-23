@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
-import com.ashuchat.app.ui.components.VoiceCallOverlay
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -144,10 +143,6 @@ fun ChatScreenClassic(
     val isRecordingVoice by viewModel.isRecordingVoice.collectAsState()
     val voiceRecordDurationMs by viewModel.voiceRecordDurationMs.collectAsState()
     val voiceAmplitude by viewModel.voiceAmplitude.collectAsState()
-    val callState by viewModel.callState.collectAsState()
-    val callDurationSeconds by viewModel.callDurationSeconds.collectAsState()
-    val isCallMuted by viewModel.isCallMuted.collectAsState()
-    val isCallSpeakerOn by viewModel.isCallSpeakerOn.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
     var showAttachmentSheet by remember { mutableStateOf(false) }
@@ -874,22 +869,6 @@ fun ChatScreenClassic(
             filePath = filePath,
             fileName = fileName,
             onDismiss = { activeViewerMedia = null }
-        )
-    }
-
-    // Voice Call Overlay
-    if (callState != CallState.IDLE) {
-        VoiceCallOverlay(
-            callState = callState,
-            partnerName = partnerName,
-            callDurationSeconds = callDurationSeconds,
-            isMuted = isCallMuted,
-            isSpeakerOn = isCallSpeakerOn,
-            onAccept = { viewModel.acceptIncomingCall() },
-            onReject = { viewModel.rejectIncomingCall() },
-            onEnd = { viewModel.endCall() },
-            onToggleMute = { viewModel.toggleCallMute() },
-            onToggleSpeaker = { viewModel.toggleCallSpeaker() }
         )
     }
 }

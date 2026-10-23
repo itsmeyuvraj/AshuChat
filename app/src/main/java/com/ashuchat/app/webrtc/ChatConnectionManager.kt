@@ -576,6 +576,7 @@ object ChatConnectionManager {
                     _callState.value = CallState.CONNECTED
                     CallNotificationHelper.dismissIncomingCallNotification(context)
                     startCallDurationTimer()
+                    webRtcManager.sendRenegotiationOffer()
                 }
             }
 
@@ -585,6 +586,16 @@ object ChatConnectionManager {
                 stopCallDurationTimer()
                 webRtcManager.endAudioCall()
                 CallNotificationHelper.dismissIncomingCallNotification(context)
+            }
+
+            "sdp_offer" -> {
+                Log.d(TAG, "Direct P2P SDP Offer received")
+                packet.text?.let { webRtcManager.onOfferReceived(it) }
+            }
+
+            "sdp_answer" -> {
+                Log.d(TAG, "Direct P2P SDP Answer received")
+                packet.text?.let { webRtcManager.onAnswerReceived(it) }
             }
         }
     }
@@ -633,7 +644,7 @@ object ChatConnectionManager {
         _callState.value = CallState.OUTGOING
         _callDurationSeconds.value = 0
         _isCallMuted.value = false
-        _isCallSpeakerOn.value = false
+        _isCallSpeakerOn.value = true
 
         webRtcManager.startAudioCall()
 
@@ -660,7 +671,7 @@ object ChatConnectionManager {
         _callState.value = CallState.CONNECTED
         _callDurationSeconds.value = 0
         _isCallMuted.value = false
-        _isCallSpeakerOn.value = false
+        _isCallSpeakerOn.value = true
 
         webRtcManager.acceptAudioCall()
 

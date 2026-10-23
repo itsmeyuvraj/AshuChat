@@ -57,7 +57,6 @@ import com.ashuchat.app.ui.theme.TextMuted
 import com.ashuchat.app.ui.theme.TextPrimary
 import com.ashuchat.app.ui.theme.TextSecondary
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
-import com.ashuchat.app.ui.components.SettingsMenuButton
 import kotlin.random.Random
 
 @Composable

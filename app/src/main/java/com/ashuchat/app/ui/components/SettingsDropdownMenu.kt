@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
@@ -50,7 +48,6 @@ fun SettingsMenuButton(
     modifier: Modifier = Modifier,
     iconModifier: Modifier = Modifier,
     iconTint: Color = TextSecondary,
-    onToggleTheme: (() -> Unit)? = null,
     trigger: (@Composable (onClick: () -> Unit) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -157,31 +154,6 @@ fun SettingsMenuButton(
                     onNavigateToChat()
                 }
             )
-
-            if (onToggleTheme != null) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = if (isPaper) "Classic Dark Theme" else "Paper UI Theme",
-                            color = textColor,
-                            fontSize = 14.sp,
-                            fontWeight = textWeight
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = if (isPaper) Icons.Default.DarkMode else Icons.Default.Palette,
-                            contentDescription = "Toggle Theme",
-                            tint = iconColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onToggleTheme()
-                    }
-                )
-            }
 
             HorizontalDivider(
                 color = dividerColor,
