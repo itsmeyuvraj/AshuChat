@@ -38,6 +38,8 @@ import java.util.UUID
 object ChatConnectionManager {
 
     private const val TAG = "ChatConnectionMgr"
+    private val gson = com.google.gson.Gson()
+
 
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -77,6 +79,15 @@ object ChatConnectionManager {
     private val _isCallSpeakerOn = MutableStateFlow(false)
     val isCallSpeakerOn: StateFlow<Boolean> = _isCallSpeakerOn.asStateFlow()
 
+    private val _isVideoCall = MutableStateFlow(false)
+    val isVideoCall: StateFlow<Boolean> = _isVideoCall.asStateFlow()
+
+    val remoteVideoTrack: StateFlow<org.webrtc.VideoTrack?> get() = webRtcManager.remoteVideoTrackFlow
+    val localVideoTrack: StateFlow<org.webrtc.VideoTrack?> get() = webRtcManager.localVideoTrackFlow
+    val isLocalVideoEnabled: StateFlow<Boolean> get() = webRtcManager.isLocalVideoEnabled
+    val isFrontCamera: StateFlow<Boolean> get() = webRtcManager.isFrontCamera
+    val eglBaseContext: org.webrtc.EglBase.Context get() = webRtcManager.eglBaseContext
+
     private val _isPartnerTyping = MutableStateFlow(false)
     val isPartnerTyping: StateFlow<Boolean> = _isPartnerTyping.asStateFlow()
 
@@ -103,6 +114,15 @@ object ChatConnectionManager {
 
         observeIncomingPackets()
         observeNetworkState()
+
+        // Sync video call flag if remote video track arrives
+        scope.launch {
+            webRtcManager.remoteVideoTrackFlow.collect { track ->
+                if (track != null) {
+                    _isVideoCall.value = true
+                }
+            }
+        }
 
         // Periodic cleanup of expired disappearing messages
         scope.launch(Dispatchers.IO) {
@@ -558,33 +578,40 @@ object ChatConnectionManager {
             }
 
             "call_offer" -> {
-                Log.d(TAG, "Incoming call offer received from ${packet.senderName}")
+                Log.d(TAG, "Incoming call offer received from ${packet.senderName}, isVideo: ${packet.isVideoCall}")
                 if (_callState.value == CallState.IDLE) {
+                    val isVideo = packet.isVideoCall == true
+                    _isVideoCall.value = isVideo
                     _callState.value = CallState.INCOMING
                     val caller = packet.senderName ?: _partnerName.value
                     CallNotificationHelper.showIncomingCallNotification(
                         context = context,
                         callerName = caller,
-                        roomId = currentRoom
+                        roomId = currentRoom,
+                        isVideo = isVideo
                     )
                 }
             }
 
             "call_answer" -> {
-                Log.d(TAG, "Incoming call answer received")
+                Log.d(TAG, "Incoming call answer received, isVideo: ${packet.isVideoCall}")
                 if (_callState.value == CallState.OUTGOING) {
                     _callState.value = CallState.CONNECTED
+                    if (packet.isVideoCall == true) {
+                        _isVideoCall.value = true
+                    }
                     CallNotificationHelper.dismissIncomingCallNotification(context)
                     startCallDurationTimer()
-                    webRtcManager.sendRenegotiationOffer()
+                    webRtcManager.sendRenegotiationOffer(isVideo = _isVideoCall.value)
                 }
             }
 
             "call_reject", "call_end" -> {
                 Log.d(TAG, "Call ended or rejected by peer")
                 _callState.value = CallState.IDLE
+                _isVideoCall.value = false
                 stopCallDurationTimer()
-                webRtcManager.endAudioCall()
+                webRtcManager.endCall()
                 CallNotificationHelper.dismissIncomingCallNotification(context)
             }
 
@@ -597,8 +624,21 @@ object ChatConnectionManager {
                 Log.d(TAG, "Direct P2P SDP Answer received")
                 packet.text?.let { webRtcManager.onAnswerReceived(it) }
             }
+
+            "ice_candidate" -> {
+                Log.d(TAG, "Direct P2P ICE Candidate received")
+                try {
+                    val candidate = gson.fromJson(packet.text, org.webrtc.IceCandidate::class.java)
+                    if (candidate != null) {
+                        webRtcManager.onIceCandidateReceived(candidate)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error parsing P2P ICE candidate: ${e.localizedMessage}")
+                }
+            }
         }
     }
+
 
     fun sendReadAck(messageId: String, roomId: String) {
         val ackPacket = DataChannelPacket(
@@ -638,20 +678,31 @@ object ChatConnectionManager {
         }
     }
 
+    fun setVideoCall(isVideo: Boolean) {
+        _isVideoCall.value = isVideo
+    }
+
     // Call Actions
-    fun startCall() {
+    fun startCall(isVideo: Boolean = false) {
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        _isVideoCall.value = isVideo
         _callState.value = CallState.OUTGOING
         _callDurationSeconds.value = 0
         _isCallMuted.value = false
         _isCallSpeakerOn.value = true
 
-        webRtcManager.startAudioCall()
+        if (isVideo) {
+            webRtcManager.prepareLocalVideoCall()
+        } else {
+            webRtcManager.prepareLocalAudioCall()
+        }
 
         val packet = DataChannelPacket(
+            messageId = java.util.UUID.randomUUID().toString(),
             type = "call_offer",
             senderName = prefs.myName,
             roomId = currentRoom,
+            isVideoCall = isVideo,
             timestamp = System.currentTimeMillis()
         )
         if (webRtcManager.isP2pConnected()) {
@@ -673,12 +724,19 @@ object ChatConnectionManager {
         _isCallMuted.value = false
         _isCallSpeakerOn.value = true
 
-        webRtcManager.acceptAudioCall()
+        val isVideo = _isVideoCall.value
+        if (isVideo) {
+            webRtcManager.prepareLocalVideoCall()
+        } else {
+            webRtcManager.prepareLocalAudioCall()
+        }
 
         val packet = DataChannelPacket(
+            messageId = java.util.UUID.randomUUID().toString(),
             type = "call_answer",
             senderName = prefs.myName,
             roomId = currentRoom,
+            isVideoCall = isVideo,
             timestamp = System.currentTimeMillis()
         )
         if (webRtcManager.isP2pConnected()) {
@@ -698,10 +756,12 @@ object ChatConnectionManager {
 
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         _callState.value = CallState.IDLE
+        _isVideoCall.value = false
         stopCallDurationTimer()
-        webRtcManager.endAudioCall()
+        webRtcManager.endCall()
 
         val packet = DataChannelPacket(
+            messageId = java.util.UUID.randomUUID().toString(),
             type = "call_reject",
             senderName = prefs.myName,
             roomId = currentRoom,
@@ -722,10 +782,12 @@ object ChatConnectionManager {
 
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
         _callState.value = CallState.IDLE
+        _isVideoCall.value = false
         stopCallDurationTimer()
-        webRtcManager.endAudioCall()
+        webRtcManager.endCall()
 
         val packet = DataChannelPacket(
+            messageId = java.util.UUID.randomUUID().toString(),
             type = "call_end",
             senderName = prefs.myName,
             roomId = currentRoom,
@@ -736,6 +798,15 @@ object ChatConnectionManager {
         } else {
             webRtcManager.sendOfflinePacketForRoom(currentRoom, packet)
         }
+    }
+
+    fun switchCamera() {
+        webRtcManager.switchCamera()
+    }
+
+    fun toggleCallVideo() {
+        val newEnabled = !webRtcManager.isLocalVideoEnabled.value
+        webRtcManager.toggleVideo(newEnabled)
     }
 
     fun toggleCallMute() {

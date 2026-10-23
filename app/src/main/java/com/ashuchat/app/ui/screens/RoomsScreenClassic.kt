@@ -152,13 +152,6 @@ fun RoomsScreenClassic(
                             tint = TextSecondary
                         )
                     }
-                    IconButton(onClick = onNavigateToPairing) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Room",
-                            tint = BrandLight
-                        )
-                    }
                     SettingsMenuButton(
                         onNavigateToProfile = onNavigateToProfile,
                         onNavigateToRelay = onNavigateToRelay,

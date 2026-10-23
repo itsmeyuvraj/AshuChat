@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
@@ -158,6 +159,18 @@ fun ChatScreenPaper(
     ) { granted: Boolean ->
         if (granted) {
             viewModel.startVoiceRecording()
+        }
+    }
+
+    val videoCallPermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val hasAudio = perms[android.Manifest.permission.RECORD_AUDIO] == true ||
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasCamera = perms[android.Manifest.permission.CAMERA] == true ||
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (hasAudio && hasCamera) {
+            viewModel.startCall(isVideo = true)
         }
     }
 
@@ -344,6 +357,33 @@ fun ChatScreenPaper(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         com.ashuchat.app.ui.components.NeoBrutalIconButton(
+                            icon = Icons.Default.Videocam,
+                            contentDescription = "Video Call",
+                            backgroundColor = com.ashuchat.app.ui.theme.NeoCardYellow,
+                            size = 40.dp,
+                            onClick = {
+                                val hasAudio = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.RECORD_AUDIO
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                val hasCamera = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.CAMERA
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                if (hasAudio && hasCamera) {
+                                    viewModel.startCall(isVideo = true)
+                                } else {
+                                    videoCallPermissionsLauncher.launch(
+                                        arrayOf(
+                                            android.Manifest.permission.RECORD_AUDIO,
+                                            android.Manifest.permission.CAMERA
+                                        )
+                                    )
+                                }
+                            }
+                        )
+
+                        com.ashuchat.app.ui.components.NeoBrutalIconButton(
                             icon = Icons.Default.Phone,
                             contentDescription = "Voice Call",
                             backgroundColor = com.ashuchat.app.ui.theme.NeoCardPeach,
@@ -354,22 +394,12 @@ fun ChatScreenPaper(
                                     android.Manifest.permission.RECORD_AUDIO
                                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                                 if (hasAudioPermission) {
-                                    viewModel.startCall()
+                                    viewModel.startCall(isVideo = false)
                                 } else {
                                     recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                 }
                             }
                         )
-
-                        if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
-                            com.ashuchat.app.ui.components.NeoBrutalIconButton(
-                                icon = Icons.Default.QrCode,
-                                contentDescription = "Show QR",
-                                backgroundColor = com.ashuchat.app.ui.theme.NeoBtnMint,
-                                size = 40.dp,
-                                onClick = { onNavigateToShowQr(activeRoomId) }
-                            )
-                        }
 
                         Box {
                             com.ashuchat.app.ui.components.NeoBrutalIconButton(
@@ -388,30 +418,6 @@ fun ChatScreenPaper(
                                     .background(Color.White)
                                     .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
                             ) {
-                                if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "ROOM QR CODE",
-                                                fontWeight = FontWeight.Black,
-                                                color = com.ashuchat.app.ui.theme.NeoBlack,
-                                                fontSize = 13.sp
-                                            )
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.QrCode,
-                                                contentDescription = null,
-                                                tint = com.ashuchat.app.ui.theme.NeoBlack,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        },
-                                        onClick = {
-                                            showRoomMenu = false
-                                            onNavigateToShowQr(activeRoomId)
-                                        }
-                                    )
-                                }
                                 DropdownMenuItem(
                                     text = {
                                         Text(

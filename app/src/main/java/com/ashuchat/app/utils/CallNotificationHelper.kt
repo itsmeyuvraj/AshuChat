@@ -26,6 +26,7 @@ object CallNotificationHelper {
     const val ACTION_DECLINE_CALL = "com.ashuchat.app.ACTION_DECLINE_CALL"
     const val EXTRA_CALL_ROOM_ID = "EXTRA_CALL_ROOM_ID"
     const val EXTRA_CALL_CALLER_NAME = "EXTRA_CALL_CALLER_NAME"
+    const val EXTRA_IS_VIDEO_CALL = "EXTRA_IS_VIDEO_CALL"
 
     private var activeRingtone: Ringtone? = null
     private var isRinging = false
@@ -34,7 +35,8 @@ object CallNotificationHelper {
     fun showIncomingCallNotification(
         context: Context,
         callerName: String,
-        roomId: String
+        roomId: String,
+        isVideo: Boolean = false
     ) {
         NotificationHelper.initNotificationChannels(context)
 
@@ -43,6 +45,7 @@ object CallNotificationHelper {
             action = ACTION_DECLINE_CALL
             putExtra(EXTRA_CALL_ROOM_ID, roomId)
             putExtra(EXTRA_CALL_CALLER_NAME, callerName)
+            putExtra(EXTRA_IS_VIDEO_CALL, isVideo)
         }
         val declinePendingIntent = PendingIntent.getBroadcast(
             context,
@@ -57,6 +60,7 @@ object CallNotificationHelper {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_CALL_ROOM_ID, roomId)
             putExtra(EXTRA_CALL_CALLER_NAME, callerName)
+            putExtra(EXTRA_IS_VIDEO_CALL, isVideo)
         }
         val answerPendingIntent = PendingIntent.getActivity(
             context,
@@ -71,6 +75,7 @@ object CallNotificationHelper {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_CALL_ROOM_ID, roomId)
             putExtra(EXTRA_CALL_CALLER_NAME, callerName)
+            putExtra(EXTRA_IS_VIDEO_CALL, isVideo)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,
@@ -80,9 +85,9 @@ object CallNotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_CALLS)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
-            .setContentTitle("Incoming Voice Call")
-            .setContentText("$callerName is calling...")
+            .setSmallIcon(if (isVideo) android.R.drawable.ic_menu_camera else android.R.drawable.ic_menu_call)
+            .setContentTitle(if (isVideo) "Incoming Video Call" else "Incoming Voice Call")
+            .setContentText(if (isVideo) "$callerName is video calling..." else "$callerName is calling...")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

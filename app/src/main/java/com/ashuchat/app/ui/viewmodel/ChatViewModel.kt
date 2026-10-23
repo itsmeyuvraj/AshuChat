@@ -137,11 +137,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private var voiceTimerJob: Job? = null
 
-    // P2P Voice Calling
+    // P2P Calling (Voice & Video)
     val callState: StateFlow<CallState> get() = ChatConnectionManager.callState
     val callDurationSeconds: StateFlow<Int> get() = ChatConnectionManager.callDurationSeconds
     val isCallMuted: StateFlow<Boolean> get() = ChatConnectionManager.isCallMuted
     val isCallSpeakerOn: StateFlow<Boolean> get() = ChatConnectionManager.isCallSpeakerOn
+    val isVideoCall: StateFlow<Boolean> get() = ChatConnectionManager.isVideoCall
+    val remoteVideoTrack: StateFlow<org.webrtc.VideoTrack?> get() = ChatConnectionManager.remoteVideoTrack
+    val localVideoTrack: StateFlow<org.webrtc.VideoTrack?> get() = ChatConnectionManager.localVideoTrack
+    val isLocalVideoEnabled: StateFlow<Boolean> get() = ChatConnectionManager.isLocalVideoEnabled
+    val isFrontCamera: StateFlow<Boolean> get() = ChatConnectionManager.isFrontCamera
+    val eglBaseContext: org.webrtc.EglBase.Context get() = ChatConnectionManager.eglBaseContext
 
     init {
         ChatConnectionManager.init(application)
@@ -1059,12 +1065,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startCall() = ChatConnectionManager.startCall()
+    fun startCall(isVideo: Boolean = false) = ChatConnectionManager.startCall(isVideo)
     fun acceptIncomingCall() = ChatConnectionManager.acceptCall()
     fun rejectIncomingCall() = ChatConnectionManager.rejectCall()
     fun endCall() = ChatConnectionManager.endCall()
     fun toggleCallMute() = ChatConnectionManager.toggleCallMute()
     fun toggleCallSpeaker() = ChatConnectionManager.toggleCallSpeaker()
+    fun switchCamera() = ChatConnectionManager.switchCamera()
+    fun toggleCallVideo() = ChatConnectionManager.toggleCallVideo()
 
     fun checkForUpdates(silent: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {

@@ -117,6 +117,10 @@ class MainActivity : FragmentActivity() {
             ?: intent?.getStringExtra(CallNotificationHelper.EXTRA_CALL_ROOM_ID)
 
         if (action == CallNotificationHelper.ACTION_ANSWER_CALL) {
+            val isVideo = intent?.getBooleanExtra(CallNotificationHelper.EXTRA_IS_VIDEO_CALL, false) ?: false
+            if (isVideo) {
+                ChatConnectionManager.setVideoCall(true)
+            }
             ChatConnectionManager.acceptCall()
             if (!roomId.isNullOrBlank()) {
                 chatViewModel.openRoom(roomId)
@@ -163,6 +167,12 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
     val callDurationSeconds by chatViewModel.callDurationSeconds.collectAsState()
     val isCallMuted by chatViewModel.isCallMuted.collectAsState()
     val isCallSpeakerOn by chatViewModel.isCallSpeakerOn.collectAsState()
+    val isVideoCall by chatViewModel.isVideoCall.collectAsState()
+    val localVideoTrack by chatViewModel.localVideoTrack.collectAsState()
+    val remoteVideoTrack by chatViewModel.remoteVideoTrack.collectAsState()
+    val isLocalVideoEnabled by chatViewModel.isLocalVideoEnabled.collectAsState()
+    val isFrontCamera by chatViewModel.isFrontCamera.collectAsState()
+    val eglBaseContext = chatViewModel.eglBaseContext
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -346,11 +356,19 @@ fun AppNavigation(chatViewModel: ChatViewModel) {
             callDurationSeconds = callDurationSeconds,
             isMuted = isCallMuted,
             isSpeakerOn = isCallSpeakerOn,
+            isVideoCall = isVideoCall,
+            localVideoTrack = localVideoTrack,
+            remoteVideoTrack = remoteVideoTrack,
+            eglBaseContext = eglBaseContext,
+            isLocalVideoEnabled = isLocalVideoEnabled,
+            isFrontCamera = isFrontCamera,
             onAccept = { chatViewModel.acceptIncomingCall() },
             onReject = { chatViewModel.rejectIncomingCall() },
             onEnd = { chatViewModel.endCall() },
             onToggleMute = { chatViewModel.toggleCallMute() },
-            onToggleSpeaker = { chatViewModel.toggleCallSpeaker() }
+            onToggleSpeaker = { chatViewModel.toggleCallSpeaker() },
+            onSwitchCamera = { chatViewModel.switchCamera() },
+            onToggleVideo = { chatViewModel.toggleCallVideo() }
         )
     }
 }

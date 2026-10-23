@@ -102,7 +102,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
 
     // WebRTC for Native Android (Official Google WebRTC build by Stream)
-    implementation("io.getstream:stream-webrtc-android:1.3.1")
+    implementation("io.getstream:stream-webrtc-android:1.3.10")
 
     // Networking & WebSocket for Signaling
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

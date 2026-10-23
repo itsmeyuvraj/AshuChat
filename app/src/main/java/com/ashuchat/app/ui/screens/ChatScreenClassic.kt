@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
@@ -158,6 +159,18 @@ fun ChatScreenClassic(
     ) { granted: Boolean ->
         if (granted) {
             viewModel.startVoiceRecording()
+        }
+    }
+
+    val videoCallPermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val hasAudio = perms[Manifest.permission.RECORD_AUDIO] == true ||
+            androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val hasCamera = perms[Manifest.permission.CAMERA] == true ||
+            androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (hasAudio && hasCamera) {
+            viewModel.startCall(isVideo = true)
         }
     }
 
@@ -349,14 +362,41 @@ fun ChatScreenClassic(
                 },
                 actions = {
                     IconButton(onClick = {
-                        val hasAudioPermission = ContextCompat.checkSelfPermission(
+                        val hasAudio = androidx.core.content.ContextCompat.checkSelfPermission(
                             context,
-                            android.Manifest.permission.RECORD_AUDIO
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        if (hasAudioPermission) {
-                            viewModel.startCall()
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val hasCamera = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (hasAudio && hasCamera) {
+                            viewModel.startCall(isVideo = true)
                         } else {
-                            recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                            videoCallPermissionsLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.RECORD_AUDIO,
+                                    Manifest.permission.CAMERA
+                                )
+                            )
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Videocam,
+                            contentDescription = "Video Call",
+                            tint = RoseAccent
+                        )
+                    }
+
+                    IconButton(onClick = {
+                        val hasAudioPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (hasAudioPermission) {
+                            viewModel.startCall(isVideo = false)
+                        } else {
+                            recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     }) {
                         Icon(
@@ -366,15 +406,6 @@ fun ChatScreenClassic(
                         )
                     }
 
-                    if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
-                        IconButton(onClick = { onNavigateToShowQr(activeRoomId) }) {
-                            Icon(
-                                imageVector = Icons.Default.QrCode,
-                                contentDescription = "Show QR",
-                                tint = TextSecondary
-                            )
-                        }
-                    }
                     Box {
                         IconButton(onClick = { showRoomMenu = true }) {
                             Icon(
@@ -392,25 +423,6 @@ fun ChatScreenClassic(
                                 .background(SurfaceElevated)
                                 .border(1.dp, SurfaceBorder, RoundedCornerShape(16.dp))
                         ) {
-                            if (onNavigateToShowQr != null && activeRoomId.isNotBlank()) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Text("Room QR Code", color = TextPrimary, fontSize = 14.sp)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.QrCode,
-                                            contentDescription = null,
-                                            tint = BrandLight,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    },
-                                    onClick = {
-                                        showRoomMenu = false
-                                        onNavigateToShowQr(activeRoomId)
-                                    }
-                                )
-                            }
                             DropdownMenuItem(
                                 text = {
                                     Text("Clear Chat", color = OfflineRed, fontSize = 14.sp)

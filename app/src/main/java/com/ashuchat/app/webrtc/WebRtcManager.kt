@@ -24,15 +24,32 @@ import android.media.AudioManager
 import android.os.Build
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
+import org.webrtc.Camera1Enumerator
+import org.webrtc.Camera2Enumerator
+import org.webrtc.CameraVideoCapturer
 import org.webrtc.DataChannel
+import org.webrtc.EglBase
+import org.webrtc.DefaultVideoDecoderFactory
+import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.HardwareVideoEncoderFactory
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpReceiver
+import org.webrtc.RtpSender
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
+import org.webrtc.SurfaceTextureHelper
+import org.webrtc.VideoCapturer
+import org.webrtc.VideoCodecInfo
+import org.webrtc.VideoDecoder
+import org.webrtc.VideoDecoderFactory
+import org.webrtc.VideoEncoder
+import org.webrtc.VideoEncoderFactory
+import org.webrtc.VideoSource
+import org.webrtc.VideoTrack
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -102,8 +119,34 @@ class WebRtcManager(
     private var audioSource: AudioSource? = null
     private var localAudioTrack: AudioTrack? = null
     private var remoteAudioTrack: AudioTrack? = null
+    private var localAudioSender: RtpSender? = null
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+
+    val rootEglBase: EglBase by lazy { EglBase.create() }
+    val eglBaseContext: EglBase.Context get() = rootEglBase.eglBaseContext
+
+    private var videoCapturer: CameraVideoCapturer? = null
+    private var surfaceTextureHelper: SurfaceTextureHelper? = null
+    private var videoSource: VideoSource? = null
+    private var localVideoTrack: VideoTrack? = null
+    private var remoteVideoTrack: VideoTrack? = null
+    private var localVideoSender: RtpSender? = null
+
+    private val _localVideoTrackFlow = MutableStateFlow<VideoTrack?>(null)
+    val localVideoTrackFlow: StateFlow<VideoTrack?> = _localVideoTrackFlow.asStateFlow()
+
+    private val _remoteVideoTrackFlow = MutableStateFlow<VideoTrack?>(null)
+    val remoteVideoTrackFlow: StateFlow<VideoTrack?> = _remoteVideoTrackFlow.asStateFlow()
+
+    private val _isVideoCallActive = MutableStateFlow(false)
+    val isVideoCallActive: StateFlow<Boolean> = _isVideoCallActive.asStateFlow()
+
+    private val _isFrontCamera = MutableStateFlow(true)
+    val isFrontCamera: StateFlow<Boolean> = _isFrontCamera.asStateFlow()
+
+    private val _isLocalVideoEnabled = MutableStateFlow(true)
+    val isLocalVideoEnabled: StateFlow<Boolean> = _isLocalVideoEnabled.asStateFlow()
 
     private val _peerNameFlow = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val peerNameFlow: SharedFlow<String> = _peerNameFlow.asSharedFlow()
@@ -145,9 +188,59 @@ class WebRtcManager(
             })
             .createAudioDeviceModule()
 
+        val defaultEncoder = DefaultVideoEncoderFactory(rootEglBase.eglBaseContext, true, true)
+        val videoEncoderFactory = object : VideoEncoderFactory {
+            override fun createEncoder(info: VideoCodecInfo): VideoEncoder? {
+                return try {
+                    val encoder = defaultEncoder.createEncoder(info)
+                    Log.d(TAG, "Video encoder created for ${info.name}: $encoder")
+                    encoder
+                } catch (e: Exception) {
+                    Log.w(TAG, "Video encoder creation failed for ${info.name}: ${e.localizedMessage}")
+                    null
+                }
+            }
+
+            override fun getSupportedCodecs(): Array<VideoCodecInfo> {
+                return try {
+                    val codecs = defaultEncoder.supportedCodecs
+                    Log.d(TAG, "Supported video encoder codecs: ${codecs.map { c -> c.name }}")
+                    codecs
+                } catch (e: Exception) {
+                    emptyArray()
+                }
+            }
+        }
+
+        val defaultDecoder = DefaultVideoDecoderFactory(rootEglBase.eglBaseContext)
+        val videoDecoderFactory = object : VideoDecoderFactory {
+            override fun createDecoder(info: VideoCodecInfo): VideoDecoder? {
+                return try {
+                    val decoder = defaultDecoder.createDecoder(info)
+                    Log.d(TAG, "Video decoder created for ${info.name}: $decoder")
+                    decoder
+                } catch (e: Exception) {
+                    Log.w(TAG, "Video decoder creation failed for ${info.name}: ${e.localizedMessage}")
+                    null
+                }
+            }
+
+            override fun getSupportedCodecs(): Array<VideoCodecInfo> {
+                return try {
+                    val codecs = defaultDecoder.supportedCodecs
+                    Log.d(TAG, "Supported video decoder codecs: ${codecs.map { c -> c.name }}")
+                    codecs
+                } catch (e: Exception) {
+                    emptyArray()
+                }
+            }
+        }
+
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setOptions(PeerConnectionFactory.Options())
             .setAudioDeviceModule(adm)
+            .setVideoEncoderFactory(videoEncoderFactory)
+            .setVideoDecoderFactory(videoDecoderFactory)
             .createPeerConnectionFactory()
     }
 
@@ -210,6 +303,15 @@ class WebRtcManager(
                 override fun onIceCandidate(candidate: IceCandidate?) {
                     candidate?.let {
                         Log.d(TAG, "Local ICE Candidate generated: ${it.sdpMid}")
+                        if (isP2pConnected()) {
+                            val packet = DataChannelPacket(
+                                messageId = java.util.UUID.randomUUID().toString(),
+                                type = "ice_candidate",
+                                text = gson.toJson(it),
+                                roomId = currentRoomId
+                            )
+                            sendPacket(packet)
+                        }
                         signalingClient.sendIceCandidate(it)
                     }
                 }
@@ -256,6 +358,12 @@ class WebRtcManager(
                         track.setEnabled(true)
                         track.setVolume(10.0)
                         Log.d(TAG, "Incoming WebRTC audio track enabled with volume 10.0")
+                    } else if (track is VideoTrack) {
+                        remoteVideoTrack = track
+                        track.setEnabled(true)
+                        _remoteVideoTrackFlow.value = track
+                        _isVideoCallActive.value = true
+                        Log.d(TAG, "Incoming WebRTC video track enabled")
                     }
                 }
             }
@@ -456,10 +564,9 @@ class WebRtcManager(
     override fun onPeerJoined(clientId: String) {
         Log.d(TAG, "onPeerJoined: $clientId (myClientId: $currentClientId)")
 
-        // Ignore duplicate events if we're already negotiating or connected with this peer
+        // Ignore duplicate events if we're already negotiating or actively connected on DataChannel with this peer
         if (connectedPeerId == clientId && 
-            (_connectionState.value == P2PConnectionState.CONNECTED_P2P || 
-             _connectionState.value == P2PConnectionState.NEGOTIATING_WEBRTC)) {
+            (_connectionState.value == P2PConnectionState.CONNECTED_P2P && dataChannel?.state() == DataChannel.State.OPEN)) {
             Log.d(TAG, "Already active with peer $clientId. Skipping duplicate join.")
             return
         }
@@ -537,34 +644,65 @@ class WebRtcManager(
             setupPeerConnection()
         }
 
+        val pc = peerConnection ?: return
+        if (pc.signalingState() != PeerConnection.SignalingState.STABLE) {
+            Log.w(TAG, "Ignoring offer because signalingState is not stable: ${pc.signalingState()}")
+            return
+        }
+
+        val isVideoOffer = _isVideoCallActive.value || (sdp.contains("m=video") && !sdp.contains("m=video 0"))
+        if (isVideoOffer) {
+            _isVideoCallActive.value = true
+            ensureLocalAudioTrack()
+            ensureLocalVideoTrack()
+        } else if (sdp.contains("m=audio") && !sdp.contains("m=audio 0")) {
+            ensureLocalAudioTrack()
+        }
+
         val remoteDesc = SessionDescription(SessionDescription.Type.OFFER, sdp)
-        peerConnection?.setRemoteDescription(object : SdpObserver {
+        pc.setRemoteDescription(object : SdpObserver {
             override fun onCreateSuccess(desc: SessionDescription?) {}
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote description set for Offer. Drain pending ICE candidates.")
                 drainPendingIceCandidates()
 
+                // Configure transceivers explicitly for callee answer
+                for (transceiver in pc.transceivers) {
+                    if (transceiver.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO) {
+                        transceiver.direction = if (localVideoTrack != null) {
+                            org.webrtc.RtpTransceiver.RtpTransceiverDirection.SEND_RECV
+                        } else {
+                            org.webrtc.RtpTransceiver.RtpTransceiverDirection.RECV_ONLY
+                        }
+                        Log.d(TAG, "Callee set video transceiver direction to ${transceiver.direction}")
+                    } else if (transceiver.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO) {
+                        transceiver.direction = org.webrtc.RtpTransceiver.RtpTransceiverDirection.SEND_RECV
+                    }
+                }
+
                 // Create Answer
                 val constraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (isVideoOffer) "true" else "false"))
                 }
-                peerConnection?.createAnswer(object : SdpObserver {
+                pc.createAnswer(object : SdpObserver {
                     override fun onCreateSuccess(answerDesc: SessionDescription?) {
                         answerDesc?.let { answer ->
-                            peerConnection?.setLocalDescription(object : SdpObserver {
+                            pc.setLocalDescription(object : SdpObserver {
                                 override fun onCreateSuccess(d: SessionDescription?) {}
                                 override fun onSetSuccess() {
                                     Log.d(TAG, "Local description set for Answer. Sending answer.")
                                     val packet = DataChannelPacket(
+                                        messageId = java.util.UUID.randomUUID().toString(),
                                         type = "sdp_answer",
                                         text = answer.description,
                                         roomId = currentRoomId
                                     )
                                     if (isP2pConnected()) {
                                         sendPacket(packet)
+                                    } else {
+                                        signalingClient.sendAnswer(answer.description)
                                     }
-                                    signalingClient.sendAnswer(answer.description)
                                     _connectionState.value = P2PConnectionState.CONNECTED_P2P
                                 }
                                 override fun onCreateFailure(err: String?) {}
@@ -573,7 +711,9 @@ class WebRtcManager(
                         }
                     }
                     override fun onSetSuccess() {}
-                    override fun onCreateFailure(err: String?) {}
+                    override fun onCreateFailure(err: String?) {
+                        Log.e(TAG, "Failed creating answer: $err")
+                    }
                     override fun onSetFailure(err: String?) {}
                 }, constraints)
             }
@@ -586,8 +726,17 @@ class WebRtcManager(
 
     override fun onAnswerReceived(sdp: String) {
         Log.d(TAG, "Answer received on initiator.")
+        val pc = peerConnection
+        if (pc == null || pc.signalingState() == PeerConnection.SignalingState.CLOSED) {
+            Log.w(TAG, "PeerConnection not available to set remote answer")
+            return
+        }
+        if (pc.signalingState() != PeerConnection.SignalingState.HAVE_LOCAL_OFFER) {
+            Log.w(TAG, "Ignoring answer because signalingState is not HAVE_LOCAL_OFFER: ${pc.signalingState()}")
+            return
+        }
         val remoteDesc = SessionDescription(SessionDescription.Type.ANSWER, sdp)
-        peerConnection?.setRemoteDescription(object : SdpObserver {
+        pc.setRemoteDescription(object : SdpObserver {
             override fun onCreateSuccess(desc: SessionDescription?) {}
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote description set for Answer. Draining pending ICE candidates.")
@@ -676,7 +825,7 @@ class WebRtcManager(
         sendPacket(packet)
     }
 
-    private fun ensureLocalAudioTrack(): Boolean {
+    fun ensureLocalAudioTrack(): Boolean {
         if (localAudioTrack != null) return true
         return try {
             val factory = peerConnectionFactory ?: return false
@@ -690,8 +839,14 @@ class WebRtcManager(
             val track = factory.createAudioTrack("ARDAMSa0", audioSource)
             track.setEnabled(true)
             localAudioTrack = track
-            peerConnection?.addTrack(track, listOf("ARDAMS"))
-            Log.d(TAG, "Local audio track created and added to PeerConnection")
+
+            val sender = localAudioSender
+            if (sender != null) {
+                sender.setTrack(track, false)
+            } else {
+                localAudioSender = peerConnection?.addTrack(track, listOf("ARDAMS"))
+            }
+            Log.d(TAG, "Local audio track created and attached to PeerConnection")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed creating local audio track: ${e.localizedMessage}", e)
@@ -737,40 +892,196 @@ class WebRtcManager(
         }
     }
 
-    fun startAudioCall(): Boolean {
+    private fun createCameraCapturer(): CameraVideoCapturer? {
         return try {
-            ensureLocalAudioTrack()
-            setupAudioRouting(speakerOn = true)
-            sendRenegotiationOffer()
-            Log.d(TAG, "WebRTC audio call started with local audio track")
+            val enumerator = if (Camera2Enumerator.isSupported(context)) {
+                Camera2Enumerator(context)
+            } else {
+                Camera1Enumerator(true)
+            }
+            val deviceNames = enumerator.deviceNames
+            if (deviceNames.isNullOrEmpty()) {
+                Log.w(TAG, "No camera devices found by enumerator")
+                return null
+            }
+            // First try front-facing camera
+            for (deviceName in deviceNames) {
+                if (enumerator.isFrontFacing(deviceName)) {
+                    val capturer = enumerator.createCapturer(deviceName, null)
+                    if (capturer != null) {
+                        _isFrontCamera.value = true
+                        return capturer
+                    }
+                }
+            }
+            // Fallback to back-facing camera
+            for (deviceName in deviceNames) {
+                if (!enumerator.isFrontFacing(deviceName)) {
+                    val capturer = enumerator.createCapturer(deviceName, null)
+                    if (capturer != null) {
+                        _isFrontCamera.value = false
+                        return capturer
+                    }
+                }
+            }
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating camera capturer: ${e.localizedMessage}")
+            null
+        }
+    }
+
+    fun ensureLocalVideoTrack(): Boolean {
+        if (localVideoTrack != null) return true
+        return try {
+            val factory = peerConnectionFactory ?: return false
+            val capturer = createCameraCapturer()
+            if (capturer == null) {
+                Log.w(TAG, "No camera found on this device. Ensuring receive-only video transceiver.")
+                ensureVideoReceiverTransceiver()
+                return false
+            }
+            videoCapturer = capturer
+
+            val surfaceHelper = SurfaceTextureHelper.create("AshuChatCaptureThread", rootEglBase.eglBaseContext)
+            surfaceTextureHelper = surfaceHelper
+
+            val source = factory.createVideoSource(capturer.isScreencast)
+            videoSource = source
+
+            capturer.initialize(surfaceHelper, context, source.capturerObserver)
+            capturer.startCapture(1280, 720, 30)
+
+            val track = factory.createVideoTrack("ARDAMSv0", source)
+            track.setEnabled(_isLocalVideoEnabled.value)
+            localVideoTrack = track
+            _localVideoTrackFlow.value = track
+
+            val sender = localVideoSender
+            if (sender != null) {
+                sender.setTrack(track, false)
+            } else {
+                localVideoSender = peerConnection?.addTrack(track, listOf("ARDAMS"))
+            }
+            Log.d(TAG, "Local video track created and attached to PeerConnection")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting audio call: ${e.localizedMessage}", e)
+            Log.e(TAG, "Failed creating local video track: ${e.localizedMessage}", e)
+            ensureVideoReceiverTransceiver()
             false
         }
     }
 
-    fun sendRenegotiationOffer() {
+    private fun ensureVideoReceiverTransceiver() {
+        try {
+            val pc = peerConnection ?: return
+            val videoTransceivers = pc.transceivers.filter {
+                it.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
+            }
+            if (videoTransceivers.isEmpty()) {
+                val init = org.webrtc.RtpTransceiver.RtpTransceiverInit(
+                    org.webrtc.RtpTransceiver.RtpTransceiverDirection.RECV_ONLY
+                )
+                pc.addTransceiver(org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, init)
+                Log.d(TAG, "Added RECV_ONLY video transceiver for camera-less device")
+            } else {
+                videoTransceivers.forEach { tr ->
+                    if (tr.direction == org.webrtc.RtpTransceiver.RtpTransceiverDirection.INACTIVE ||
+                        tr.direction == org.webrtc.RtpTransceiver.RtpTransceiverDirection.SEND_ONLY) {
+                        tr.direction = org.webrtc.RtpTransceiver.RtpTransceiverDirection.RECV_ONLY
+                        Log.d(TAG, "Updated existing video transceiver direction to RECV_ONLY")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error ensuring video receiver transceiver: ${e.localizedMessage}")
+        }
+    }
+
+    fun prepareLocalAudioCall(): Boolean {
+        return try {
+            _isVideoCallActive.value = false
+            ensureLocalAudioTrack()
+            setupAudioRouting(speakerOn = true)
+            Log.d(TAG, "Prepared local audio call tracks")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error preparing local audio call: ${e.localizedMessage}", e)
+            false
+        }
+    }
+
+    fun prepareLocalVideoCall(): Boolean {
+        return try {
+            _isVideoCallActive.value = true
+            _isLocalVideoEnabled.value = true
+            ensureLocalAudioTrack()
+            ensureLocalVideoTrack()
+            setupAudioRouting(speakerOn = true)
+            Log.d(TAG, "Prepared local video call tracks")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error preparing local video call: ${e.localizedMessage}", e)
+            false
+        }
+    }
+
+    fun startAudioCall(): Boolean = prepareLocalAudioCall()
+    fun startVideoCall(): Boolean = prepareLocalVideoCall()
+    fun acceptAudioCall(): Boolean = prepareLocalAudioCall()
+    fun acceptVideoCall(): Boolean = prepareLocalVideoCall()
+
+    fun sendRenegotiationOffer(isVideo: Boolean = false) {
+        val pc = peerConnection
+        if (pc == null || pc.signalingState() == PeerConnection.SignalingState.CLOSED) {
+            Log.w(TAG, "Cannot send renegotiation offer: PeerConnection is null or closed")
+            return
+        }
+        if (pc.signalingState() != PeerConnection.SignalingState.STABLE) {
+            Log.w(TAG, "Cannot send renegotiation offer: Signaling state is not stable (${pc.signalingState()})")
+            return
+        }
+        val isVideoOffer = _isVideoCallActive.value || isVideo
+        val hasVideoTransceiver = pc.transceivers.any {
+            it.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
+        }
+        if (!hasVideoTransceiver && isVideoOffer) {
+            ensureVideoReceiverTransceiver()
+        }
+        for (transceiver in pc.transceivers) {
+            if (transceiver.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO) {
+                transceiver.direction = if (localVideoTrack != null) {
+                    org.webrtc.RtpTransceiver.RtpTransceiverDirection.SEND_RECV
+                } else {
+                    org.webrtc.RtpTransceiver.RtpTransceiverDirection.RECV_ONLY
+                }
+                Log.d(TAG, "Caller set video transceiver direction to ${transceiver.direction}")
+            } else if (transceiver.mediaType == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO) {
+                transceiver.direction = org.webrtc.RtpTransceiver.RtpTransceiverDirection.SEND_RECV
+            }
+        }
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (isVideoOffer) "true" else "false"))
         }
-        peerConnection?.createOffer(object : SdpObserver {
+        pc.createOffer(object : SdpObserver {
             override fun onCreateSuccess(desc: SessionDescription?) {
                 desc?.let { sdp ->
-                    peerConnection?.setLocalDescription(object : SdpObserver {
+                    pc.setLocalDescription(object : SdpObserver {
                         override fun onCreateSuccess(d: SessionDescription?) {}
                         override fun onSetSuccess() {
                             Log.d(TAG, "Local description set successfully for renegotiation. Sending offer.")
                             val packet = DataChannelPacket(
+                                messageId = java.util.UUID.randomUUID().toString(),
                                 type = "sdp_offer",
                                 text = sdp.description,
                                 roomId = currentRoomId
                             )
                             if (isP2pConnected()) {
                                 sendPacket(packet)
+                            } else {
+                                signalingClient.sendOffer(sdp.description)
                             }
-                            signalingClient.sendOffer(sdp.description)
                         }
                         override fun onCreateFailure(err: String?) {}
                         override fun onSetFailure(err: String?) {
@@ -787,21 +1098,32 @@ class WebRtcManager(
         }, constraints)
     }
 
-    fun acceptAudioCall(): Boolean {
-        return try {
-            ensureLocalAudioTrack()
-            setupAudioRouting(speakerOn = true)
-            sendRenegotiationOffer()
-            Log.d(TAG, "WebRTC audio call accepted with local audio track and renegotiation")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error accepting audio call: ${e.localizedMessage}", e)
-            false
-        }
+    fun switchCamera() {
+        val capturer = videoCapturer ?: return
+        capturer.switchCamera(object : CameraVideoCapturer.CameraSwitchHandler {
+            override fun onCameraSwitchDone(isFront: Boolean) {
+                _isFrontCamera.value = isFront
+                Log.d(TAG, "Camera switched. Front-facing: $isFront")
+            }
+            override fun onCameraSwitchError(error: String?) {
+                Log.e(TAG, "Error switching camera: $error")
+            }
+        })
+    }
+
+    fun toggleVideo(enabled: Boolean) {
+        _isLocalVideoEnabled.value = enabled
+        localVideoTrack?.setEnabled(enabled)
+    }
+
+    fun endCall() {
+        endAudioCall()
+        endVideo()
     }
 
     fun endAudioCall() {
         try {
+            localAudioSender?.setTrack(null, false)
             localAudioTrack?.setEnabled(false)
             localAudioTrack?.dispose()
             localAudioTrack = null
@@ -831,6 +1153,38 @@ class WebRtcManager(
             Log.d(TAG, "WebRTC audio call ended and audio hardware reset")
         } catch (e: Exception) {
             Log.w(TAG, "Error ending audio call: ${e.localizedMessage}")
+        }
+    }
+
+    fun endVideo() {
+        try {
+            _isVideoCallActive.value = false
+            try {
+                videoCapturer?.stopCapture()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error stopping video capturer: ${e.localizedMessage}")
+            }
+            videoCapturer?.dispose()
+            videoCapturer = null
+
+            localVideoSender?.setTrack(null, false)
+            localVideoTrack?.setEnabled(false)
+            localVideoTrack?.dispose()
+            localVideoTrack = null
+            _localVideoTrackFlow.value = null
+
+            videoSource?.dispose()
+            videoSource = null
+
+            surfaceTextureHelper?.dispose()
+            surfaceTextureHelper = null
+
+            remoteVideoTrack?.setEnabled(false)
+            remoteVideoTrack = null
+            _remoteVideoTrackFlow.value = null
+            Log.d(TAG, "WebRTC video call ended and video hardware released")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error ending video call: ${e.localizedMessage}")
         }
     }
 
@@ -870,7 +1224,7 @@ class WebRtcManager(
 
     private fun cleanupPeerConnection() {
         stopHeartbeat()
-        endAudioCall()
+        endCall()
         try {
             fileTransferManager.cancelAll()
             dataChannel?.close()
@@ -878,6 +1232,8 @@ class WebRtcManager(
             peerConnection?.close()
             peerConnection = null
             pendingIceCandidates.clear()
+            localAudioSender = null
+            localVideoSender = null
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up PeerConnection: ${e.localizedMessage}")
         }

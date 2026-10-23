@@ -3,12 +3,12 @@
 [![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-purple.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.11-blue.svg)](https://developer.android.com/jetpack/compose)
-[![WebRTC](https://img.shields.io/badge/WebRTC-DTLS--SRTP%20256--bit-orange.svg)](https://webrtc.org)
+[![WebRTC](https://img.shields.io/badge/WebRTC-Video%20%26%20Audio%20DTLS--SRTP-orange.svg)](https://webrtc.org)
 [![License](https://img.shields.io/badge/License-Private-red.svg)](#)
 
-A private, modern, **serverless peer-to-peer (P2P)** messaging, encrypted voice calling, and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
+A private, modern, **serverless peer-to-peer (P2P)** messaging, encrypted voice & video calling, and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
 
-Designed with love for couples to chat, make encrypted crystal-clear voice calls, exchange high-res photos, record push-to-talk voice notes, and send heartbeat "Love Pings" directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
+Designed with love for couples to chat, make encrypted crystal-clear voice and HD video calls, exchange high-res photos, record push-to-talk voice notes, and send heartbeat "Love Pings" directly phone-to-phone with **zero servers to host or manage** and **end-to-end encryption**.
 
 ---
 
@@ -16,7 +16,7 @@ Designed with love for couples to chat, make encrypted crystal-clear voice calls
 
 - **No Backend to Host or Run**: You do **NOT** need a VPS, Docker container, Node.js server, or local Python script.
 - **Serverless Cloud Handshake**: Initial peer discovery uses serverless cloud channels (Google Firebase Realtime Database REST SSE / Public cloud broker) solely to exchange the 2-second WebRTC handshake.
-- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, voice calls, voice notes, attachments, and Love Pings stream directly between devices over **WebRTC (DTLS-SRTP 256-bit encryption)**.
+- **Direct Phone-to-Phone**: Once the handshake completes, all text messages, voice calls, video calls, voice notes, attachments, and Love Pings stream directly between devices over **WebRTC (DTLS-SRTP 256-bit encryption)**.
 - **Offline Mailbox Fallback**: If your partner is offline or backgrounded, messages and voice notes automatically queue in a serverless encrypted cloud mailbox and deliver immediately once they open the app.
 - **Zero Cloud Storage of Chats**: No server ever touches, reads, or permanently stores your messages or pictures.
 
@@ -24,14 +24,26 @@ Designed with love for couples to chat, make encrypted crystal-clear voice calls
 
 ## ✨ Features
 
+### 📹 Direct P2P Encrypted Video Calls
+- **Full-Screen HD Video Stream**: Full-duplex WebRTC video streaming directly peer-to-peer with DTLS-SRTP encryption.
+- **Hardware-Accelerated Codecs**: Uses `DefaultVideoEncoderFactory` and `DefaultVideoDecoderFactory` with hardware MediaCodec (VP8, VP9, H.264) and software fallbacks.
+- **Floating Picture-in-Picture (PiP)**: View your own front/back camera feed in a draggable, rounded floating preview while the remote partner's feed renders full screen.
+- **Dynamic Camera Switching**: Seamlessly toggle between front-facing and back-facing cameras on the fly during active calls.
+- **Camera-Less & Simulator Adaptive**: Dynamically configures video transceivers (`SEND_RECV` vs `RECV_ONLY`) so devices without a physical camera (e.g. desktop Android Studio emulators) receive and display incoming remote video seamlessly.
+- **In-Call Controls Dock**: Floating dock with Flip Camera, Toggle Video, Mic Mute, Speakerphone, and End Call actions.
+
+### 📞 Direct P2P Encrypted Voice Calls
+- **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
+- **In-App Call Overlay**: Full-screen calling screen with partner avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeDown`) toggles.
+
 ### 🔒 Biometric App Lock & Privacy Suite
 - **Biometric Authentication (`BiometricPrompt`)**: Secure the app with Fingerprint or Face Unlock upon startup and when resuming from the background.
 - **Anti-Screenshot & Screen Guard (`FLAG_SECURE`)**: Prevent screenshots and screen recording, and obscure chat previews in Android's recent apps switcher.
 - **Disappearing Messages**: Self-destruct timers (**Off**, **View Once**, **30s**, **5m**, **1h**, **24h**) anchored to view time — countdown triggers only after the other user opens and views the message, with automated deletion of messages and cached attachments.
 
-### 📞 Direct P2P Encrypted Voice Calls
-- **Crystal-Clear Audio**: Hardware-accelerated WebRTC audio pipeline with acoustic echo cancellation (`googEchoCancellation`), noise suppression (`googNoiseSuppression`), and automatic gain control (`googAutoGainControl`).
-- **In-App Call Overlay**: Full-screen calling screen with partner avatar, live call timer, one-tap Mute (`Mic` / `MicOff`), and Speakerphone (`VolumeUp` / `VolumeOff`) toggles.
+### 🎨 Neo-Brutalist & Midnight Aesthetics
+- **Theme Switcher**: Switch between a funky Neo-Brutalist paper style with bold borders and mint/yellow accents, or a sleek Midnight Rose dark mode.
+- **Clean Action Bar**: Direct one-tap voice and video call launcher buttons right in the chat header.
 
 ### 🔔 24/7 Background Operation & Call Ringing
 - **Always-On Background Listener**: Runs a persistent low-power foreground synchronization service (`ChatSyncService`) and global connection manager (`ChatConnectionManager`) that survives app exit and Android Doze mode.
@@ -184,7 +196,8 @@ AshuChat/
 
 - **UI**: Jetpack Compose, Material 3, Accompanist
 - **Language**: Kotlin, Coroutines, Flow
-- **Real-Time P2P**: Google WebRTC (`stream-webrtc-android`), DTLS-SRTP
+- **Real-Time P2P**: Google WebRTC (`stream-webrtc-android:1.3.10`), DTLS-SRTP (Audio & HD Video, DataChannels)
+- **Video Rendering**: `SurfaceViewRenderer` with hardware scaling and aspect ratio fill
 - **Database**: Android Jetpack Room (SQLite)
 - **Audio**: Android `MediaRecorder` (AAC), `MediaPlayer` with playback pitch/speed control
 - **Biometrics**: `androidx.biometric:biometric`

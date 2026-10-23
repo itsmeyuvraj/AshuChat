@@ -76,5 +76,9 @@ data class DataChannelPacket(
 
     // Audio Voice Note duration in ms
     @SerializedName("audioDurationMs")
-    val audioDurationMs: Long? = null
+    val audioDurationMs: Long? = null,
+
+    // Call metadata
+    @SerializedName("isVideoCall")
+    val isVideoCall: Boolean? = null
 )

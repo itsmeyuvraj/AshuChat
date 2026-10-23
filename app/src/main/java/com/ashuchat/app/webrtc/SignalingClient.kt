@@ -1012,10 +1012,8 @@ class SignalingClient(
     }
 
     fun sendOfflineMessageForRoom(roomId: String, packet: DataChannelPacket, onResult: ((Boolean) -> Unit)? = null) {
-        val messageId = packet.messageId ?: run {
-            onResult?.invoke(false)
-            return
-        }
+        val messageId = packet.messageId ?: java.util.UUID.randomUUID().toString()
+
 
         when (activeMode) {
             SignalingMode.FIREBASE -> {
