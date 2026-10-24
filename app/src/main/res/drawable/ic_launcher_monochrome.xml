@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Left / Back Bubble (Monochrome translucent for Android 13+ Material You themed icons) -->
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M43,26 C53.5,26 62,34.5 62,45 C62,55.5 53.5,64 43,64 C39.8,64 36.8,63.2 34.2,61.8 C31.5,65.8 28.2,66.8 27.8,66.6 C27.4,66.4 28.0,63.2 29.0,59.3 C26.0,55.4 24,50.5 24,45 C24,34.5 32.5,26 43,26 Z" />
+
+    <!-- Right / Front Bubble (Solid white for primary theme tint) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M61,38 C71.5,38 80,46.5 80,57 C80,62.5 78.0,67.4 75.0,71.3 C76.0,75.2 76.6,78.4 76.2,78.6 C75.8,78.8 72.5,77.8 69.8,73.8 C67.2,75.2 64.2,76 61,76 C50.5,76 42,67.5 42,57 C42,46.5 50.5,38 61,38 Z" />
+
+</vector>
