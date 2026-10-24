@@ -117,11 +117,15 @@ class MainActivity : FragmentActivity() {
             ?: intent?.getStringExtra(CallNotificationHelper.EXTRA_CALL_ROOM_ID)
 
         if (action == CallNotificationHelper.ACTION_ANSWER_CALL) {
-            val isVideo = intent?.getBooleanExtra(CallNotificationHelper.EXTRA_IS_VIDEO_CALL, false) ?: false
+            val isVideo = intent.getBooleanExtra(CallNotificationHelper.EXTRA_IS_VIDEO_CALL, false)
             if (isVideo) {
                 ChatConnectionManager.setVideoCall(true)
             }
             ChatConnectionManager.acceptCall()
+            if (!roomId.isNullOrBlank()) {
+                chatViewModel.openRoom(roomId)
+            }
+        } else if (action == CallNotificationHelper.ACTION_INCOMING_CALL) {
             if (!roomId.isNullOrBlank()) {
                 chatViewModel.openRoom(roomId)
             }
