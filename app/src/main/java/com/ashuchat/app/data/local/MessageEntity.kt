@@ -9,7 +9,12 @@ import com.ashuchat.app.data.model.MessageType
 
 @Entity(
     tableName = "messages",
-    indices = [Index(value = ["roomId"]), Index(value = ["expiresAt"])]
+    indices = [
+        Index(value = ["roomId"]),
+        Index(value = ["roomId", "timestamp"]),
+        Index(value = ["roomId", "isFromMe", "status"]),
+        Index(value = ["expiresAt"])
+    ]
 )
 data class MessageEntity(
     @PrimaryKey

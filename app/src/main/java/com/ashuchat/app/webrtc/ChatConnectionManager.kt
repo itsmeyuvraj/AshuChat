@@ -124,10 +124,10 @@ object ChatConnectionManager {
             }
         }
 
-        // Periodic cleanup of expired disappearing messages
+        // Periodic cleanup of expired disappearing messages (optimized interval for battery efficiency)
         scope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(3000)
+                delay(15_000L)
                 try {
                     chatRepository.deleteExpiredMessages(applicationContext)
                 } catch (e: Exception) {

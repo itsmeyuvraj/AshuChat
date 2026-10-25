@@ -105,12 +105,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     chatRepository.getMessagesForRoom(roomId),
                     _activeFileProgress
                 ) { msgList, progressMap ->
-                    msgList.map { msg ->
-                        val progress = progressMap[msg.id] ?: 1.0f
-                        if (progress < 1.0f) {
-                            msg.copy(transferProgress = progress)
-                        } else {
-                            msg
+                    if (progressMap.isEmpty()) {
+                        msgList
+                    } else {
+                        msgList.map { msg ->
+                            val progress = progressMap[msg.id]
+                            if (progress != null && progress < 1.0f) {
+                                msg.copy(transferProgress = progress)
+                            } else {
+                                msg
+                            }
                         }
                     }
                 }

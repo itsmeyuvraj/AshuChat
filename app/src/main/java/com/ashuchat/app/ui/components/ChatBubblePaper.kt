@@ -768,6 +768,5 @@ private fun StatusIndicator(
 }
 
 private fun formatTime(millis: Long): String {
-    val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
-    return sdf.format(Date(millis))
+    return com.ashuchat.app.utils.TimeUtils.formatMessageTime(millis)
 }

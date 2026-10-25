@@ -144,7 +144,7 @@ class ChatSyncService : Service() {
                 }
             }
             if (wakeLock?.isHeld == false) {
-                wakeLock?.acquire(60 * 60 * 1000L) // 1 hour safety acquisition
+                wakeLock?.acquire(10 * 1000L) // 10-second transient acquisition for service startup
             }
         } catch (_: Exception) {}
     }

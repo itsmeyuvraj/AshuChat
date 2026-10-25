@@ -14,3 +14,24 @@
 
 # App Update Models
 -keep class com.ashuchat.app.utils.AppUpdateInfo { *; }
+
+# OkHttp & Okio
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keepattributes *Annotation*
+
+# Coil Image Loader
+-keep class coil.** { *; }
+-dontwarn coil.**
+
+# ML Kit Barcode & ZXing
+-keep class com.google.mlkit.vision.barcode.** { *; }
+-keep class com.google.zxing.** { *; }
+
+# CameraX
+-dontwarn androidx.camera.**
+-keep class androidx.camera.core.** { *; }
+
+# Coroutines
+-dontwarn kotlinx.coroutines.**
+

@@ -1,9 +1,13 @@
 package com.ashuchat.app.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "rooms")
+@Entity(
+    tableName = "rooms",
+    indices = [Index(value = ["lastTimestamp"])]
+)
 data class RoomEntity(
     @PrimaryKey
     val roomId: String,

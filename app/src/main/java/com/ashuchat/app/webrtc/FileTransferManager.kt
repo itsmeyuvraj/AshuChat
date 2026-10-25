@@ -162,8 +162,11 @@ class FileTransferManager(
                 } else {
                     1f
                 }
-                activeProgress[fileId] = progress
-                listener.onFileTransferProgress(transfer.messageId, progress)
+                val prevProgress = activeProgress[fileId] ?: 0f
+                if (progress >= 1f || (progress - prevProgress) >= 0.02f) {
+                    activeProgress[fileId] = progress
+                    listener.onFileTransferProgress(transfer.messageId, progress)
+                }
 
                 if (transfer.receivedChunks >= transfer.totalChunks || transfer.receivedBytes >= transfer.fileSize) {
                     Log.d(TAG, "File transfer completed for fileId: $fileId")
@@ -264,6 +267,7 @@ class FileTransferManager(
                 var chunkIndex = 0
                 var bytesSent = 0L
 
+                var lastReportedProgress = 0f
                 inputStream.use { stream ->
                     var bytesRead: Int
                     while (stream.read(buffer).also { bytesRead = it } != -1) {
@@ -301,7 +305,10 @@ class FileTransferManager(
                         } else {
                             1f
                         }
-                        listener.onFileTransferProgress(messageId, progress)
+                        if (progress >= 1f || (progress - lastReportedProgress) >= 0.02f) {
+                            lastReportedProgress = progress
+                            listener.onFileTransferProgress(messageId, progress)
+                        }
                     }
                 }
 

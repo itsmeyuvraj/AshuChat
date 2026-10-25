@@ -20,7 +20,11 @@ object NotificationHelper {
 
     const val EXTRA_OPEN_ROOM_ID = "EXTRA_OPEN_ROOM_ID"
 
+    @Volatile
+    private var channelsInitialized = false
+
     fun initNotificationChannels(context: Context) {
+        if (channelsInitialized) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
@@ -67,6 +71,7 @@ object NotificationHelper {
                 setShowBadge(false)
             }
             manager.createNotificationChannel(syncChannel)
+            channelsInitialized = true
         }
     }
 

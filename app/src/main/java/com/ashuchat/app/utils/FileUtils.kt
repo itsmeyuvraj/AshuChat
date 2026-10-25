@@ -128,7 +128,7 @@ object FileUtils {
             ?: throw IllegalStateException("Could not read URI: $uri")
         stream.use { input ->
             destFile.outputStream().use { output ->
-                input.copyTo(output)
+                input.copyTo(output, bufferSize = 64 * 1024)
             }
         }
         return destFile.absolutePath

@@ -252,12 +252,18 @@ fun ChatScreenPaper(
     }
 
     // Auto-scroll to bottom on new messages and mark viewed
+    var isFirstLoad by remember { mutableStateOf(true) }
     LaunchedEffect(messages.size) {
         if (activeRoomId.isNotBlank()) {
             viewModel.markRoomMessagesAsRead(activeRoomId)
         }
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            if (isFirstLoad) {
+                listState.scrollToItem(messages.size - 1)
+                isFirstLoad = false
+            } else {
+                listState.animateScrollToItem(messages.size - 1)
+            }
         }
     }
 

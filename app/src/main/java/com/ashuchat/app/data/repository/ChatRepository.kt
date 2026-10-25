@@ -130,10 +130,11 @@ class ChatRepository(
     suspend fun deleteExpiredMessages(context: Context? = null) {
         val now = System.currentTimeMillis()
         val expired = messageDao.getExpiredMessages(now)
+        if (expired.isEmpty()) return
         for (msg in expired) {
             FileUtils.deleteFile(msg.attachmentPath)
-            messageDao.deleteMessage(msg.id)
         }
+        messageDao.deleteExpiredMessages(now)
     }
 
     suspend fun deleteMessage(id: String) {
