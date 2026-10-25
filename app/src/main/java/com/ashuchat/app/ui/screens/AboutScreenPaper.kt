@@ -49,6 +49,7 @@ import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoCardLavender
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardPink
+import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
@@ -211,6 +212,68 @@ fun AboutScreenPaper(
                             )
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // What's New & Changelog Card (Pastel Sky NeoBrutalCard)
+            NeoBrutalCard(
+                backgroundColor = NeoCardSky,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🚀", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "WHAT'S NEW IN v${viewModel.updateManager.currentVersionName}",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NeoBlack
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(NeoCardYellow)
+                                .border(1.5.dp, NeoBlack, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "CHANGELOG",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NeoBlack
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val currentNotes = updateInfo?.releaseNotes?.takeIf { it.isNotBlank() } ?: """
+                        * feat: make audio and video calls more robust with 40s ringing timeouts and glare collision resolution
+                        * fix: automatic missed-call tracking, in-chat status history, and high-priority call alerts
+                        * sec: in-ear proximity sensor support for voice calls to prevent accidental touch events
+                        * perf: centralized background message retry queue upon network reconnection
+                        * perf: Room database indexing and build-time optimization
+                    """.trimIndent()
+
+                    com.ashuchat.app.ui.components.ChangelogView(
+                        rawNotes = currentNotes,
+                        isPaper = true,
+                        maxHeight = 220.dp
+                    )
                 }
             }
 

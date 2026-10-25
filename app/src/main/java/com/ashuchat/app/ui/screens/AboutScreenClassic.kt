@@ -237,6 +237,66 @@ fun AboutScreenClassic(
 
             Spacer(modifier = Modifier.height(18.dp))
 
+            // What's New & Changelog Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, SurfaceBorder, RoundedCornerShape(18.dp))
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "✨", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "What's New in v${viewModel.updateManager.currentVersionName}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceCard)
+                            .border(1.dp, SurfaceBorder, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Changelog",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BrandLight
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val currentNotes = updateInfo?.releaseNotes?.takeIf { it.isNotBlank() } ?: """
+                    * feat: make audio and video calls more robust with 40s ringing timeouts and glare collision resolution
+                    * fix: automatic missed-call tracking, in-chat status history, and high-priority call alerts
+                    * sec: in-ear proximity sensor support for voice calls to prevent accidental touch events
+                    * perf: centralized background message retry queue upon network reconnection
+                    * perf: Room database indexing and build-time optimization
+                """.trimIndent()
+
+                com.ashuchat.app.ui.components.ChangelogView(
+                    rawNotes = currentNotes,
+                    isPaper = false,
+                    maxHeight = 220.dp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
             // Dedication Card
             Column(
                 modifier = Modifier

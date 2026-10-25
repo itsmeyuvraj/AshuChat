@@ -2,6 +2,7 @@ package com.ashuchat.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -119,34 +121,49 @@ fun UpdateDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (updateInfo.releaseNotes.isNotBlank()) {
-                    Text(
-                        text = if (isPaper) "WHAT'S NEW:" else "What's New:",
-                        fontSize = if (isPaper) 12.sp else 13.sp,
-                        fontWeight = if (isPaper) FontWeight.Black else FontWeight.SemiBold,
-                        color = if (isPaper) NeoBlack else TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isPaper) NeoBackground else SurfaceCard)
-                            .border(
-                                if (isPaper) 1.5.dp else 1.dp,
-                                if (isPaper) NeoBlack else SurfaceBorder,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(12.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = updateInfo.releaseNotes,
-                            fontSize = 12.sp,
-                            fontWeight = if (isPaper) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isPaper) NeoBlack else TextSecondary,
-                            modifier = Modifier.verticalScroll(rememberScrollState())
+                            text = if (isPaper) "WHAT'S NEW" else "What's New",
+                            fontSize = if (isPaper) 12.sp else 13.sp,
+                            fontWeight = if (isPaper) FontWeight.Black else FontWeight.Bold,
+                            color = if (isPaper) NeoBlack else TextPrimary
                         )
+
+                        val updateCount = remember(updateInfo.releaseNotes) {
+                            ChangelogParser.parse(updateInfo.releaseNotes).size
+                        }
+                        if (updateCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isPaper) NeoCardYellow else SurfaceCard)
+                                    .border(
+                                        if (isPaper) 1.5.dp else 1.dp,
+                                        if (isPaper) NeoBlack else SurfaceBorder,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$updateCount changes",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isPaper) NeoBlack else BrandLight
+                                )
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ChangelogView(
+                        rawNotes = updateInfo.releaseNotes,
+                        isPaper = isPaper,
+                        maxHeight = 220.dp
+                    )
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
