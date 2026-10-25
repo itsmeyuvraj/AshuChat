@@ -694,218 +694,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun flushPendingMessages() {
         val currentRoom = activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
-        flushAllPendingMessages(currentRoom)
+        ChatConnectionManager.flushPendingMessages(currentRoom)
     }
 
     fun flushAllPendingMessages(targetRoomId: String? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val pendingList = if (!targetRoomId.isNullOrBlank()) {
-                chatRepository.getPendingOutgoingMessagesForRoom(targetRoomId)
-            } else {
-                chatRepository.getPendingOutgoingMessages()
-            }
-
-            for (msg in pendingList) {
-                dispatchOutgoingMessage(msg)
-            }
+        if (!targetRoomId.isNullOrBlank()) {
+            ChatConnectionManager.flushPendingMessages(targetRoomId)
+        } else {
+            ChatConnectionManager.flushAllPendingMessages()
         }
     }
 
     fun retryMessage(messageId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val msg = chatRepository.getMessage(messageId) ?: return@launch
-            chatRepository.updateMessageStatus(messageId, MessageStatus.SENDING)
-            dispatchOutgoingMessage(msg)
-        }
+        ChatConnectionManager.retryMessage(messageId)
     }
 
     private suspend fun dispatchOutgoingMessage(msg: ChatMessage) {
-        val context = getApplication<Application>()
-        when (msg.type) {
-            MessageType.TEXT, MessageType.PING, MessageType.LOVE_PING -> {
-                val packet = DataChannelPacket(
-                    type = if (msg.type == MessageType.PING || msg.type == MessageType.LOVE_PING) "ping" else "text",
-                    messageId = msg.id,
-                    senderName = prefs.myName,
-                    text = msg.text,
-                    timestamp = msg.timestamp,
-                    disappearingDuration = msg.disappearingDuration
-                )
-
-                if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
-                    val sent = webRtcManager.sendPacket(packet)
-                    if (sent) {
-                        chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
-                        viewModelScope.launch {
-                            delay(4500)
-                            val curr = chatRepository.getMessage(msg.id)
-                            if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
-                                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet)
-                            }
-                        }
-                        return
-                    }
-                }
-
-                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet) { success ->
-                    viewModelScope.launch(Dispatchers.IO) {
-                        val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
-                        chatRepository.updateMessageStatus(msg.id, newStatus)
-                    }
-                }
-            }
-
-            MessageType.IMAGE -> {
-                val path = msg.attachmentPath
-                if (path.isNullOrBlank()) {
-                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                    return
-                }
-
-                val fileUri = if (path.startsWith("/")) Uri.fromFile(File(path)) else Uri.parse(path)
-                val compressedBytes = FileUtils.compressImageForTransfer(context, fileUri)
-                    ?: try {
-                        val f = File(path)
-                        if (f.exists()) f.readBytes() else null
-                    } catch (_: Exception) { null }
-
-                if (compressedBytes != null && compressedBytes.size < 2 * 1024 * 1024) {
-                    val base64 = android.util.Base64.encodeToString(compressedBytes, android.util.Base64.NO_WRAP)
-                    val imagePacket = DataChannelPacket(
-                        type = "image",
-                        messageId = msg.id,
-                        senderName = prefs.myName,
-                        fileName = msg.attachmentName ?: "photo.jpg",
-                        fileSize = compressedBytes.size.toLong(),
-                        mimeType = msg.mimeType ?: "image/jpeg",
-                        timestamp = msg.timestamp,
-                        dataBase64 = base64,
-                        disappearingDuration = msg.disappearingDuration
-                    )
-
-                    if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
-                        val sent = webRtcManager.sendPacket(imagePacket)
-                        if (sent) {
-                            chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
-                            viewModelScope.launch {
-                                delay(4500)
-                                val curr = chatRepository.getMessage(msg.id)
-                                if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
-                                    webRtcManager.sendOfflinePacketForRoom(msg.roomId, imagePacket)
-                                }
-                            }
-                            return
-                        }
-                    }
-
-                    webRtcManager.sendOfflinePacketForRoom(msg.roomId, imagePacket) { success ->
-                        viewModelScope.launch(Dispatchers.IO) {
-                            val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
-                            chatRepository.updateMessageStatus(msg.id, newStatus)
-                        }
-                    }
-                } else {
-                    Log.w(TAG, "Cannot send image: compression failed or file too large")
-                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                }
-            }
-
-            MessageType.FILE -> {
-                val path = msg.attachmentPath
-                val file = if (!path.isNullOrBlank()) File(path) else null
-                if (file == null || !file.exists()) {
-                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                    return
-                }
-
-                val fileUri = Uri.fromFile(file)
-                if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
-                    webRtcManager.sendFileAttachment(
-                        messageId = msg.id,
-                        uri = fileUri,
-                        fileName = msg.attachmentName ?: file.name,
-                        fileSize = msg.attachmentSize.takeIf { it > 0 } ?: file.length(),
-                        mimeType = msg.mimeType,
-                        senderName = prefs.myName,
-                        disappearingDuration = msg.disappearingDuration
-                    )
-                } else if (file.length() in 1..1024 * 1024) {
-                    try {
-                        val bytes = file.readBytes()
-                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                        val filePacket = DataChannelPacket(
-                            type = "file",
-                            messageId = msg.id,
-                            senderName = prefs.myName,
-                            fileName = msg.attachmentName ?: file.name,
-                            fileSize = file.length(),
-                            mimeType = msg.mimeType,
-                            timestamp = msg.timestamp,
-                            dataBase64 = base64,
-                            disappearingDuration = msg.disappearingDuration
-                        )
-                        webRtcManager.sendOfflinePacketForRoom(msg.roomId, filePacket) { success ->
-                            viewModelScope.launch(Dispatchers.IO) {
-                                val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
-                                chatRepository.updateMessageStatus(msg.id, newStatus)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed reading file for retry/flush: ${e.localizedMessage}")
-                        chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                    }
-                } else {
-                    Log.w(TAG, "Cannot send file offline: file exceeds 1MB threshold")
-                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                }
-            }
-
-            MessageType.AUDIO -> {
-                val path = msg.attachmentPath
-                val file = if (!path.isNullOrBlank()) File(path) else null
-                if (file == null || !file.exists()) {
-                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                    return
-                }
-
-                if (file.length() in 1..2 * 1024 * 1024) {
-                    try {
-                        val bytes = file.readBytes()
-                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                        val audioPacket = DataChannelPacket(
-                            type = "audio",
-                            messageId = msg.id,
-                            senderName = prefs.myName,
-                            fileName = msg.attachmentName ?: file.name,
-                            fileSize = file.length(),
-                            mimeType = msg.mimeType ?: "audio/mp4",
-                            timestamp = msg.timestamp,
-                            dataBase64 = base64,
-                            replyToId = msg.replyToId,
-                            replyToText = msg.replyToText,
-                            replyToSender = msg.replyToSender,
-                            disappearingDuration = msg.disappearingDuration
-                        )
-                        if (msg.roomId == activeRoomId.value && webRtcManager.isP2pConnected()) {
-                            val sent = webRtcManager.sendPacket(audioPacket)
-                            if (sent) {
-                                chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
-                                return
-                            }
-                        }
-                        webRtcManager.sendOfflinePacketForRoom(msg.roomId, audioPacket) { success ->
-                            viewModelScope.launch(Dispatchers.IO) {
-                                val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
-                                chatRepository.updateMessageStatus(msg.id, newStatus)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed reading audio file for retry/flush: ${e.localizedMessage}")
-                        chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
-                    }
-                }
-            }
-        }
+        ChatConnectionManager.dispatchOutgoingMessage(msg)
     }
 
     fun markRoomMessagesAsRead(roomId: String) {

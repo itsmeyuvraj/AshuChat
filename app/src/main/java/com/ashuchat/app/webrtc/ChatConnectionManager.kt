@@ -1,6 +1,8 @@
 package com.ashuchat.app.webrtc
 
 import android.content.Context
+import android.net.Uri
+import android.os.PowerManager
 import android.util.Base64
 import android.util.Log
 import com.ashuchat.app.AshuChatApp
@@ -17,6 +19,7 @@ import com.ashuchat.app.utils.CallNotificationHelper
 import com.ashuchat.app.utils.FileUtils
 import com.ashuchat.app.utils.NetworkMonitor
 import com.ashuchat.app.utils.NotificationHelper
+import com.ashuchat.app.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
 
 /**
@@ -94,8 +98,14 @@ object ChatConnectionManager {
     private val _showPingEffect = MutableStateFlow(false)
     val showPingEffect: StateFlow<Boolean> = _showPingEffect.asStateFlow()
 
+    private const val CALL_RINGING_TIMEOUT_MS = 40_000L
+
     private var callDurationJob: Job? = null
     private var typingJob: Job? = null
+    private var outgoingCallTimeoutJob: Job? = null
+    private var incomingCallTimeoutJob: Job? = null
+    private var callDisconnectJob: Job? = null
+    private var proximityWakeLock: PowerManager.WakeLock? = null
 
     @Synchronized
     fun init(context: Context) {
@@ -114,6 +124,7 @@ object ChatConnectionManager {
 
         observeIncomingPackets()
         observeNetworkState()
+        observeConnectionState()
 
         // Sync video call flag if remote video track arrives
         scope.launch {
@@ -193,6 +204,7 @@ object ChatConnectionManager {
             )
             Log.d(TAG, "Connecting to room $clean on signaling ${prefs.signalingUrl}")
         }
+        flushPendingMessages(clean)
     }
 
     private fun observeNetworkState() {
@@ -204,6 +216,40 @@ object ChatConnectionManager {
                         Log.d(TAG, "Network restored. Ensuring room connection: $currentRoom")
                         openRoom(currentRoom, forceReconnect = false)
                     }
+                    flushAllPendingMessages()
+                }
+            }
+        }
+    }
+
+    private fun observeConnectionState() {
+        scope.launch {
+            webRtcManager.connectionState.collect { state ->
+                when (state) {
+                    P2PConnectionState.CONNECTED_P2P -> {
+                        callDisconnectJob?.cancel()
+                        callDisconnectJob = null
+                        val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+                        flushPendingMessages(currentRoom)
+                    }
+                    P2PConnectionState.FAILED,
+                    P2PConnectionState.WAITING_FOR_PEER,
+                    P2PConnectionState.DISCONNECTED -> {
+                        if (_callState.value == CallState.CONNECTED) {
+                            if (callDisconnectJob == null || callDisconnectJob?.isActive == false) {
+                                callDisconnectJob = scope.launch {
+                                    Log.w(TAG, "WebRTC P2P disconnected during active call. Waiting 10s for auto-reconnect...")
+                                    delay(10_000L)
+                                    if (_callState.value == CallState.CONNECTED &&
+                                        webRtcManager.connectionState.value != P2PConnectionState.CONNECTED_P2P) {
+                                        Log.w(TAG, "Call reconnect grace expired. Cleanly ending call.")
+                                        endCall()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {}
                 }
             }
         }
@@ -579,23 +625,61 @@ object ChatConnectionManager {
 
             "call_offer" -> {
                 Log.d(TAG, "Incoming call offer received from ${packet.senderName}, isVideo: ${packet.isVideoCall}")
+                val isVideo = packet.isVideoCall == true
+                val caller = packet.senderName ?: _partnerName.value
+
                 if (_callState.value == CallState.IDLE) {
-                    val isVideo = packet.isVideoCall == true
+                    cancelCallTimeouts()
                     _isVideoCall.value = isVideo
                     _callState.value = CallState.INCOMING
-                    val caller = packet.senderName ?: _partnerName.value
                     CallNotificationHelper.showIncomingCallNotification(
                         context = context,
                         callerName = caller,
                         roomId = currentRoom,
                         isVideo = isVideo
                     )
+                    incomingCallTimeoutJob = scope.launch {
+                        delay(CALL_RINGING_TIMEOUT_MS)
+                        if (_callState.value == CallState.INCOMING) {
+                            Log.w(TAG, "Incoming call timed out after ${CALL_RINGING_TIMEOUT_MS / 1000}s (missed)")
+                            CallNotificationHelper.dismissIncomingCallNotification(context)
+                            webRtcManager.endCall()
+                            _callState.value = CallState.IDLE
+                            _isVideoCall.value = false
+                            NotificationHelper.showMissedCallNotification(
+                                context = context,
+                                callerName = caller,
+                                roomId = currentRoom,
+                                isVideo = isVideo
+                            )
+                            recordCallEventInChat(
+                                roomId = currentRoom,
+                                callerName = caller,
+                                isFromMe = false,
+                                text = "📞 Missed ${if (isVideo) "video" else "voice"} call"
+                            )
+                        }
+                    }
+                } else if (_callState.value == CallState.OUTGOING) {
+                    // Glare condition: Both users called each other simultaneously!
+                    val myId = prefs.clientId
+                    val peerId = packet.senderClientId ?: packet.senderName ?: ""
+                    Log.d(TAG, "Call glare collision detected: myId=$myId vs peerId=$peerId")
+                    if (peerId > myId) {
+                        Log.d(TAG, "Yielding outgoing call to peer $peerId, auto-answering incoming offer")
+                        cancelCallTimeouts()
+                        _isVideoCall.value = isVideo || _isVideoCall.value
+                        acceptCall()
+                    } else {
+                        Log.d(TAG, "Winning glare collision against $peerId. Waiting for peer to answer.")
+                    }
                 }
             }
 
             "call_answer" -> {
                 Log.d(TAG, "Incoming call answer received, isVideo: ${packet.isVideoCall}")
                 if (_callState.value == CallState.OUTGOING) {
+                    cancelCallTimeouts()
                     _callState.value = CallState.CONNECTED
                     if (packet.isVideoCall == true) {
                         _isVideoCall.value = true
@@ -603,16 +687,59 @@ object ChatConnectionManager {
                     CallNotificationHelper.dismissIncomingCallNotification(context)
                     startCallDurationTimer()
                     webRtcManager.sendRenegotiationOffer(isVideo = _isVideoCall.value)
+                    updateProximitySensor()
                 }
             }
 
             "call_reject", "call_end" -> {
-                Log.d(TAG, "Call ended or rejected by peer")
+                Log.d(TAG, "Call ended or rejected by peer (previous state: ${_callState.value})")
+                val wasIncoming = (_callState.value == CallState.INCOMING)
+                val wasOutgoing = (_callState.value == CallState.OUTGOING)
+                val wasConnected = (_callState.value == CallState.CONNECTED)
+                val duration = _callDurationSeconds.value
+                val isVideo = _isVideoCall.value
+                val caller = packet.senderName ?: _partnerName.value
+
+                cancelCallTimeouts()
+                callDisconnectJob?.cancel()
+                callDisconnectJob = null
+
                 _callState.value = CallState.IDLE
                 _isVideoCall.value = false
                 stopCallDurationTimer()
                 webRtcManager.endCall()
+                releaseProximitySensor()
                 CallNotificationHelper.dismissIncomingCallNotification(context)
+
+                if (wasIncoming) {
+                    // Caller cancelled before answer: notify as missed call and log to chat
+                    NotificationHelper.showMissedCallNotification(
+                        context = context,
+                        callerName = caller,
+                        roomId = currentRoom,
+                        isVideo = isVideo
+                    )
+                    recordCallEventInChat(
+                        roomId = currentRoom,
+                        callerName = caller,
+                        isFromMe = false,
+                        text = "📞 Missed ${if (isVideo) "video" else "voice"} call"
+                    )
+                } else if (wasOutgoing) {
+                    recordCallEventInChat(
+                        roomId = currentRoom,
+                        callerName = caller,
+                        isFromMe = true,
+                        text = "📞 Call declined"
+                    )
+                } else if (wasConnected && duration > 0) {
+                    recordCallEventInChat(
+                        roomId = currentRoom,
+                        callerName = caller,
+                        isFromMe = false,
+                        text = "📞 Call ended (${TimeUtils.formatCallDuration(duration)})"
+                    )
+                }
             }
 
             "sdp_offer" -> {
@@ -685,6 +812,8 @@ object ChatConnectionManager {
     // Call Actions
     fun startCall(isVideo: Boolean = false) {
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        cancelCallTimeouts()
+
         _isVideoCall.value = isVideo
         _callState.value = CallState.OUTGOING
         _callDurationSeconds.value = 0
@@ -698,9 +827,10 @@ object ChatConnectionManager {
         }
 
         val packet = DataChannelPacket(
-            messageId = java.util.UUID.randomUUID().toString(),
+            messageId = UUID.randomUUID().toString(),
             type = "call_offer",
             senderName = prefs.myName,
+            senderClientId = prefs.clientId,
             roomId = currentRoom,
             isVideoCall = isVideo,
             timestamp = System.currentTimeMillis()
@@ -710,9 +840,42 @@ object ChatConnectionManager {
         } else {
             webRtcManager.sendOfflinePacketForRoom(currentRoom, packet)
         }
+
+        outgoingCallTimeoutJob = scope.launch {
+            delay(CALL_RINGING_TIMEOUT_MS)
+            if (_callState.value == CallState.OUTGOING) {
+                Log.w(TAG, "Outgoing call timed out after ${CALL_RINGING_TIMEOUT_MS / 1000}s (unanswered)")
+                val endPacket = DataChannelPacket(
+                    messageId = UUID.randomUUID().toString(),
+                    type = "call_end",
+                    senderName = prefs.myName,
+                    senderClientId = prefs.clientId,
+                    roomId = currentRoom,
+                    timestamp = System.currentTimeMillis()
+                )
+                if (webRtcManager.isP2pConnected()) {
+                    webRtcManager.sendPacket(endPacket)
+                } else {
+                    webRtcManager.sendOfflinePacketForRoom(currentRoom, endPacket)
+                }
+
+                webRtcManager.endCall()
+                _callState.value = CallState.IDLE
+                _isVideoCall.value = false
+                releaseProximitySensor()
+
+                recordCallEventInChat(
+                    roomId = currentRoom,
+                    callerName = prefs.myName,
+                    isFromMe = true,
+                    text = "📞 Unanswered ${if (isVideo) "video" else "voice"} call"
+                )
+            }
+        }
     }
 
     fun acceptCall() {
+        cancelCallTimeouts()
         val context = applicationContext
         if (context != null) {
             CallNotificationHelper.dismissIncomingCallNotification(context)
@@ -732,9 +895,10 @@ object ChatConnectionManager {
         }
 
         val packet = DataChannelPacket(
-            messageId = java.util.UUID.randomUUID().toString(),
+            messageId = UUID.randomUUID().toString(),
             type = "call_answer",
             senderName = prefs.myName,
+            senderClientId = prefs.clientId,
             roomId = currentRoom,
             isVideoCall = isVideo,
             timestamp = System.currentTimeMillis()
@@ -746,9 +910,11 @@ object ChatConnectionManager {
         }
 
         startCallDurationTimer()
+        updateProximitySensor()
     }
 
     fun rejectCall() {
+        cancelCallTimeouts()
         val context = applicationContext
         if (context != null) {
             CallNotificationHelper.dismissIncomingCallNotification(context)
@@ -759,11 +925,13 @@ object ChatConnectionManager {
         _isVideoCall.value = false
         stopCallDurationTimer()
         webRtcManager.endCall()
+        releaseProximitySensor()
 
         val packet = DataChannelPacket(
-            messageId = java.util.UUID.randomUUID().toString(),
+            messageId = UUID.randomUUID().toString(),
             type = "call_reject",
             senderName = prefs.myName,
+            senderClientId = prefs.clientId,
             roomId = currentRoom,
             timestamp = System.currentTimeMillis()
         )
@@ -775,21 +943,41 @@ object ChatConnectionManager {
     }
 
     fun endCall() {
+        cancelCallTimeouts()
+        callDisconnectJob?.cancel()
+        callDisconnectJob = null
+
         val context = applicationContext
         if (context != null) {
             CallNotificationHelper.dismissIncomingCallNotification(context)
         }
 
         val currentRoom = _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        val wasConnected = (_callState.value == CallState.CONNECTED)
+        val duration = _callDurationSeconds.value
+
         _callState.value = CallState.IDLE
         _isVideoCall.value = false
         stopCallDurationTimer()
         webRtcManager.endCall()
+        releaseProximitySensor()
+
+        if (wasConnected && duration > 0) {
+            scope.launch {
+                recordCallEventInChat(
+                    roomId = currentRoom,
+                    callerName = prefs.myName,
+                    isFromMe = true,
+                    text = "📞 Call ended (${TimeUtils.formatCallDuration(duration)})"
+                )
+            }
+        }
 
         val packet = DataChannelPacket(
-            messageId = java.util.UUID.randomUUID().toString(),
+            messageId = UUID.randomUUID().toString(),
             type = "call_end",
             senderName = prefs.myName,
+            senderClientId = prefs.clientId,
             roomId = currentRoom,
             timestamp = System.currentTimeMillis()
         )
@@ -807,6 +995,7 @@ object ChatConnectionManager {
     fun toggleCallVideo() {
         val newEnabled = !webRtcManager.isLocalVideoEnabled.value
         webRtcManager.toggleVideo(newEnabled)
+        updateProximitySensor()
     }
 
     fun toggleCallMute() {
@@ -819,6 +1008,324 @@ object ChatConnectionManager {
         val newSpeaker = !_isCallSpeakerOn.value
         _isCallSpeakerOn.value = newSpeaker
         webRtcManager.toggleSpeaker(newSpeaker)
+        updateProximitySensor()
+    }
+
+    private fun cancelCallTimeouts() {
+        outgoingCallTimeoutJob?.cancel()
+        outgoingCallTimeoutJob = null
+        incomingCallTimeoutJob?.cancel()
+        incomingCallTimeoutJob = null
+    }
+
+    private fun updateProximitySensor() {
+        val context = applicationContext ?: return
+        val shouldHoldProximity = (_callState.value == CallState.CONNECTED) &&
+                !_isVideoCall.value &&
+                !_isCallSpeakerOn.value
+
+        if (shouldHoldProximity) {
+            if (proximityWakeLock == null) {
+                try {
+                    val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                    if (pm != null && pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+                        proximityWakeLock = pm.newWakeLock(
+                            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                            "AshuChat:InCallProximityWakeLock"
+                        ).apply {
+                            setReferenceCounted(false)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed creating proximity wake lock: ${e.localizedMessage}")
+                }
+            }
+            try {
+                if (proximityWakeLock?.isHeld == false) {
+                    proximityWakeLock?.acquire(2 * 60 * 60 * 1000L) // Safe 2-hour max acquisition
+                    Log.d(TAG, "Proximity wake lock acquired for in-ear audio call")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed acquiring proximity wake lock: ${e.localizedMessage}")
+            }
+        } else {
+            releaseProximitySensor()
+        }
+    }
+
+    private fun releaseProximitySensor() {
+        try {
+            if (proximityWakeLock?.isHeld == true) {
+                proximityWakeLock?.release()
+                Log.d(TAG, "Proximity wake lock released")
+            }
+        } catch (_: Exception) {}
+        proximityWakeLock = null
+    }
+
+    private suspend fun recordCallEventInChat(roomId: String, callerName: String, isFromMe: Boolean, text: String) {
+        try {
+            val msg = ChatMessage(
+                id = UUID.randomUUID().toString(),
+                roomId = roomId,
+                senderName = if (isFromMe) prefs.myName else callerName,
+                isFromMe = isFromMe,
+                text = text,
+                type = MessageType.TEXT,
+                timestamp = System.currentTimeMillis(),
+                status = MessageStatus.DELIVERED
+            )
+            chatRepository.insertMessage(msg)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed recording call event in chat: ${e.localizedMessage}")
+        }
+    }
+
+    fun flushPendingMessages(roomId: String? = null) {
+        val targetRoom = roomId?.takeIf { it.isNotBlank() }
+            ?: _activeRoomId.value.ifBlank { prefs.roomId.trim().uppercase() }
+        if (targetRoom.isBlank()) return
+
+        scope.launch(Dispatchers.IO) {
+            val pending = chatRepository.getPendingOutgoingMessagesForRoom(targetRoom)
+            if (pending.isEmpty()) return@launch
+            Log.d(TAG, "Flushing ${pending.size} pending messages for room $targetRoom")
+            for (msg in pending) {
+                dispatchOutgoingMessage(msg)
+                delay(80)
+            }
+        }
+    }
+
+    fun flushAllPendingMessages() {
+        scope.launch(Dispatchers.IO) {
+            val pending = chatRepository.getPendingOutgoingMessages()
+            if (pending.isEmpty()) return@launch
+            Log.d(TAG, "Flushing ${pending.size} pending messages across all rooms")
+            for (msg in pending) {
+                dispatchOutgoingMessage(msg)
+                delay(80)
+            }
+        }
+    }
+
+    fun retryMessage(messageId: String) {
+        scope.launch(Dispatchers.IO) {
+            val msg = chatRepository.getMessage(messageId) ?: return@launch
+            chatRepository.updateMessageStatus(messageId, MessageStatus.SENDING)
+            dispatchOutgoingMessage(msg)
+        }
+    }
+
+    suspend fun dispatchOutgoingMessage(msg: ChatMessage) {
+        val context = applicationContext ?: return
+        when (msg.type) {
+            MessageType.TEXT, MessageType.PING, MessageType.LOVE_PING -> {
+                val packet = DataChannelPacket(
+                    type = if (msg.type == MessageType.PING || msg.type == MessageType.LOVE_PING) "ping" else "text",
+                    messageId = msg.id,
+                    senderName = prefs.myName,
+                    senderClientId = prefs.clientId,
+                    text = msg.text,
+                    roomId = msg.roomId,
+                    timestamp = msg.timestamp,
+                    replyToId = msg.replyToId,
+                    replyToText = msg.replyToText,
+                    replyToSender = msg.replyToSender,
+                    disappearingDuration = msg.disappearingDuration
+                )
+
+                if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
+                    val sent = webRtcManager.sendPacket(packet)
+                    if (sent) {
+                        chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                        // P2P ACK watchdog: if peer does not acknowledge within 4.5s, fallback to cloud relay
+                        scope.launch {
+                            delay(4500)
+                            val curr = chatRepository.getMessage(msg.id)
+                            if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
+                                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet)
+                            }
+                        }
+                        return
+                    }
+                }
+
+                webRtcManager.sendOfflinePacketForRoom(msg.roomId, packet) { success ->
+                    scope.launch(Dispatchers.IO) {
+                        val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                        chatRepository.updateMessageStatus(msg.id, newStatus)
+                    }
+                }
+            }
+
+            MessageType.IMAGE -> {
+                val path = msg.attachmentPath
+                if (path.isNullOrBlank()) {
+                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                    return
+                }
+
+                val fileUri = if (path.startsWith("/")) Uri.fromFile(File(path)) else Uri.parse(path)
+                val compressedBytes = FileUtils.compressImageForTransfer(context, fileUri)
+                    ?: try {
+                        val f = File(path)
+                        if (f.exists()) f.readBytes() else null
+                    } catch (_: Exception) { null }
+
+                if (compressedBytes != null && compressedBytes.size < 2 * 1024 * 1024) {
+                    val base64 = Base64.encodeToString(compressedBytes, Base64.NO_WRAP)
+                    val imagePacket = DataChannelPacket(
+                        type = "image",
+                        messageId = msg.id,
+                        senderName = prefs.myName,
+                        senderClientId = prefs.clientId,
+                        fileName = msg.attachmentName ?: "photo.jpg",
+                        fileSize = compressedBytes.size.toLong(),
+                        mimeType = msg.mimeType ?: "image/jpeg",
+                        roomId = msg.roomId,
+                        timestamp = msg.timestamp,
+                        dataBase64 = base64,
+                        replyToId = msg.replyToId,
+                        replyToText = msg.replyToText,
+                        replyToSender = msg.replyToSender,
+                        disappearingDuration = msg.disappearingDuration
+                    )
+
+                    if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
+                        val sent = webRtcManager.sendPacket(imagePacket)
+                        if (sent) {
+                            chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                            scope.launch {
+                                delay(4500)
+                                val curr = chatRepository.getMessage(msg.id)
+                                if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
+                                    webRtcManager.sendOfflinePacketForRoom(msg.roomId, imagePacket)
+                                }
+                            }
+                            return
+                        }
+                    }
+
+                    webRtcManager.sendOfflinePacketForRoom(msg.roomId, imagePacket) { success ->
+                        scope.launch(Dispatchers.IO) {
+                            val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                            chatRepository.updateMessageStatus(msg.id, newStatus)
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "Cannot send image: compression failed or file too large")
+                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                }
+            }
+
+            MessageType.FILE -> {
+                val path = msg.attachmentPath
+                val file = if (!path.isNullOrBlank()) File(path) else null
+                if (file == null || !file.exists()) {
+                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                    return
+                }
+
+                val fileUri = Uri.fromFile(file)
+                if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
+                    webRtcManager.sendFileAttachment(
+                        messageId = msg.id,
+                        uri = fileUri,
+                        fileName = msg.attachmentName ?: file.name,
+                        fileSize = msg.attachmentSize.takeIf { it > 0 } ?: file.length(),
+                        mimeType = msg.mimeType,
+                        senderName = prefs.myName,
+                        disappearingDuration = msg.disappearingDuration
+                    )
+                } else if (file.length() in 1..1024 * 1024) {
+                    try {
+                        val bytes = file.readBytes()
+                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        val filePacket = DataChannelPacket(
+                            type = "file",
+                            messageId = msg.id,
+                            senderName = prefs.myName,
+                            senderClientId = prefs.clientId,
+                            fileName = msg.attachmentName ?: file.name,
+                            fileSize = file.length(),
+                            mimeType = msg.mimeType,
+                            roomId = msg.roomId,
+                            timestamp = msg.timestamp,
+                            dataBase64 = base64,
+                            disappearingDuration = msg.disappearingDuration
+                        )
+                        webRtcManager.sendOfflinePacketForRoom(msg.roomId, filePacket) { success ->
+                            scope.launch(Dispatchers.IO) {
+                                val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                                chatRepository.updateMessageStatus(msg.id, newStatus)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed reading file for retry/flush: ${e.localizedMessage}")
+                        chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                    }
+                } else {
+                    Log.w(TAG, "Cannot send file offline: file exceeds 1MB threshold")
+                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                }
+            }
+
+            MessageType.AUDIO -> {
+                val path = msg.attachmentPath
+                val file = if (!path.isNullOrBlank()) File(path) else null
+                if (file == null || !file.exists()) {
+                    chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                    return
+                }
+
+                if (file.length() in 1..2 * 1024 * 1024) {
+                    try {
+                        val bytes = file.readBytes()
+                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        val audioPacket = DataChannelPacket(
+                            type = "audio",
+                            messageId = msg.id,
+                            senderName = prefs.myName,
+                            senderClientId = prefs.clientId,
+                            fileName = msg.attachmentName ?: file.name,
+                            fileSize = file.length(),
+                            mimeType = msg.mimeType ?: "audio/mp4",
+                            roomId = msg.roomId,
+                            timestamp = msg.timestamp,
+                            dataBase64 = base64,
+                            replyToId = msg.replyToId,
+                            replyToText = msg.replyToText,
+                            replyToSender = msg.replyToSender,
+                            disappearingDuration = msg.disappearingDuration
+                        )
+                        if (msg.roomId == _activeRoomId.value && webRtcManager.isP2pConnected()) {
+                            val sent = webRtcManager.sendPacket(audioPacket)
+                            if (sent) {
+                                chatRepository.updateMessageStatus(msg.id, MessageStatus.SENT)
+                                scope.launch {
+                                    delay(4500)
+                                    val curr = chatRepository.getMessage(msg.id)
+                                    if (curr != null && curr.status != MessageStatus.DELIVERED && curr.status != MessageStatus.READ) {
+                                        webRtcManager.sendOfflinePacketForRoom(msg.roomId, audioPacket)
+                                    }
+                                }
+                                return
+                            }
+                        }
+                        webRtcManager.sendOfflinePacketForRoom(msg.roomId, audioPacket) { success ->
+                            scope.launch(Dispatchers.IO) {
+                                val newStatus = if (success) MessageStatus.SENT else MessageStatus.FAILED
+                                chatRepository.updateMessageStatus(msg.id, newStatus)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed reading audio file for retry/flush: ${e.localizedMessage}")
+                        chatRepository.updateMessageStatus(msg.id, MessageStatus.FAILED)
+                    }
+                }
+            }
+        }
     }
 
     private fun startCallDurationTimer() {

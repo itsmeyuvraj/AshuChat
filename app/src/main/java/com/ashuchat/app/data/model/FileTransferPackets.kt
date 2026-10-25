@@ -15,6 +15,9 @@ data class DataChannelPacket(
     @SerializedName("senderName")
     val senderName: String? = null,
 
+    @SerializedName("senderClientId")
+    val senderClientId: String? = null,
+
     @SerializedName("text")
     val text: String? = null,
 

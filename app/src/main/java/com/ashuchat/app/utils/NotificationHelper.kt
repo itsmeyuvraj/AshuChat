@@ -119,6 +119,46 @@ object NotificationHelper {
         } catch (_: Exception) {}
     }
 
+    fun showMissedCallNotification(
+        context: Context,
+        callerName: String,
+        roomId: String? = null,
+        isVideo: Boolean = false
+    ) {
+        initNotificationChannels(context)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (!roomId.isNullOrBlank()) {
+                putExtra(EXTRA_OPEN_ROOM_ID, roomId)
+            }
+        }
+        val requestCode = if (!roomId.isNullOrBlank()) (roomId.hashCode() + 10) else 110
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(if (isVideo) android.R.drawable.ic_menu_camera else android.R.drawable.ic_menu_call)
+            .setContentTitle(if (isVideo) "Missed Video Call" else "Missed Voice Call")
+            .setContentText("Missed call from $callerName")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        try {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val notificationId = (System.currentTimeMillis() % 10000).toInt() + 3000
+            manager?.notify(notificationId, notification)
+        } catch (_: Exception) {}
+    }
+
     @Suppress("DEPRECATION")
     fun vibratePing(context: Context) {
         try {
