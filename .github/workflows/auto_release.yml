@@ -70,30 +70,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync Update to Firebase Realtime Database
-        run: |
-          python3 -c '
-import json, os, urllib.request, time
-
-payload = {
-    "versionCode": int(os.environ["VER_CODE"]),
-    "versionName": "v" + os.environ["VER_NAME"],
-    "releaseNotes": os.environ["COMMIT_MSG"],
-    "downloadUrl": os.environ["DOWNLOAD_URL"],
-    "timestamp": int(time.time() * 1000)
-}
-data = json.dumps(payload).encode("utf-8")
-req = urllib.request.Request(
-    "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app/app_update.json",
-    data=data,
-    headers={"Content-Type": "application/json"},
-    method="PUT"
-)
-try:
-    with urllib.request.urlopen(req) as resp:
-        print("Firebase updated:", resp.status)
-except Exception as e:
-    print("Firebase sync error:", e)
-'
+        run: python3 .github/scripts/sync_firebase.py
         env:
           VER_CODE: ${{ steps.vars.outputs.ver_code }}
           VER_NAME: ${{ steps.vars.outputs.ver_name }}
