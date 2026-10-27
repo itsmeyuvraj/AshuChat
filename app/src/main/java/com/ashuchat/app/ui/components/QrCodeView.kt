@@ -40,7 +40,7 @@ fun QrCodeView(
         modifier = modifier
             .size(sizeDp.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
+            .background(Color(0xFFF7F5EE))
             .border(2.dp, SurfaceBorder, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {

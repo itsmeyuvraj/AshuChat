@@ -41,8 +41,9 @@ val RoseAccent = BrandAccent
 val VioletAccent = AccentIndigo
 val VioletLight = Color(0xFF8290A4)
 
-// Neo-Brutalism & Playful Pop Palette
-val NeoBackground = Color(0xFFFEFDF5)
+// Neo-Brutalism & Playful Pop Palette - Eye-friendly paper tones
+val NeoBackground = Color(0xFFEAE5DC)
+val NeoSurface = Color(0xFFF6F4EC)
 val NeoHeaderYellow = Color(0xFFFFDE59)
 val NeoBlack = Color(0xFF18181B)
 val NeoCardBorder = Color(0xFF18181B)

@@ -51,6 +51,7 @@ import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoBtnPeach
 import com.ashuchat.app.ui.theme.NeoCardLavender
 import com.ashuchat.app.ui.theme.NeoCardMint
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OfflineRed
@@ -145,8 +146,8 @@ fun RelayScreenPaper(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeoBlack,
                             unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = NeoSurface,
+                            unfocusedContainerColor = NeoSurface,
                             focusedTextColor = NeoBlack,
                             unfocusedTextColor = NeoBlack,
                             focusedLabelColor = NeoBlack,
@@ -224,7 +225,7 @@ fun RelayScreenPaper(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color.White)
+                                .background(NeoSurface)
                                 .border(2.dp, if (success) OnlineGreen else OfflineRed, RoundedCornerShape(10.dp))
                                 .padding(12.dp)
                         ) {

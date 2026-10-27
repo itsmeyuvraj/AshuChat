@@ -50,6 +50,7 @@ import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardYellow
 import com.ashuchat.app.ui.theme.NeoHeaderYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.viewmodel.ChatViewModel
@@ -145,8 +146,8 @@ fun PairingScreenPaper(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeoBlack,
                             unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = NeoSurface,
+                            unfocusedContainerColor = NeoSurface,
                             focusedTextColor = NeoBlack,
                             unfocusedTextColor = NeoBlack,
                             focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
@@ -222,8 +223,8 @@ fun PairingScreenPaper(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = NeoBlack,
                                 unfocusedBorderColor = NeoBlack,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
+                                focusedContainerColor = NeoSurface,
+                                unfocusedContainerColor = NeoSurface,
                                 focusedTextColor = NeoBlack,
                                 unfocusedTextColor = NeoBlack,
                                 focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
@@ -285,8 +286,8 @@ fun PairingScreenPaper(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeoBlack,
                             unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = NeoSurface,
+                            unfocusedContainerColor = NeoSurface,
                             focusedTextColor = NeoBlack,
                             unfocusedTextColor = NeoBlack,
                             focusedPlaceholderColor = NeoBlack.copy(alpha = 0.5f),
@@ -316,7 +317,7 @@ fun PairingScreenPaper(
                                 }
                             },
                             enabled = roomId.isNotBlank(),
-                            backgroundColor = Color.White,
+                            backgroundColor = NeoSurface,
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(

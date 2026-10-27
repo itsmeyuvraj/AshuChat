@@ -69,6 +69,7 @@ import com.ashuchat.app.ui.theme.NeoBtnMint
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.utils.AudioPlayerHelper
 import com.ashuchat.app.utils.FileUtils
 import com.ashuchat.app.utils.HapticHelper
@@ -97,7 +98,7 @@ fun ChatBubblePaper(
         RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
     }
 
-    val bubbleColor = if (isMe) NeoCardMint else Color.White
+    val bubbleColor = if (isMe) NeoCardMint else NeoSurface
 
     Column(
         horizontalAlignment = alignment,
@@ -344,7 +345,7 @@ private fun ReplyPreviewBox(
             .fillMaxWidth()
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (isMe) Color.White.copy(alpha = 0.7f) else NeoCardPeach.copy(alpha = 0.5f))
+            .background(if (isMe) NeoSurface.copy(alpha = 0.85f) else NeoCardPeach.copy(alpha = 0.5f))
             .border(1.5.dp, NeoBlack, RoundedCornerShape(10.dp))
     ) {
         Box(
@@ -408,7 +409,7 @@ private fun AudioBubbleContent(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
+            .background(NeoSurface)
             .border(1.5.dp, NeoBlack, RoundedCornerShape(14.dp))
             .padding(8.dp)
     ) {
@@ -511,7 +512,7 @@ private fun ImageBubbleContent(
                 .fillMaxWidth()
                 .height(180.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
+                .background(NeoSurface)
                 .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                 .clickable(enabled = path != null && fileExists && !isTransferring) {
                     path?.let { onImageClick(it, message.attachmentName) }
@@ -595,7 +596,7 @@ private fun FileBubbleContent(message: ChatMessage) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
+                .background(NeoSurface)
                 .border(1.5.dp, NeoBlack, RoundedCornerShape(12.dp))
                 .padding(8.dp)
         ) {

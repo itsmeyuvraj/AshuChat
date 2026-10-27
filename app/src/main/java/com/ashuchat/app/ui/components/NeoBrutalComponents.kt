@@ -48,6 +48,7 @@ import com.ashuchat.app.ui.theme.NeoCardBorder
 import com.ashuchat.app.ui.theme.NeoCardShadow
 import com.ashuchat.app.ui.theme.NeoHeaderYellow
 import com.ashuchat.app.ui.theme.NeoPillDark
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.utils.HapticHelper
 
 /**
@@ -368,7 +369,7 @@ fun NeoTopAppBar(
                 if (onNavigateBack != null) {
                     NeoBrutalIconButton(
                         onClick = onNavigateBack,
-                        backgroundColor = Color.White,
+                        backgroundColor = NeoSurface,
                         size = 38.dp
                     ) {
                         Icon(
@@ -486,7 +487,7 @@ fun NeoEmojiAvatar(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
-            .background(Color.White, shape)
+            .background(NeoSurface, shape)
             .border(2.dp, NeoBlack, shape)
             .clip(shape)
     ) {
@@ -554,7 +555,7 @@ fun NeoChatBubbleIcon(
             close()
         }
 
-        drawPath(path = bubblePath, color = Color.White)
+        drawPath(path = bubblePath, color = NeoSurface)
         drawPath(
             path = bubblePath,
             color = NeoBlack,

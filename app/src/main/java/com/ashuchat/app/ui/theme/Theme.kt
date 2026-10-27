@@ -37,9 +37,9 @@ private val NeoColorScheme = lightColorScheme(
     onTertiary = Color.White,
     background = NeoBackground,
     onBackground = NeoBlack,
-    surface = Color.White,
+    surface = NeoSurface,
     onSurface = NeoBlack,
-    surfaceVariant = Color.White,
+    surfaceVariant = NeoSurface,
     onSurfaceVariant = NeoBlack,
     outline = NeoBlack
 )

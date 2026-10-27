@@ -58,6 +58,7 @@ import com.ashuchat.app.ui.theme.NeoBtnPeach
 import com.ashuchat.app.ui.theme.NeoCardMint
 import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OfflineRed
@@ -137,7 +138,7 @@ fun ChatSettingsScreenPaper(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isClassic) NeoBlack else Color.White)
+                                .background(if (isClassic) NeoBlack else NeoSurface)
                                 .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                                 .clickable {
                                     HapticHelper.playClick(context, view)
@@ -169,7 +170,7 @@ fun ChatSettingsScreenPaper(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isPaper) NeoBlack else Color.White)
+                                .background(if (isPaper) NeoBlack else NeoSurface)
                                 .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                                 .clickable {
                                     HapticHelper.playClick(context, view)
@@ -339,7 +340,7 @@ fun ChatSettingsScreenPaper(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isSelected) NeoBlack else Color.White)
+                                        .background(if (isSelected) NeoBlack else NeoSurface)
                                         .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
                                         .clickable {
                                             HapticHelper.playClick(context, view)
@@ -405,7 +406,7 @@ fun ChatSettingsScreenPaper(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White)
+                            .background(NeoSurface)
                             .border(2.dp, NeoBlack, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {

@@ -67,7 +67,7 @@ fun UpdateDialog(
         onDismissRequest = {
             if (!isDownloading) onDismiss()
         },
-        containerColor = if (isPaper) Color.White else SurfaceElevated,
+        containerColor = if (isPaper) com.ashuchat.app.ui.theme.NeoSurface else SurfaceElevated,
         shape = RoundedCornerShape(20.dp),
         modifier = if (isPaper) {
             Modifier.border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))

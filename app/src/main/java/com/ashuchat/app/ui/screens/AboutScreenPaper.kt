@@ -51,6 +51,7 @@ import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardPink
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OnlineGreen
@@ -193,7 +194,7 @@ fun AboutScreenPaper(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color.White)
+                                .background(NeoSurface)
                                 .border(1.5.dp, NeoBlack, RoundedCornerShape(10.dp))
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {

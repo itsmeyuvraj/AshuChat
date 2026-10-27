@@ -83,6 +83,7 @@ import com.ashuchat.app.ui.theme.NeoCardPink
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
 import com.ashuchat.app.ui.theme.NeoHeaderYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.NeoTextDark
 import com.ashuchat.app.ui.theme.NeoTextMuted
 import com.ashuchat.app.ui.theme.OnlineGreen
@@ -277,7 +278,7 @@ fun RoomsScreenPaper(
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         NeoBrutalCard(
-                            backgroundColor = Color.White,
+                            backgroundColor = NeoSurface,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             OutlinedTextField(
@@ -300,8 +301,8 @@ fun RoomsScreenPaper(
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = Color.Transparent,
                                     unfocusedBorderColor = Color.Transparent,
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
+                                    focusedContainerColor = NeoSurface,
+                                    unfocusedContainerColor = NeoSurface,
                                     focusedTextColor = NeoBlack,
                                     unfocusedTextColor = NeoBlack,
                                     cursorColor = NeoBlack
@@ -355,7 +356,7 @@ fun RoomsScreenPaper(
                                             modifier = Modifier
                                                 .size(38.dp)
                                                 .clip(RoundedCornerShape(10.dp))
-                                                .background(Color.White)
+                                                .background(NeoSurface)
                                                 .border(2.dp, NeoBlack, RoundedCornerShape(10.dp))
                                         ) {
                                             Icon(
@@ -557,8 +558,8 @@ fun RoomsScreenPaper(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeoBlack,
                             unfocusedBorderColor = NeoBlack,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = NeoSurface,
+                            unfocusedContainerColor = NeoSurface,
                             focusedTextColor = NeoBlack,
                             unfocusedTextColor = NeoBlack,
                             cursorColor = NeoBlack
@@ -837,7 +838,7 @@ private fun EmptyNeoRoomsView(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
+                        .background(NeoSurface)
                         .border(2.5.dp, NeoBlack, RoundedCornerShape(20.dp))
                 ) {
                     Text(

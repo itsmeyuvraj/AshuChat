@@ -108,6 +108,7 @@ import com.ashuchat.app.ui.theme.BrandDark
 import com.ashuchat.app.ui.theme.BrandLight
 import com.ashuchat.app.ui.theme.BrandPrimary
 import com.ashuchat.app.ui.theme.MidnightBg
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.RoseAccent
 import com.ashuchat.app.ui.theme.RoseDark
 import com.ashuchat.app.ui.theme.RosePrimary
@@ -314,7 +315,7 @@ fun ChatScreenPaper(
                         com.ashuchat.app.ui.components.NeoBrutalIconButton(
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            backgroundColor = Color.White,
+                            backgroundColor = NeoSurface,
                             size = 40.dp,
                             onClick = {
                                 viewModel.leaveActiveRoom()
@@ -411,7 +412,7 @@ fun ChatScreenPaper(
                             com.ashuchat.app.ui.components.NeoBrutalIconButton(
                                 icon = Icons.Default.MoreVert,
                                 contentDescription = "Room Options",
-                                backgroundColor = Color.White,
+                                backgroundColor = NeoSurface,
                                 size = 40.dp,
                                 onClick = { showRoomMenu = true }
                             )
@@ -421,7 +422,7 @@ fun ChatScreenPaper(
                                 onDismissRequest = { showRoomMenu = false },
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White)
+                                    .background(NeoSurface)
                                     .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
                             ) {
                                 DropdownMenuItem(
@@ -456,7 +457,7 @@ fun ChatScreenPaper(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(NeoSurface)
                     .border(androidx.compose.foundation.BorderStroke(2.5.dp, com.ashuchat.app.ui.theme.NeoBlack))
                     .imePadding()
             ) {
@@ -615,7 +616,7 @@ fun ChatScreenPaper(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White)
+                                .background(NeoSurface)
                                 .border(2.dp, com.ashuchat.app.ui.theme.NeoBlack, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 14.dp, vertical = 12.dp)
                         ) {
@@ -857,7 +858,7 @@ fun ChatScreenPaper(
                     )
                 }
             },
-            containerColor = Color.White
+            containerColor = NeoSurface
         )
     }
 
