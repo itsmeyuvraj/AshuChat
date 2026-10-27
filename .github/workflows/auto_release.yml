@@ -42,6 +42,8 @@ jobs:
 
       - name: Build Release APK
         run: |
+          mkdir -p app/src/main/assets
+          echo "${{ github.event.head_commit.message }}" > app/src/main/assets/release_notes.txt
           ./gradlew assembleRelease \
             -PappVersionCode=${{ steps.vars.outputs.ver_code }} \
             -PappVersionName=${{ steps.vars.outputs.ver_name }}
@@ -69,16 +71,31 @@ jobs:
 
       - name: Sync Update to Firebase Realtime Database
         run: |
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.vars.outputs.ver_name }}/AshuChat.apk"
-          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | sed 's/"/\\"/g')
-          PAYLOAD=$(cat <<EOF
-          {
-            "versionCode": ${{ steps.vars.outputs.ver_code }},
-            "versionName": "v${{ steps.vars.outputs.ver_name }}",
-            "releaseNotes": "$COMMIT_MSG",
-            "downloadUrl": "$DOWNLOAD_URL",
-            "timestamp": $(date +%s%3N)
-          }
-          EOF
-          )
-          curl -s -X PUT -H "Content-Type: application/json" -d "$PAYLOAD" "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app/app_update.json" || true
+          python3 -c '
+import json, os, urllib.request, time
+
+payload = {
+    "versionCode": int(os.environ["VER_CODE"]),
+    "versionName": "v" + os.environ["VER_NAME"],
+    "releaseNotes": os.environ["COMMIT_MSG"],
+    "downloadUrl": os.environ["DOWNLOAD_URL"],
+    "timestamp": int(time.time() * 1000)
+}
+data = json.dumps(payload).encode("utf-8")
+req = urllib.request.Request(
+    "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app/app_update.json",
+    data=data,
+    headers={"Content-Type": "application/json"},
+    method="PUT"
+)
+try:
+    with urllib.request.urlopen(req) as resp:
+        print("Firebase updated:", resp.status)
+except Exception as e:
+    print("Firebase sync error:", e)
+'
+        env:
+          VER_CODE: ${{ steps.vars.outputs.ver_code }}
+          VER_NAME: ${{ steps.vars.outputs.ver_name }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          DOWNLOAD_URL: "https://github.com/${{ github.repository }}/releases/download/v${{ steps.vars.outputs.ver_name }}/AshuChat.apk"

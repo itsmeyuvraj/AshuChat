@@ -20,7 +20,13 @@ class PreferencesRepository(context: Context) {
         private const val KEY_DISAPPEARING_DURATION = "disappearing_duration"
         private const val KEY_LAST_RUN_VERSION_CODE = "last_run_version_code"
         private const val KEY_LAST_RUN_VERSION_NAME = "last_run_version_name"
+        private const val KEY_LAST_APP_VERSION_CODE = "last_app_version_code"
+        private const val KEY_LAST_APP_VERSION_NAME = "last_app_version_name"
         private const val KEY_APP_THEME = "app_theme"
+        private const val KEY_CURRENT_RELEASE_NOTES = "current_release_notes"
+        private const val KEY_CURRENT_RELEASE_NOTES_VERSION = "current_release_notes_version"
+        private const val KEY_PENDING_UPDATE_NOTES = "pending_update_notes"
+        private const val KEY_PENDING_UPDATE_VERSION = "pending_update_version"
 
         // Default Serverless Firebase Realtime Database URL (Singapore asia-southeast1)
         const val DEFAULT_SIGNALING_URL = "https://ashuchat-51b3e-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -74,9 +80,59 @@ class PreferencesRepository(context: Context) {
         get() = prefs.getString(KEY_LAST_RUN_VERSION_NAME, "") ?: ""
         set(value) = prefs.edit().putString(KEY_LAST_RUN_VERSION_NAME, value).apply()
 
+    var lastAppVersionCode: Long
+        get() = prefs.getLong(KEY_LAST_APP_VERSION_CODE, -1L)
+        set(value) = prefs.edit().putLong(KEY_LAST_APP_VERSION_CODE, value).apply()
+
+    var lastAppVersionName: String
+        get() = prefs.getString(KEY_LAST_APP_VERSION_NAME, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_APP_VERSION_NAME, value).apply()
+
     var appTheme: String
         get() = prefs.getString(KEY_APP_THEME, "classic") ?: "classic"
         set(value) = prefs.edit().putString(KEY_APP_THEME, value).apply()
+
+    var currentReleaseNotes: String
+        get() = prefs.getString(KEY_CURRENT_RELEASE_NOTES, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CURRENT_RELEASE_NOTES, value).apply()
+
+    var currentReleaseNotesVersion: String
+        get() = prefs.getString(KEY_CURRENT_RELEASE_NOTES_VERSION, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CURRENT_RELEASE_NOTES_VERSION, value).apply()
+
+    fun saveCurrentReleaseNotes(version: String, notes: String) {
+        val clean = version.trimStart('v', 'V').trim()
+        prefs.edit()
+            .putString(KEY_CURRENT_RELEASE_NOTES_VERSION, clean)
+            .putString(KEY_CURRENT_RELEASE_NOTES, notes)
+            .apply()
+    }
+
+    fun getCurrentReleaseNotesForVersion(targetVersion: String): String {
+        val cleanTarget = targetVersion.trimStart('v', 'V').trim()
+        val storedVersion = prefs.getString(KEY_CURRENT_RELEASE_NOTES_VERSION, "")?.trimStart('v', 'V')?.trim() ?: ""
+        val notes = prefs.getString(KEY_CURRENT_RELEASE_NOTES, "") ?: ""
+        return if (storedVersion.isNotBlank() && storedVersion.equals(cleanTarget, ignoreCase = true)) {
+            notes
+        } else {
+            "" // Discard stale notes from an older or different version
+        }
+    }
+
+    fun clearCurrentReleaseNotes() {
+        prefs.edit()
+            .remove(KEY_CURRENT_RELEASE_NOTES)
+            .remove(KEY_CURRENT_RELEASE_NOTES_VERSION)
+            .apply()
+    }
+
+    var pendingUpdateNotes: String
+        get() = prefs.getString(KEY_PENDING_UPDATE_NOTES, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PENDING_UPDATE_NOTES, value).apply()
+
+    var pendingUpdateVersion: String
+        get() = prefs.getString(KEY_PENDING_UPDATE_VERSION, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PENDING_UPDATE_VERSION, value).apply()
 
     val clientId: String
         get() {

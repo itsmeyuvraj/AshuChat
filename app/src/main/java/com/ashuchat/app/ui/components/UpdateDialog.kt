@@ -102,13 +102,18 @@ fun UpdateDialog(
 
                 Column {
                     Text(
-                        text = if (isPaper) "UPDATE AVAILABLE" else "Update Available",
+                        text = if (updateInfo.isUpdateAvailable) {
+                            if (isPaper) "UPDATE AVAILABLE" else "Update Available"
+                        } else {
+                            if (isPaper) "WHAT'S NEW" else "What's New"
+                        },
                         fontSize = if (isPaper) 16.sp else 18.sp,
                         fontWeight = if (isPaper) FontWeight.Black else FontWeight.Bold,
                         color = if (isPaper) NeoBlack else TextPrimary
                     )
+                    val displayVersion = updateInfo.latestVersionName.trimStart('v', 'V').trim()
                     Text(
-                        text = if (isPaper) "v${updateInfo.latestVersionName}" else "Version ${updateInfo.latestVersionName}",
+                        text = if (isPaper) "v$displayVersion" else "Version $displayVersion",
                         fontSize = 12.sp,
                         fontWeight = if (isPaper) FontWeight.Bold else FontWeight.Normal,
                         color = if (isPaper) NeoBlack.copy(alpha = 0.6f) else BrandLight
@@ -127,7 +132,7 @@ fun UpdateDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (isPaper) "WHAT'S NEW" else "What's New",
+                            text = if (isPaper) "HIGHLIGHTS" else "Highlights",
                             fontSize = if (isPaper) 12.sp else 13.sp,
                             fontWeight = if (isPaper) FontWeight.Black else FontWeight.Bold,
                             color = if (isPaper) NeoBlack else TextPrimary
@@ -162,7 +167,7 @@ fun UpdateDialog(
                     ChangelogView(
                         rawNotes = updateInfo.releaseNotes,
                         isPaper = isPaper,
-                        maxHeight = 220.dp
+                        maxHeight = 250.dp
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                 }
@@ -196,7 +201,7 @@ fun UpdateDialog(
                         fontSize = 11.sp,
                         color = if (isPaper) NeoBlack.copy(alpha = 0.6f) else TextMuted
                     )
-                } else {
+                } else if (updateInfo.isUpdateAvailable) {
                     Text(
                         text = "Would you like to download and install this update now?",
                         fontSize = 13.sp,
@@ -207,15 +212,20 @@ fun UpdateDialog(
         },
         confirmButton = {
             if (!isDownloading) {
+                val confirmText = if (updateInfo.isUpdateAvailable) {
+                    if (isPaper) "UPDATE NOW" else "Update Now"
+                } else {
+                    if (isPaper) "GOT IT" else "Got It"
+                }
                 if (isPaper) {
                     NeoBrutalButton(
-                        text = "UPDATE NOW",
+                        text = confirmText,
                         backgroundColor = NeoBtnMint,
-                        onClick = onConfirmUpdate
+                        onClick = if (updateInfo.isUpdateAvailable) onConfirmUpdate else onDismiss
                     )
                 } else {
                     Button(
-                        onClick = onConfirmUpdate,
+                        onClick = if (updateInfo.isUpdateAvailable) onConfirmUpdate else onDismiss,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         modifier = Modifier
@@ -224,13 +234,13 @@ fun UpdateDialog(
                                 RoundedCornerShape(12.dp)
                             )
                     ) {
-                        Text("Update Now", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text(confirmText, color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         },
         dismissButton = {
-            if (!isDownloading) {
+            if (!isDownloading && updateInfo.isUpdateAvailable) {
                 TextButton(onClick = onDismiss) {
                     Text(
                         if (isPaper) "LATER" else "Later",

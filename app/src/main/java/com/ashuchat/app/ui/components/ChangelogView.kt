@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ import com.ashuchat.app.ui.theme.NeoCardPeach
 import com.ashuchat.app.ui.theme.NeoCardPink
 import com.ashuchat.app.ui.theme.NeoCardSky
 import com.ashuchat.app.ui.theme.NeoCardYellow
+import com.ashuchat.app.ui.theme.NeoSurface
 import com.ashuchat.app.ui.theme.SurfaceBorder
 import com.ashuchat.app.ui.theme.SurfaceCard
 import com.ashuchat.app.ui.theme.TextPrimary
@@ -92,7 +94,8 @@ enum class ChangelogCategory(
 
 data class ChangelogItem(
     val category: ChangelogCategory,
-    val title: String
+    val title: String,
+    val isSubBullet: Boolean = false
 )
 
 object ChangelogParser {
@@ -100,12 +103,27 @@ object ChangelogParser {
     private val GITHUB_LINK_REGEX = Regex("""(?i)\s+(by\s+@[\w-]+|\(#\d+\)|in\s+https?://\S+|https?://\S+)""")
     private val MARKDOWN_HEADER_REGEX = Regex("""^#{1,6}\s+""")
     private val BULLET_PREFIX_REGEX = Regex("""^(\s*[-*•+]\s+|\s*\d+[.)]\s+)""")
+    private val CONVENTIONAL_COMMIT_PREFIX_REGEX = Regex("""(?i)^([a-z]+)(?:\([^)]+\))?:\s*""")
 
     fun parse(rawNotes: String): List<ChangelogItem> {
         if (rawNotes.isBlank()) return emptyList()
 
-        val lines = rawNotes.lines()
+        // 1. Strip markdown header noise & commit hashes
+        var text = rawNotes
+            .replace(Regex("""(?i)\b(automated\s+ci/cd\s+build\s+for\s+commit|full\s+changelog:?)\b[^\n]*"""), "")
+            .replace(Regex("""(?i)#{1,6}\s*(🚀\s*)?(what's\s*new|what's\s*changed|changelog)[^\n]*"""), "")
+            .replace(Regex("""---[-]*"""), "")
+            .replace(Regex("""`[0-9a-f]{7,40}`"""), "")
+            .trim()
+
+        // 2. Un-flatten single-line notes that have " - " or " • " separating bullets
+        text = text.replace(Regex("""(?<=\S)\s{2,}[-*•]\s+"""), "\n- ")
+            .replace(Regex("""(?<=\S)\s+[-*•]\s+"""), "\n- ")
+
+        val lines = text.lines()
         val items = mutableListOf<ChangelogItem>()
+        var currentSectionCategory: ChangelogCategory = ChangelogCategory.UPDATE
+        var hasSeenHeader = false
 
         for (line in lines) {
             var trimmed = line.trim()
@@ -122,6 +140,10 @@ object ChangelogParser {
                 continue
             }
 
+            val isExplicitBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ") ||
+                    trimmed.startsWith("• ") || trimmed.startsWith("+ ") ||
+                    Regex("""^\d+[.)]\s+""").containsMatchIn(trimmed)
+
             trimmed = trimmed.replace(MARKDOWN_HEADER_REGEX, "").trim()
             trimmed = trimmed.replace(BULLET_PREFIX_REGEX, "").trim()
             if (trimmed.isBlank()) continue
@@ -131,9 +153,31 @@ object ChangelogParser {
 
             if (trimmed.length < 3) continue
 
-            val (category, cleanedTitle) = extractCategoryAndCleanText(trimmed)
-            if (cleanedTitle.isNotBlank()) {
-                items.add(ChangelogItem(category = category, title = cleanedTitle))
+            val match = CONVENTIONAL_COMMIT_PREFIX_REGEX.find(trimmed)
+            if (match != null) {
+                // Headline item with conventional commit prefix (e.g. style(theme):, feat(call):, fix:)
+                val tag = match.groupValues[1].lowercase()
+                val category = categorizeTag(tag, trimmed)
+                currentSectionCategory = category
+                hasSeenHeader = true
+
+                var content = trimmed.substring(match.range.last + 1).trim()
+                content = content.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                if (content.isNotBlank()) {
+                    items.add(ChangelogItem(category = category, title = content, isSubBullet = false))
+                }
+            } else {
+                if (isExplicitBullet && hasSeenHeader) {
+                    // Sub-bullet detail under current section
+                    val content = trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    items.add(ChangelogItem(category = currentSectionCategory, title = content, isSubBullet = true))
+                } else {
+                    val category = detectKeywordCategory(trimmed)
+                    currentSectionCategory = category
+                    hasSeenHeader = true
+                    val content = trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    items.add(ChangelogItem(category = category, title = content, isSubBullet = false))
+                }
             }
         }
 
@@ -148,8 +192,9 @@ object ChangelogParser {
                 for (s in sentences) {
                     val st = s.trim().removeSuffix(".")
                     if (st.isNotBlank()) {
-                        val (cat, title) = extractCategoryAndCleanText(st)
-                        items.add(ChangelogItem(category = cat, title = title))
+                        val cat = detectKeywordCategory(st)
+                        val title = st.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                        items.add(ChangelogItem(category = cat, title = title, isSubBullet = false))
                     }
                 }
             }
@@ -158,57 +203,27 @@ object ChangelogParser {
         return items
     }
 
-    private fun extractCategoryAndCleanText(text: String): Pair<ChangelogCategory, String> {
-        val lower = text.lowercase()
-        val category: ChangelogCategory
-        var content = text
-
-        when {
-            lower.startsWith("feat:") || lower.startsWith("feat(") || lower.startsWith("feature:") || lower.startsWith("new:") -> {
-                category = ChangelogCategory.FEATURE
-                content = text.substringAfter(":", text)
-            }
-            lower.startsWith("fix:") || lower.startsWith("fix(") || lower.startsWith("bug:") || lower.startsWith("bugfix:") -> {
-                category = ChangelogCategory.FIX
-                content = text.substringAfter(":", text)
-            }
-            lower.startsWith("perf:") || lower.startsWith("perf(") || lower.startsWith("optimize:") || lower.startsWith("optimization:") -> {
-                category = ChangelogCategory.IMPROVEMENT
-                content = text.substringAfter(":", text)
-            }
-            lower.startsWith("sec:") || lower.startsWith("security:") -> {
-                category = ChangelogCategory.SECURITY
-                content = text.substringAfter(":", text)
-            }
-            lower.startsWith("ui:") || lower.startsWith("design:") || lower.startsWith("style:") -> {
-                category = ChangelogCategory.UI
-                content = text.substringAfter(":", text)
-            }
-            lower.startsWith("refactor:") || lower.startsWith("clean:") || lower.startsWith("chore:") || lower.startsWith("build:") -> {
-                category = ChangelogCategory.IMPROVEMENT
-                content = text.substringAfter(":", text)
-            }
-            lower.contains("fix") || lower.contains("resolved") || lower.contains("crash") || lower.contains("bug") -> {
-                category = ChangelogCategory.FIX
-            }
-            lower.contains("optim") || lower.contains("speed") || lower.contains("faster") || lower.contains("cache") || lower.contains("robust") -> {
-                category = ChangelogCategory.IMPROVEMENT
-            }
-            lower.contains("encrypt") || lower.contains("secur") || lower.contains("privacy") -> {
-                category = ChangelogCategory.SECURITY
-            }
-            lower.contains("call") || lower.contains("added") || lower.contains("new") || lower.contains("support") -> {
-                category = ChangelogCategory.FEATURE
-            }
-            else -> {
-                category = ChangelogCategory.UPDATE
-            }
+    private fun categorizeTag(tag: String, fullText: String): ChangelogCategory {
+        return when (tag) {
+            "feat", "feature", "add" -> ChangelogCategory.FEATURE
+            "fix", "bug", "bugfix" -> ChangelogCategory.FIX
+            "perf", "performance", "optimize", "optimization", "refactor", "clean", "chore", "build", "ci", "deps" -> ChangelogCategory.IMPROVEMENT
+            "sec", "security" -> ChangelogCategory.SECURITY
+            "ui", "style", "design", "theme" -> ChangelogCategory.UI
+            else -> detectKeywordCategory(fullText)
         }
+    }
 
-        content = content.trim().removePrefix(":").trim()
-        content = content.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-
-        return Pair(category, content)
+    private fun detectKeywordCategory(text: String): ChangelogCategory {
+        val lower = text.lowercase()
+        return when {
+            lower.contains("fix") || lower.contains("resolved") || lower.contains("crash") || lower.contains("bug") || lower.contains("glare") -> ChangelogCategory.FIX
+            lower.contains("theme") || lower.contains("paper") || lower.contains("palette") || lower.contains("color") || lower.contains("background") || lower.contains("surface") || lower.contains("contrast") || lower.contains("ui") || lower.contains("design") -> ChangelogCategory.UI
+            lower.contains("optim") || lower.contains("speed") || lower.contains("faster") || lower.contains("cache") || lower.contains("robust") || lower.contains("reconnect") || lower.contains("queue") || lower.contains("database") -> ChangelogCategory.IMPROVEMENT
+            lower.contains("encrypt") || lower.contains("secur") || lower.contains("privacy") || lower.contains("sensor") || lower.contains("proximity") -> ChangelogCategory.SECURITY
+            lower.contains("call") || lower.contains("voice") || lower.contains("video") || lower.contains("added") || lower.contains("new") || lower.contains("support") || lower.contains("message") || lower.contains("qr") -> ChangelogCategory.FEATURE
+            else -> ChangelogCategory.UPDATE
+        }
     }
 }
 
@@ -217,7 +232,7 @@ fun ChangelogView(
     rawNotes: String,
     isPaper: Boolean,
     modifier: Modifier = Modifier,
-    maxHeight: Dp = 220.dp
+    maxHeight: Dp = 240.dp
 ) {
     val items = remember(rawNotes) { ChangelogParser.parse(rawNotes) }
 
@@ -226,7 +241,7 @@ fun ChangelogView(
             modifier = modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(if (isPaper) NeoBackground else SurfaceCard)
+                .background(if (isPaper) NeoSurface else SurfaceCard)
                 .border(
                     if (isPaper) 1.5.dp else 1.dp,
                     if (isPaper) NeoBlack else SurfaceBorder,
@@ -236,10 +251,10 @@ fun ChangelogView(
         ) {
             Text(
                 text = rawNotes.ifBlank { "General bug fixes and performance improvements." },
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 fontWeight = if (isPaper) FontWeight.Medium else FontWeight.Normal,
                 color = if (isPaper) NeoBlack else TextSecondary,
-                lineHeight = 17.sp
+                lineHeight = 18.sp
             )
         }
         return
@@ -248,21 +263,21 @@ fun ChangelogView(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isPaper) NeoBackground else SurfaceCard.copy(alpha = 0.7f))
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isPaper) NeoSurface else SurfaceCard.copy(alpha = 0.7f))
             .border(
                 if (isPaper) 2.dp else 1.dp,
                 if (isPaper) NeoBlack else SurfaceBorder,
-                RoundedCornerShape(14.dp)
+                RoundedCornerShape(16.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = maxHeight)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items.forEach { item ->
                 ChangelogItemRow(item = item, isPaper = isPaper)
@@ -276,55 +291,86 @@ private fun ChangelogItemRow(
     item: ChangelogItem,
     isPaper: Boolean
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        if (isPaper) {
+    if (item.isSubBullet) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // Crisp circular bullet dot
             Box(
-                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(item.category.paperBg)
-                    .border(1.5.dp, NeoBlack, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = item.category.label,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
-                    color = NeoBlack,
-                    letterSpacing = 0.5.sp
-                )
-            }
-        } else {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(item.category.classicBg)
-                    .border(1.dp, item.category.classicText.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.5.dp)
-            ) {
-                Text(
-                    text = item.category.label,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = item.category.classicText,
-                    letterSpacing = 0.5.sp
-                )
-            }
+                    .padding(top = 6.dp)
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (isPaper) NeoBlack.copy(alpha = 0.7f) else item.category.classicText.copy(alpha = 0.8f))
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = item.title,
+                fontSize = 12.5.sp,
+                fontWeight = if (isPaper) FontWeight.Medium else FontWeight.Normal,
+                color = if (isPaper) NeoBlack.copy(alpha = 0.85f) else TextSecondary,
+                lineHeight = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
         }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            if (isPaper) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(item.category.paperBg)
+                        .border(1.5.dp, NeoBlack, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                ) {
+                    Text(
+                        text = "${item.category.iconEmoji} ${item.category.label}",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = NeoBlack,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(item.category.classicBg)
+                        .border(1.dp, item.category.classicText.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                ) {
+                    Text(
+                        text = "${item.category.iconEmoji} ${item.category.label}",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = item.category.classicText,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
 
-        Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-        Text(
-            text = item.title,
-            fontSize = 12.5.sp,
-            fontWeight = if (isPaper) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isPaper) NeoBlack else TextPrimary,
-            lineHeight = 17.sp,
-            modifier = Modifier.weight(1f)
-        )
+            Text(
+                text = item.title,
+                fontSize = 13.sp,
+                fontWeight = if (isPaper) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (isPaper) NeoBlack else TextPrimary,
+                lineHeight = 19.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }

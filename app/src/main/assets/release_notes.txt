@@ -1,0 +1,5 @@
+style(theme): soften Paper UI background and surfaces to eye-friendly paper tones
+
+- Adjust NeoBackground from piercing near-white (#FEFDF5) to warm paper tone (#EAE5DC)
+- Introduce NeoSurface (#F6F4EC) to replace stark pure white (#FFFFFF) across avatar frames, incoming message bubbles, bottom chat bar, text inputs, dialogs, and search cards
+- Mute QR code container border in QrCodeView to reduce flashlight effect while maintaining scanning contrast

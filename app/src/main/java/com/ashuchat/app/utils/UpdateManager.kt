@@ -72,6 +72,10 @@ class UpdateManager(private val context: Context) {
         }
 
     suspend fun checkForUpdate(): AppUpdateInfo? = withContext(Dispatchers.IO) {
+        var latestFoundVersionName = currentVersionName
+        var latestFoundVersionCode = currentVersionCode
+        var latestFoundReleaseNotes = ""
+
         // Step 1: Check Firebase Realtime DB endpoint first (instant, custom controllable)
         try {
             val fbReq = Request.Builder()
@@ -88,15 +92,21 @@ class UpdateManager(private val context: Context) {
                         val remoteVersionCode = root.get("versionCode")?.asLong ?: 0L
                         val remoteVersionName = root.get("versionName")?.asString ?: ""
                         val downloadUrl = root.get("downloadUrl")?.asString ?: ""
-                        val releaseNotes = root.get("releaseNotes")?.asString ?: "Bug fixes and improvements"
+                        val releaseNotes = root.get("releaseNotes")?.asString ?: ""
 
-                    val isNewer = if (remoteVersionCode > 0 && currentVersionCode > 0) {
-                        remoteVersionCode > currentVersionCode
-                    } else if (remoteVersionName.isNotBlank() && currentVersionName.isNotBlank()) {
-                        isNewerVersion(remoteVersionName, currentVersionName)
-                    } else {
-                        false
-                    }
+                        if (releaseNotes.isNotBlank()) {
+                            latestFoundReleaseNotes = releaseNotes
+                            if (remoteVersionName.isNotBlank()) latestFoundVersionName = remoteVersionName
+                            if (remoteVersionCode > 0) latestFoundVersionCode = remoteVersionCode
+                        }
+
+                        val isNewer = if (remoteVersionCode > 0 && currentVersionCode > 0) {
+                            remoteVersionCode > currentVersionCode
+                        } else if (remoteVersionName.isNotBlank() && currentVersionName.isNotBlank()) {
+                            isNewerVersion(remoteVersionName, currentVersionName)
+                        } else {
+                            false
+                        }
 
                         if (isNewer && downloadUrl.isNotBlank()) {
                             Log.d(TAG, "Update found via Firebase: $remoteVersionName ($remoteVersionCode)")
@@ -104,7 +114,7 @@ class UpdateManager(private val context: Context) {
                                 isUpdateAvailable = true,
                                 latestVersionName = remoteVersionName.ifBlank { "v$remoteVersionCode" },
                                 latestVersionCode = remoteVersionCode,
-                                releaseNotes = releaseNotes,
+                                releaseNotes = releaseNotes.ifBlank { "Bug fixes and improvements" },
                                 downloadUrl = downloadUrl
                             )
                         }
@@ -133,25 +143,30 @@ class UpdateManager(private val context: Context) {
                     if (parsed.isJsonObject) {
                         val root = parsed.asJsonObject
                         val tagName = root.get("tag_name")?.asString ?: ""
-                        val body = root.get("body")?.asString ?: "What's new in this release"
-                    
-                    var apkDownloadUrl = ""
-                    val assets = root.getAsJsonArray("assets")
-                    if (assets != null) {
-                        for (element in assets) {
-                            val asset = element.asJsonObject
-                            val name = asset.get("name")?.asString ?: ""
-                            val download = asset.get("browser_download_url")?.asString ?: ""
-                            if (name.endsWith(".apk", ignoreCase = true)) {
-                                apkDownloadUrl = download
-                                break
+                        val body = root.get("body")?.asString ?: ""
+
+                        if (body.isNotBlank() && latestFoundReleaseNotes.isBlank()) {
+                            latestFoundReleaseNotes = body
+                            if (tagName.isNotBlank()) latestFoundVersionName = tagName
+                        }
+
+                        var apkDownloadUrl = ""
+                        val assets = root.getAsJsonArray("assets")
+                        if (assets != null) {
+                            for (element in assets) {
+                                val asset = element.asJsonObject
+                                val name = asset.get("name")?.asString ?: ""
+                                val download = asset.get("browser_download_url")?.asString ?: ""
+                                if (name.endsWith(".apk", ignoreCase = true)) {
+                                    apkDownloadUrl = download
+                                    break
+                                }
                             }
                         }
-                    }
 
-                    if (apkDownloadUrl.isBlank()) {
-                        apkDownloadUrl = "https://github.com/$GITHUB_REPO/releases/download/$tagName/AshuChat.apk"
-                    }
+                        if (apkDownloadUrl.isBlank() && tagName.isNotBlank()) {
+                            apkDownloadUrl = "https://github.com/$GITHUB_REPO/releases/download/$tagName/AshuChat.apk"
+                        }
 
                         if (tagName.isNotBlank() && isNewerVersion(tagName, currentVersionName)) {
                             Log.d(TAG, "Update found via GitHub Releases: $tagName")
@@ -159,7 +174,7 @@ class UpdateManager(private val context: Context) {
                                 isUpdateAvailable = true,
                                 latestVersionName = tagName,
                                 latestVersionCode = currentVersionCode + 1,
-                                releaseNotes = body,
+                                releaseNotes = body.ifBlank { "Bug fixes and performance improvements" },
                                 downloadUrl = apkDownloadUrl
                             )
                         }
@@ -172,14 +187,103 @@ class UpdateManager(private val context: Context) {
             Log.d(TAG, "GitHub update check skipped: ${e.localizedMessage}")
         }
 
-        // No update available
+        // No newer update available, but retain release notes of current/latest version
         return@withContext AppUpdateInfo(
             isUpdateAvailable = false,
-            latestVersionName = currentVersionName,
-            latestVersionCode = currentVersionCode,
-            releaseNotes = "",
+            latestVersionName = latestFoundVersionName.ifBlank { currentVersionName },
+            latestVersionCode = if (latestFoundVersionCode > 0) latestFoundVersionCode else currentVersionCode,
+            releaseNotes = latestFoundReleaseNotes,
             downloadUrl = ""
         )
+    }
+
+    fun getEmbeddedReleaseNotes(): String {
+        return try {
+            context.assets.open("release_notes.txt").bufferedReader().use { it.readText() }.trim()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    suspend fun fetchReleaseNotesForVersion(versionName: String): String? = withContext(Dispatchers.IO) {
+        val clean = versionName.trimStart('v', 'V').trim()
+        val embeddedNotes = if (clean.equals(currentVersionName.trimStart('v', 'V').trim(), ignoreCase = true)) {
+            getEmbeddedReleaseNotes()
+        } else {
+            ""
+        }
+
+        if (clean.isBlank()) return@withContext embeddedNotes.ifBlank { null }
+
+        // 1. Try Firebase if versionName matches
+        try {
+            val fbReq = Request.Builder().url(FIREBASE_UPDATE_URL).build()
+            val fbResp = client.newCall(fbReq).execute()
+            if (fbResp.isSuccessful) {
+                val jsonStr = fbResp.body?.string()
+                fbResp.close()
+                if (!jsonStr.isNullOrBlank() && jsonStr != "null") {
+                    val root = JsonParser.parseString(jsonStr).asJsonObject
+                    val vName = root.get("versionName")?.asString?.trimStart('v', 'V')?.trim() ?: ""
+                    val notes = root.get("releaseNotes")?.asString ?: ""
+                    if (vName.equals(clean, ignoreCase = true) && notes.isNotBlank()) {
+                        return@withContext notes
+                    }
+                }
+            } else {
+                fbResp.close()
+            }
+        } catch (_: Exception) {}
+
+        // 2. Query GitHub release by specific tag (vX.Y.Z)
+        try {
+            val tagUrl = "https://api.github.com/repos/$GITHUB_REPO/releases/tags/v$clean"
+            val ghReq = Request.Builder()
+                .url(tagUrl)
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "AshuChat-Android")
+                .build()
+            val ghResp = client.newCall(ghReq).execute()
+            if (ghResp.isSuccessful) {
+                val jsonStr = ghResp.body?.string()
+                ghResp.close()
+                if (!jsonStr.isNullOrBlank()) {
+                    val root = JsonParser.parseString(jsonStr).asJsonObject
+                    val body = root.get("body")?.asString ?: ""
+                    if (body.isNotBlank()) {
+                        return@withContext body
+                    }
+                }
+            } else {
+                ghResp.close()
+            }
+        } catch (_: Exception) {}
+
+        // 3. Fallback: Query GitHub latest release if it matches the requested version
+        try {
+            val ghReq = Request.Builder()
+                .url(GITHUB_RELEASES_URL)
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "AshuChat-Android")
+                .build()
+            val ghResp = client.newCall(ghReq).execute()
+            if (ghResp.isSuccessful) {
+                val jsonStr = ghResp.body?.string()
+                ghResp.close()
+                if (!jsonStr.isNullOrBlank()) {
+                    val root = JsonParser.parseString(jsonStr).asJsonObject
+                    val tagName = root.get("tag_name")?.asString?.trimStart('v', 'V')?.trim() ?: ""
+                    val body = root.get("body")?.asString ?: ""
+                    if (body.isNotBlank() && (tagName.isBlank() || tagName.equals(clean, ignoreCase = true))) {
+                        return@withContext body
+                    }
+                }
+            } else {
+                ghResp.close()
+            }
+        } catch (_: Exception) {}
+
+        embeddedNotes.ifBlank { null }
     }
 
     suspend fun downloadApk(

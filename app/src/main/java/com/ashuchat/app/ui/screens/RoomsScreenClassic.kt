@@ -438,6 +438,18 @@ fun RoomsScreenClassic(
         )
     }
 
+    // What's New Dialog on first launch after an app upgrade
+    val whatsNewDialogInfo by viewModel.whatsNewDialogInfo.collectAsState()
+    if (whatsNewDialogInfo != null) {
+        UpdateDialog(
+            updateInfo = whatsNewDialogInfo!!,
+            downloadProgress = null,
+            isDownloading = false,
+            onConfirmUpdate = { viewModel.dismissWhatsNewDialog() },
+            onDismiss = { viewModel.dismissWhatsNewDialog() }
+        )
+    }
+
     // In-App Update Dialog when downloading or confirmed
     if (updateInfo != null && updateInfo!!.isUpdateAvailable && isDownloadingUpdate) {
         UpdateDialog(

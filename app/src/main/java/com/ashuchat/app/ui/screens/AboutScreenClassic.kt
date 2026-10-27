@@ -280,18 +280,27 @@ fun AboutScreenClassic(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val currentNotes = updateInfo?.releaseNotes?.takeIf { it.isNotBlank() } ?: """
-                    * feat: make audio and video calls more robust with 40s ringing timeouts and glare collision resolution
-                    * fix: automatic missed-call tracking, in-chat status history, and high-priority call alerts
-                    * sec: in-ear proximity sensor support for voice calls to prevent accidental touch events
-                    * perf: centralized background message retry queue upon network reconnection
-                    * perf: Room database indexing and build-time optimization
-                """.trimIndent()
+                val currentReleaseNotes by viewModel.currentVersionReleaseNotes.collectAsState()
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    if (currentReleaseNotes.isBlank()) {
+                        viewModel.fetchCurrentVersionReleaseNotes()
+                    }
+                }
+
+                val currentNotes = currentReleaseNotes.ifBlank {
+                    viewModel.updateManager.getEmbeddedReleaseNotes().ifBlank {
+                        updateInfo?.releaseNotes?.takeIf { it.isNotBlank() } ?: """
+                            * feat: AshuChat v${viewModel.updateManager.currentVersionName}
+                            * perf: Direct peer-to-peer WebRTC messaging and audio/video calling
+                            * style: Clean Neo-Brutalist Paper & Classic Dark themes
+                        """.trimIndent()
+                    }
+                }
 
                 com.ashuchat.app.ui.components.ChangelogView(
                     rawNotes = currentNotes,
                     isPaper = false,
-                    maxHeight = 220.dp
+                    maxHeight = 250.dp
                 )
             }
 

@@ -58,6 +58,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateInfo = MutableStateFlow<AppUpdateInfo?>(null)
     val updateInfo: StateFlow<AppUpdateInfo?> = _updateInfo.asStateFlow()
 
+    private val _currentVersionReleaseNotes = MutableStateFlow(
+        prefs.getCurrentReleaseNotesForVersion(updateManager.currentVersionName)
+            .ifBlank { updateManager.getEmbeddedReleaseNotes() }
+    )
+    val currentVersionReleaseNotes: StateFlow<String> = _currentVersionReleaseNotes.asStateFlow()
+
+    private val _whatsNewDialogInfo = MutableStateFlow<AppUpdateInfo?>(null)
+    val whatsNewDialogInfo: StateFlow<AppUpdateInfo?> = _whatsNewDialogInfo.asStateFlow()
+
     private val _isCheckingUpdate = MutableStateFlow(false)
     val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
 
@@ -175,6 +184,57 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         // Silently check for app updates in background after startup
         viewModelScope.launch {
+            // Check if app was just updated to a new build
+            val curCode = updateManager.currentVersionCode
+            val curName = updateManager.currentVersionName
+            val lastCode = prefs.lastAppVersionCode
+            val lastName = prefs.lastAppVersionName
+            val isUpgrade = lastCode != -1L && (curCode > lastCode || (lastName.isNotBlank() && lastName != curName))
+
+            // Update recorded version
+            prefs.lastAppVersionCode = curCode
+            prefs.lastAppVersionName = curName
+
+            if (isUpgrade) {
+                // If update was downloaded via in-app updater, promote pending notes
+                if (prefs.pendingUpdateNotes.isNotBlank() &&
+                    (prefs.pendingUpdateVersion.isBlank() || prefs.pendingUpdateVersion.contains(curName))) {
+                    val n = prefs.pendingUpdateNotes
+                    prefs.saveCurrentReleaseNotes(curName, n)
+                    _currentVersionReleaseNotes.value = n
+                    prefs.pendingUpdateNotes = ""
+                    prefs.pendingUpdateVersion = ""
+                } else {
+                    // Upgraded via direct APK install or ADB:
+                    // Discard any older version notes and prioritize current version notes or embedded APK notes
+                    val cached = prefs.getCurrentReleaseNotesForVersion(curName)
+                    if (cached.isNotBlank()) {
+                        _currentVersionReleaseNotes.value = cached
+                    } else {
+                        val embedded = updateManager.getEmbeddedReleaseNotes()
+                        if (embedded.isNotBlank()) {
+                            prefs.saveCurrentReleaseNotes(curName, embedded)
+                            _currentVersionReleaseNotes.value = embedded
+                        } else {
+                            _currentVersionReleaseNotes.value = ""
+                        }
+                    }
+                }
+
+                if (_currentVersionReleaseNotes.value.isNotBlank()) {
+                    _whatsNewDialogInfo.value = AppUpdateInfo(
+                        isUpdateAvailable = false,
+                        latestVersionName = curName,
+                        latestVersionCode = curCode,
+                        releaseNotes = _currentVersionReleaseNotes.value,
+                        downloadUrl = ""
+                    )
+                }
+            }
+
+            // Fetch latest changelog for current version if needed
+            fetchCurrentVersionReleaseNotes(showWhatsNewIfUpgraded = isUpgrade)
+
             delay(2500)
             checkForUpdates(silent = true)
         }
@@ -889,11 +949,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _updateCheckMessage.value = null
             try {
                 val info = updateManager.checkForUpdate()
-                if (info != null && info.isUpdateAvailable) {
-                    _updateInfo.value = info
-                } else {
-                    _updateInfo.value = null
-                    _updateCheckMessage.value = null
+                if (info != null) {
+                    if (info.isUpdateAvailable) {
+                        _updateInfo.value = info
+                    } else {
+                        _updateInfo.value = null
+                        if (!silent) {
+                            _updateCheckMessage.value = "You're using the latest version!"
+                        }
+                    }
+
+                    if (info.releaseNotes.isNotBlank()) {
+                        val curName = updateManager.currentVersionName
+                        // Store current release notes for About screen and offline viewing
+                        if (!info.isUpdateAvailable || info.latestVersionName.contains(curName)) {
+                            prefs.saveCurrentReleaseNotes(curName, info.releaseNotes)
+                            _currentVersionReleaseNotes.value = info.releaseNotes
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 if (!silent) {
@@ -905,8 +978,33 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun fetchCurrentVersionReleaseNotes(showWhatsNewIfUpgraded: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val curName = updateManager.currentVersionName
+            val notes = updateManager.fetchReleaseNotesForVersion(curName)
+            if (!notes.isNullOrBlank()) {
+                prefs.saveCurrentReleaseNotes(curName, notes)
+                _currentVersionReleaseNotes.value = notes
+                if (showWhatsNewIfUpgraded && _whatsNewDialogInfo.value == null) {
+                    _whatsNewDialogInfo.value = AppUpdateInfo(
+                        isUpdateAvailable = false,
+                        latestVersionName = curName,
+                        latestVersionCode = updateManager.currentVersionCode,
+                        releaseNotes = notes,
+                        downloadUrl = ""
+                    )
+                }
+            }
+        }
+    }
+
     fun startAppUpdate(downloadUrl: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            val currentInfo = _updateInfo.value
+            if (currentInfo != null) {
+                prefs.pendingUpdateNotes = currentInfo.releaseNotes
+                prefs.pendingUpdateVersion = currentInfo.latestVersionName
+            }
             _isDownloadingUpdate.value = true
             _downloadProgress.value = 0f
             val apkFile = updateManager.downloadApk(downloadUrl) { progress ->
@@ -926,6 +1024,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissUpdateDialog() {
         _updateInfo.value = null
+    }
+
+    fun dismissWhatsNewDialog() {
+        _whatsNewDialogInfo.value = null
     }
 
     fun clearUpdateMessage() {
