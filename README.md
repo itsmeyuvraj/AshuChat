@@ -4,7 +4,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-purple.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.11-blue.svg)](https://developer.android.com/jetpack/compose)
 [![WebRTC](https://img.shields.io/badge/WebRTC-Video%20%26%20Audio%20DTLS--SRTP-orange.svg)](https://webrtc.org)
-[![License](https://img.shields.io/badge/License-Private-red.svg)](#)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A private, modern, **serverless peer-to-peer (P2P)** messaging, encrypted voice & video calling, and media sharing app for Android built with **Kotlin**, **Jetpack Compose**, and **WebRTC DataChannels**.
 
@@ -203,3 +203,13 @@ AshuChat/
 - **Biometrics**: `androidx.biometric:biometric`
 - **Networking**: OkHttp, Firebase Realtime Database REST SSE
 - **Computer Vision**: CameraX, Google ML Kit Barcode Scanning, ZXing Core
+
+---
+
+## 📄 License
+
+Copyright (C) 2026 Yuvraj Poudyal
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](LICENSE) for more details.
